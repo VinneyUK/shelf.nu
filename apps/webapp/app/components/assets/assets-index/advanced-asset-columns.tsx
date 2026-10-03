@@ -45,6 +45,7 @@ import type {
 import { isQuantityTracked } from "~/modules/asset/utils";
 import type { ColumnLabelKey } from "~/modules/asset-index-settings/helpers";
 import { formatCustodyList } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { type AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import { formatAssetValueWithBreakdown } from "~/utils/asset-value";
 import { getStatusClasses, isOneDayEvent } from "~/utils/calendar";
@@ -79,6 +80,7 @@ export function AdvancedIndexColumn({
   column: ColumnLabelKey;
   item: AdvancedIndexAsset;
 }) {
+  const { imagePreviewOnHover } = useCustomisations(); // customise feature
   const { locale, currentOrganization } = useLoaderData<AssetIndexLoaderData>();
   const { prefs } = useDateFormatter();
   const showAssetImage = useAssetIndexShowImage();
@@ -176,6 +178,7 @@ export function AdvancedIndexColumn({
                   alt={`Image of ${item.title}`}
                   className="size-10 shrink-0 rounded-[4px] border object-cover"
                   withPreview={true}
+                  hoverPreview={imagePreviewOnHover} // customise feature
                 />
               ) : null}
 

@@ -2,6 +2,11 @@ import { useEffect, useReducer, useState, useCallback, useRef } from "react";
 
 import { Dialog, DialogPortal } from "~/components/layout/dialog";
 import { Button } from "~/components/shared/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "~/components/shared/hover-card"; // customise feature
 import { Spinner } from "~/components/shared/spinner";
 import { resolveAssetImage } from "~/modules/asset/image-resolution";
 import { DIALOG_CLOSE_SHORTCUT } from "~/utils/constants";
@@ -142,6 +147,7 @@ export const AssetImage = ({
   className,
   withPreview = false,
   useThumbnail = true,
+  hoverPreview = false, // customise feature
   alt,
   ...rest
 }: AssetImageProps) => {
@@ -466,53 +472,81 @@ export const AssetImage = ({
     [isDialogOpen, withPreview]
   );
 
+  // customise feature: a larger image while hovering. Not for the placeholder,
+  // and not once the image has failed to load.
+  const showHoverPreview =
+    hoverPreview && resolved.source !== "placeholder" && !isImageError;
+
+  const thumbnail = (
+    <div className={tw("relative overflow-hidden", className)}>
+      {(isLoading || (useThumbnail && isFetchingImage && !thumbnailImage)) && (
+        <div
+          className={tw(
+            "absolute inset-0 flex items-center justify-center bg-gray-100",
+            "transition-opacity"
+          )}
+        >
+          <Spinner className="[&_.spinner]:before:border-t-gray-400" />
+        </div>
+      )}
+
+      <img
+        onClick={withPreview ? handleOpenDialog : undefined}
+        // When the image acts as a preview trigger, make it keyboard
+        // reachable and activatable with Enter or Space.
+        onKeyDown={
+          withPreview
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleOpenDialog();
+                }
+              }
+            : undefined
+        }
+        role={withPreview ? "button" : undefined}
+        tabIndex={withPreview ? 0 : undefined}
+        aria-label={withPreview ? `Open preview for ${alt}` : undefined}
+        src={imageUrl}
+        width={108}
+        height={108}
+        className={tw(
+          "size-full object-cover",
+          withPreview && "cursor-pointer"
+        )}
+        alt={alt}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+        loading="lazy"
+        decoding="async"
+        {...rest}
+      />
+    </div>
+  );
+
   return (
     <>
-      <div className={tw("relative overflow-hidden", className)}>
-        {(isLoading ||
-          (useThumbnail && isFetchingImage && !thumbnailImage)) && (
-          <div
-            className={tw(
-              "absolute inset-0 flex items-center justify-center bg-gray-100",
-              "transition-opacity"
-            )}
+      {showHoverPreview ? (
+        <HoverCard openDelay={350} closeDelay={60}>
+          <HoverCardTrigger asChild>{thumbnail}</HoverCardTrigger>
+          <HoverCardContent
+            side="right"
+            align="start"
+            className="w-auto p-1"
+            // Purely visual: the click-to-enlarge preview stays the accessible way in
+            aria-hidden="true"
           >
-            <Spinner className="[&_.spinner]:before:border-t-gray-400" />
-          </div>
-        )}
-
-        <img
-          onClick={withPreview ? handleOpenDialog : undefined}
-          // When the image acts as a preview trigger, make it keyboard
-          // reachable and activatable with Enter or Space.
-          onKeyDown={
-            withPreview
-              ? (event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    handleOpenDialog();
-                  }
-                }
-              : undefined
-          }
-          role={withPreview ? "button" : undefined}
-          tabIndex={withPreview ? 0 : undefined}
-          aria-label={withPreview ? `Open preview for ${alt}` : undefined}
-          src={imageUrl}
-          width={108}
-          height={108}
-          className={tw(
-            "size-full object-cover",
-            withPreview && "cursor-pointer"
-          )}
-          alt={alt}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          loading="lazy"
-          decoding="async"
-          {...rest}
-        />
-      </div>
+            <img
+              src={previewImageUrl}
+              alt=""
+              className="block max-h-80 max-w-80 rounded object-contain"
+              decoding="async"
+            />
+          </HoverCardContent>
+        </HoverCard>
+      ) : (
+        thumbnail
+      )}
       {withPreview && (
         <DialogPortal>
           <Dialog

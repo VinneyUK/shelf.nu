@@ -13,6 +13,8 @@ export type Customisations = {
   auditsEnabled: boolean;
   /** Keys from HIDEABLE_MENU_ITEMS */
   hiddenMenuItems: string[];
+  /** Larger image when hovering a thumbnail in the assets list */
+  imagePreviewOnHover: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -21,6 +23,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   remindersEnabled: true,
   auditsEnabled: true,
   hiddenMenuItems: [],
+  imagePreviewOnHover: true,
 };
 
 type MenuMatch = { to?: string; title?: string };

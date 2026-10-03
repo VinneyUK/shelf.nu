@@ -33,6 +33,7 @@ import type { AssetsFromViewItem } from "~/modules/asset/types";
 import { getPrimaryLocation, isQuantityTracked } from "~/modules/asset/utils";
 import { resolveDisplayCode } from "~/modules/barcode/display";
 import { formatCustodyList } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import type { AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import { tw } from "~/utils/tw";
 import { AssetCodeBadge } from "../asset-code-badge";
@@ -243,6 +244,7 @@ export const ListAssetContent = ({
   bulkActions?: ReactNode;
   isUserPage?: boolean;
 }) => {
+  const { imagePreviewOnHover } = useCustomisations(); // customise feature
   const { category, tags, custody: custodyArray } = item;
   // Render only the single primary-location badge in the list column —
   // a qty-tracked asset can sit at multiple locations via AssetLocation.
@@ -284,6 +286,7 @@ export const ListAssetContent = ({
                 alt={`Image of ${item.title}`}
                 className="size-full rounded-[4px] border object-cover"
                 withPreview
+                hoverPreview={imagePreviewOnHover} // customise feature
               />
 
               {kit?.id ? (

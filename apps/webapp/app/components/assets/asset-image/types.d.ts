@@ -32,6 +32,8 @@ export type BaseAssetImageProps = {
   alt: string;
   className?: string;
   useThumbnail?: boolean;
+  /** customise feature: show the full image in a card while hovering */
+  hoverPreview?: boolean;
   rest?: HTMLImageElement;
 };
 

@@ -2681,5 +2681,7 @@ model WorkspaceCustomisation {
   bookingsEnabled  Boolean  @default(true)
   remindersEnabled Boolean  @default(true)
   hiddenMenuItems  String[] @default([])
+  /// Show a larger image when hovering a thumbnail in the assets list
+  imagePreviewOnHover Boolean @default(true)
   updatedAt        DateTime @updatedAt
 }

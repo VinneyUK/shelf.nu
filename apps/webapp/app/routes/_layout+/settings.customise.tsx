@@ -66,6 +66,7 @@ const CustomiseSchema = z.object({
   auditsEnabled: flag,
   barcodesEnabled: flag,
   hiddenMenuItems: z.string().transform((v) => (v ? v.split(",") : [])),
+  imagePreviewOnHover: flag,
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -127,6 +128,9 @@ export default function CustomiseSettings() {
     barcodesEnabled: settings.barcodesEnabled,
   });
   const [hidden, setHidden] = useState<string[]>(settings.hiddenMenuItems);
+  const [imagePreview, setImagePreview] = useState<boolean>(
+    settings.imagePreviewOnHover
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -151,6 +155,11 @@ export default function CustomiseSettings() {
         />
       ))}
       <input type="hidden" name="hiddenMenuItems" value={hidden.join(",")} />
+      <input
+        type="hidden"
+        name="imagePreviewOnHover"
+        value={String(imagePreview)}
+      />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -186,6 +195,37 @@ export default function CustomiseSettings() {
             </li>
           ))}
         </ul>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">
+          Assets list
+        </h3>
+        <div className="flex items-start gap-4 py-4">
+          <Switch
+            id="imagePreviewOnHover"
+            checked={imagePreview}
+            onCheckedChange={(checked) => {
+              setImagePreview(checked);
+              changed();
+            }}
+            aria-labelledby="imagePreviewOnHover-label"
+            aria-describedby="imagePreviewOnHover-desc"
+          />
+          <div>
+            <label
+              id="imagePreviewOnHover-label"
+              htmlFor="imagePreviewOnHover"
+              className="font-medium text-gray-900"
+            >
+              Image preview on hover
+            </label>
+            <p id="imagePreviewOnHover-desc" className="text-sm text-gray-600">
+              Show a larger image when you hover over an asset's thumbnail in
+              the assets list.
+            </p>
+          </div>
+        </div>
       </Card>
 
       <Card>
