@@ -2668,10 +2668,13 @@ model AssetAttachment {
   assetId        String?
   organizationId String
   uploadedById   String?
+  /// Set while a file from an emailed receipt waits to be put on an asset (email receipts feature)
+  emailReceiptId String?
   createdAt      DateTime @default(now())
 
   @@index([assetId])
   @@index([organizationId])
+  @@index([emailReceiptId])
 }
 
 // ---------------------------------------------------------------------------
@@ -2754,4 +2757,46 @@ model AssetSale {
   updatedAt      DateTime @updatedAt
 
   @@index([organizationId, soldOn])
+}
+
+// ---------------------------------------------------------------------------
+// Email receipts — added by the email receipts feature. Shelf checks a mailbox
+// over IMAP and attaches forwarded receipts to the assets named in the subject.
+// ---------------------------------------------------------------------------
+model EmailReceiptSettings {
+  organizationId  String    @id
+  enabled         Boolean   @default(false)
+  host            String    @default("imap.gmail.com")
+  port            Int       @default(993)
+  username        String    @default("")
+  /// App password. Never sent to the browser.
+  password        String    @default("")
+  mailbox         String    @default("INBOX")
+  /// Where handled emails are moved to
+  processedFolder String    @default("Shelf")
+  /// Only email from these addresses is accepted (lower case)
+  allowedSenders  String[]  @default([])
+  lastCheckedAt   DateTime?
+  lastError       String?
+  updatedAt       DateTime  @updatedAt
+}
+
+/// One email the mailbox received: what happened to it, and the log shown in settings.
+model EmailReceipt {
+  id             String    @id @default(cuid())
+  organizationId String
+  messageId      String
+  fromAddress    String
+  subject        String
+  receivedAt     DateTime?
+  /// attached | unmatched | ignored | discarded
+  status         String
+  /// Why it was ignored, if it was
+  reason         String?
+  /// Asset IDs (e.g. SAM-0017) its files went to
+  attachedTo     String[]  @default([])
+  createdAt      DateTime  @default(now())
+
+  @@unique([organizationId, messageId])
+  @@index([organizationId, status, createdAt])
 }

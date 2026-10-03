@@ -158,6 +158,106 @@ export async function getAssetAttachments({
  * its contents, stores it, and records it against the asset. Files are handled
  * one at a time, so a bad file stops the upload with the earlier ones saved.
  */
+/**
+ * Checks a file by its contents, stores it, and records it. Used by uploads and
+ * by email receipts. With `assetId: null` the file is staged (asset form) or,
+ * with `emailReceiptId`, waiting in the email receipts Unmatched list.
+ */
+export async function storeAttachmentBytes({
+  organizationId,
+  assetId,
+  userId,
+  originalName,
+  bytes,
+  emailReceiptId = null,
+}: {
+  organizationId: string;
+  assetId: string | null;
+  userId: string | null;
+  originalName: string;
+  bytes: Uint8Array;
+  emailReceiptId?: string | null;
+}): Promise<SavedAttachment> {
+  const detected = detectAttachmentType(bytes.subarray(0, 4096), originalName);
+  if (!detected) {
+    throw new ShelfError({
+      cause: null,
+      title: "File type not allowed",
+      message: `"${originalName}" isn't a ${ATTACHMENT_TYPES_DESCRIPTION} file.`,
+      status: 400,
+      label,
+      shouldBeCaptured: false,
+    });
+  }
+  const maxBytes = getAttachmentMaxBytes();
+  if (bytes.length > maxBytes) {
+    throw new ShelfError({
+      cause: null,
+      title: "File too large",
+      message: `"${originalName}" is over ${Math.round(
+        maxBytes / (1024 * 1024)
+      )} MB.`,
+      status: 400,
+      label,
+      shouldBeCaptured: false,
+    });
+  }
+  await ensureBucket(maxBytes);
+
+  // Keep the given name, but make sure it ends in the real extension
+  let fileName = originalName.slice(0, 200) || "file";
+  if (
+    !fileName.toLowerCase().endsWith(`.${detected.extension}`) &&
+    !(detected.extension === "jpg" && /\.jpe?g$/i.test(fileName))
+  ) {
+    fileName = `${fileName}.${detected.extension}`;
+  }
+
+  const bucket = getSupabaseAdmin().storage.from(ATTACHMENTS_BUCKET);
+  const attachmentId = createId();
+  const storagePath = `${organizationId}/${
+    assetId ?? (emailReceiptId ? "email" : "staged")
+  }/${attachmentId}-${sanitizeFilename(fileName)}`;
+
+  const { error } = await bucket.upload(storagePath, bytes, {
+    contentType: detected.contentType,
+    upsert: false,
+  });
+  if (error) {
+    throw new ShelfError({
+      cause: error,
+      message: `Couldn't store "${originalName}". Please try again.`,
+      additionalData: { assetId },
+      label,
+    });
+  }
+  try {
+    await db.assetAttachment.create({
+      data: {
+        id: attachmentId,
+        fileName,
+        contentType: detected.contentType,
+        size: bytes.length,
+        storagePath,
+        assetId,
+        organizationId,
+        uploadedById: userId,
+        emailReceiptId,
+      },
+    });
+  } catch (cause) {
+    // Don't leave a stored file with no record pointing at it
+    await bucket.remove([storagePath]);
+    throw cause;
+  }
+  return {
+    id: attachmentId,
+    fileName,
+    contentType: detected.contentType,
+    size: bytes.length,
+  };
+}
+
 export type SavedAttachment = {
   id: string;
   fileName: string;
@@ -182,7 +282,6 @@ export async function uploadAssetAttachments({
 }): Promise<SavedAttachment[]> {
   const maxBytes = getAttachmentMaxBytes();
   await ensureBucket(maxBytes);
-  const bucket = getSupabaseAdmin().storage.from(ATTACHMENTS_BUCKET);
   const saved: SavedAttachment[] = [];
 
   try {
@@ -202,73 +301,15 @@ export async function uploadAssetAttachments({
         });
       }
 
-      const detected = detectAttachmentType(
-        bytes.subarray(0, 4096),
-        originalName
-      );
-      if (!detected) {
-        throw new ShelfError({
-          cause: null,
-          title: "File type not allowed",
-          message: `"${originalName}" isn't a ${ATTACHMENT_TYPES_DESCRIPTION} file.`,
-          status: 400,
-          label,
-          shouldBeCaptured: false,
-        });
-      }
-
-      // Keep the user's name, but make sure it ends in the real extension
-      let fileName = originalName;
-      if (
-        !fileName.toLowerCase().endsWith(`.${detected.extension}`) &&
-        !(detected.extension === "jpg" && /\.jpe?g$/i.test(fileName))
-      ) {
-        fileName = `${fileName}.${detected.extension}`;
-      }
-
-      const attachmentId = createId();
-      const storagePath = `${organizationId}/${
-        assetId ?? "staged"
-      }/${attachmentId}-${sanitizeFilename(fileName)}`;
-
-      const { error } = await bucket.upload(storagePath, bytes, {
-        contentType: detected.contentType,
-        upsert: false,
+      const stored = await storeAttachmentBytes({
+        organizationId,
+        assetId,
+        userId,
+        originalName,
+        bytes,
       });
-      if (error) {
-        throw new ShelfError({
-          cause: error,
-          message: `Couldn't store "${originalName}". Please try again.`,
-          additionalData: { assetId },
-          label,
-        });
-      }
-
-      try {
-        await db.assetAttachment.create({
-          data: {
-            id: attachmentId,
-            fileName,
-            contentType: detected.contentType,
-            size: bytes.length,
-            storagePath,
-            assetId,
-            organizationId,
-            uploadedById: userId,
-          },
-        });
-      } catch (cause) {
-        // Don't leave a stored file with no record pointing at it
-        await bucket.remove([storagePath]);
-        throw cause;
-      }
-      saved.push({
-        id: attachmentId,
-        fileName,
-        contentType: detected.contentType,
-        size: bytes.length,
-      });
-      return attachmentId;
+      saved.push(stored);
+      return stored.id;
     });
   } catch (cause) {
     if (cause instanceof MaxFileSizeExceededError) {
@@ -393,6 +434,8 @@ export async function cleanUpDeletedAssetAttachments(organizationId: string) {
       where: {
         organizationId,
         assetId: null,
+        // Files waiting in email receipts' Unmatched list stay until dealt with
+        emailReceiptId: null,
         createdAt: { lt: new Date(Date.now() - STAGED_GRACE_MS) },
       },
       select: { id: true, storagePath: true },

@@ -11,6 +11,7 @@ import {
 } from "./catalogue";
 
 export const CUSTOMISE_PAGE = "/settings/customise";
+export const EMAIL_RECEIPTS_PAGE = "/settings/email-receipts";
 export const LABELS_PAGE = "/labels";
 
 /**
@@ -65,6 +66,13 @@ function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
         !children.some((child) => child.to === CUSTOMISE_PAGE)
       ) {
         children.push({ title: "Customise", to: CUSTOMISE_PAGE });
+      }
+      // email receipts feature
+      if (
+        item.title === "Workspace settings" &&
+        !children.some((child) => child.to === EMAIL_RECEIPTS_PAGE)
+      ) {
+        children.push({ title: "Email receipts", to: EMAIL_RECEIPTS_PAGE });
       }
       return { ...item, children };
     })

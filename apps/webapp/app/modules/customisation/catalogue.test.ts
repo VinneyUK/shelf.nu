@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { NavItem } from "~/hooks/use-sidebar-nav-items";
-import { applyCustomisationsToMenu, CUSTOMISE_PAGE } from "./apply-to-menu";
+import {
+  applyCustomisationsToMenu,
+  CUSTOMISE_PAGE,
+  EMAIL_RECEIPTS_PAGE,
+} from "./apply-to-menu";
 import {
   type Customisations,
   DEFAULT_CUSTOMISATIONS,
@@ -153,6 +157,7 @@ describe("applyCustomisationsToMenu", () => {
       "/settings/general",
       "/settings/bookings",
       CUSTOMISE_PAGE,
+      EMAIL_RECEIPTS_PAGE,
     ]);
   });
 
@@ -171,6 +176,7 @@ describe("applyCustomisationsToMenu", () => {
     expect(settingsChildren(out.topMenuItems)).toEqual([
       "/settings/general",
       CUSTOMISE_PAGE,
+      EMAIL_RECEIPTS_PAGE,
     ]);
   });
 
