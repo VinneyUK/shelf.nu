@@ -258,6 +258,7 @@ model Asset {
 
   custody      Custody[]
   notes        Note[]
+  attachments  AssetAttachment[] // added by the attachments feature
   qrCodes      Qr[]
   barcodes     Barcode[]              @relation("AssetBarcodes")
   reports      ReportFound[]
@@ -2647,4 +2648,26 @@ enum ActivityAction {
 
   // Organization (workspace-level configuration changes)
   ORGANIZATION_QR_ID_DISPLAY_PREFERENCE_CHANGED
+}
+
+// ---------------------------------------------------------------------------
+// Asset attachments (receipts, warranties, manuals...) — added by the
+// attachments feature. Files live in the private "attachments" storage bucket.
+// assetId becomes null when the asset is deleted; the attachments code then
+// removes the stored file, so Shelf's own delete code doesn't need to change.
+// ---------------------------------------------------------------------------
+model AssetAttachment {
+  id             String   @id @default(cuid())
+  fileName       String
+  contentType    String
+  size           Int
+  storagePath    String   @unique
+  asset          Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assetId        String?
+  organizationId String
+  uploadedById   String?
+  createdAt      DateTime @default(now())
+
+  @@index([assetId])
+  @@index([organizationId])
 }

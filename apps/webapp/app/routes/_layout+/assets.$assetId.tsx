@@ -555,6 +555,7 @@ export default function AssetDetailsPage() {
       ? [{ to: "activity", content: "Activity" }]
       : []),
     { to: "bookings", content: "Bookings" },
+    { to: "attachments", content: "Attachments" }, // added by the attachments feature
     ...(userHasPermission({
       roles,
       entity: PermissionEntity.assetReminders,
