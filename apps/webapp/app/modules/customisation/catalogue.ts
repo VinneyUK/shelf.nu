@@ -123,7 +123,15 @@ export function redirectForSwitchedOffPage(
   pathname: string,
   c: Customisations
 ): string | null {
+  const report = pathname.match(/^\/reports\/([^/.]+)(\/|$)/);
+  const blockedReport =
+    report !== null &&
+    !reportIsAvailable(
+      { id: report[1], category: REPORT_CATEGORY[report[1]] ?? "" },
+      c
+    );
   const blocked =
+    blockedReport ||
     (!c.bookingsEnabled && BOOKING_PAGES.some((re) => re.test(pathname))) ||
     (!c.remindersEnabled && REMINDER_PAGES.some((re) => re.test(pathname))) ||
     (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname))) ||
@@ -131,4 +139,65 @@ export function redirectForSwitchedOffPage(
     (!c.custodyEnabled && CUSTODY_PAGES.some((re) => re.test(pathname)));
   if (!blocked) return null;
   return c.hiddenMenuItems.includes("home") ? "/assets" : "/home";
+}
+
+// ------------------------------------------------- columns and reports
+
+/**
+ * Each built-in report's category, so a report's address can be blocked
+ * without loading Shelf's report registry here. Mirrors modules/reports/registry.ts.
+ */
+const REPORT_CATEGORY: Record<string, string> = {
+  "booking-compliance": "bookings",
+  "top-booked-assets": "bookings",
+  "top-booked-kits": "bookings",
+  "monthly-booking-trends": "bookings",
+  "overdue-items": "bookings",
+  "custody-snapshot": "custody",
+};
+
+type FeatureFlags = Pick<
+  Customisations,
+  "bookingsEnabled" | "remindersEnabled" | "custodyEnabled"
+>;
+
+/** Assets list columns that only mean something with a feature switched on. */
+const FEATURE_COLUMNS: Record<string, (c: FeatureFlags) => boolean> = {
+  availableToBook: (c) => c.bookingsEnabled,
+  upcomingBookings: (c) => c.bookingsEnabled,
+  upcomingReminder: (c) => c.remindersEnabled,
+  custody: (c) => c.custodyEnabled,
+};
+
+/**
+ * Leaves out the columns of switched-off features. Everything that reads the
+ * column settings — the table, the column picker, the advanced filters and the
+ * CSV export — then loses them together. Saved settings aren't changed.
+ */
+export function columnsWithoutSwitchedOff<T extends { name: string }>(
+  columns: T[],
+  c: FeatureFlags
+): T[] {
+  return columns.filter((col) => FEATURE_COLUMNS[col.name]?.(c) ?? true);
+}
+
+/** Whether a report still means anything with these features switched off. */
+export function reportIsAvailable(
+  report: { id: string; category: string },
+  c: FeatureFlags & Pick<Customisations, "auditsEnabled">
+) {
+  if (report.category === "bookings" && !c.bookingsEnabled) return false;
+  if (report.category === "custody" && !c.custodyEnabled) return false;
+  if (report.category === "audits" && !c.auditsEnabled) return false;
+  // "Idle" means not booked or checked out
+  if (report.id === "idle-assets" && !c.bookingsEnabled) return false;
+  // Measured from booking and custody time
+  if (
+    report.id === "asset-utilization" &&
+    !c.bookingsEnabled &&
+    !c.custodyEnabled
+  ) {
+    return false;
+  }
+  return true;
 }

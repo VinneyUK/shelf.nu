@@ -4,6 +4,7 @@ import type PgBoss from "pg-boss";
 import { db } from "~/database/db.server";
 import { bookingUpdatesTemplateString } from "~/emails/bookings-updates-template";
 import { sendEmail } from "~/emails/mail.server";
+import { bookingsSwitchedOffForBooking } from "~/modules/customisation/service.server"; // customise feature
 import { getTimeRemainingMessage } from "~/utils/date-fns";
 import { resolveFormatPrefs } from "~/utils/date-format";
 import { isNotFoundError, ShelfError } from "~/utils/error";
@@ -518,6 +519,12 @@ export const registerBookingWorkers = async () => {
           label: "Booking",
         })
       );
+      return;
+    }
+    // customise feature: booking jobs (emails, marking overdue) pause while
+    // bookings are switched off. If the switch can't be checked, the job runs
+    // as normal — a failed check must never stop a booking job.
+    if (await bookingsSwitchedOffForBooking(job.data.id)) {
       return;
     }
     try {

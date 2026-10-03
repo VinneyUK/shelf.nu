@@ -4,6 +4,7 @@
 import { data, type LoaderFunctionArgs } from "react-router";
 import { csvField, parseDay } from "~/modules/sold/report-utils";
 import { getSoldReport } from "~/modules/sold/service.server";
+import { csvResponse } from "~/utils/csv-utf8";
 import { makeShelfError } from "~/utils/error";
 import { error } from "~/utils/http.server";
 import {
@@ -46,9 +47,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         r.difference,
       ]),
     ].map((cells) => cells.map(csvField).join(","));
-    return new Response(`${lines.join("\r\n")}\r\n`, {
+    return csvResponse(`${lines.join("\r\n")}\r\n`, {
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": 'attachment; filename="sold-assets.csv"',
       },
     });

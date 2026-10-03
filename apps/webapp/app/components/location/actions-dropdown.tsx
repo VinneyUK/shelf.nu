@@ -13,6 +13,7 @@ import { ChevronRight } from "~/components/icons/library";
 import When from "~/components/when/when";
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   PermissionAction,
   PermissionEntity,
@@ -39,6 +40,7 @@ const ConditionalActionsDropdown = ({
   assetCount,
   fullWidth,
 }: Props) => {
+  const { auditsEnabled } = useCustomisations(); // customise feature
   const { roles } = useUserRoleHelper();
   const hasChildLocations = (location.childCount ?? 0) > 0;
   const { ref: popoverContentRef, open, setOpen } = useControlledDropdownMenu();
@@ -108,11 +110,14 @@ const ConditionalActionsDropdown = ({
             <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-full md:rounded-t-[4px]">
               {/* Start Audit - only visible to users with audit create permission */}
               <When
-                truthy={userHasPermission({
-                  roles,
-                  entity: PermissionEntity.audit,
-                  action: PermissionAction.create,
-                })}
+                truthy={
+                  auditsEnabled /* customise feature */ &&
+                  userHasPermission({
+                    roles,
+                    entity: PermissionEntity.audit,
+                    action: PermissionAction.create,
+                  })
+                }
               >
                 <div className="border-b px-0 py-1 md:p-0">
                   <Button

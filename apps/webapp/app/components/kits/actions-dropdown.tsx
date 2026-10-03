@@ -54,7 +54,7 @@ export default function ActionsDropdown({
 }
 
 function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
-  const { custodyEnabled } = useCustomisations(); // customise feature
+  const { custodyEnabled, auditsEnabled } = useCustomisations(); // customise feature
   const { kit } = useLoaderData<typeof loader>();
   const kitCanBeReleased = kit.custody;
   const kitIsCheckedOut = kit.status === "CHECKED_OUT";
@@ -199,11 +199,14 @@ function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
 
             {/* Start Audit - only visible to users with audit create permission */}
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.audit,
-                action: PermissionAction.create,
-              })}
+              truthy={
+                auditsEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.audit,
+                  action: PermissionAction.create,
+                })
+              }
             >
               <DropdownMenuItem className="border-b px-4 py-1 md:p-0">
                 <Button

@@ -7,6 +7,7 @@ import {
 import type { ITXClientDenyList } from "@prisma/client/runtime/library";
 import type { ExtendedPrismaClient } from "~/database/db.server";
 import { db } from "~/database/db.server";
+import { columnsWithoutSwitchedOff } from "~/modules/customisation/catalogue"; // customise feature
 import { ShelfError, type ErrorLabel } from "~/utils/error";
 import type { Column, ColumnLabelKey } from "./helpers";
 import { syncCustomFieldColumn } from "./helpers";
@@ -144,7 +145,26 @@ export async function getAssetIndexSettings({
       columns: assetIndexSettings.columns as Column[],
       canUseBarcodes,
     });
-    return validatedSettings || assetIndexSettings;
+    const settings = validatedSettings || assetIndexSettings;
+
+    // customise feature: no columns for switched-off features
+    const customisation = await db.workspaceCustomisation.findUnique({
+      where: { organizationId },
+      select: {
+        bookingsEnabled: true,
+        remindersEnabled: true,
+        custodyEnabled: true,
+      },
+    });
+    return customisation
+      ? {
+          ...settings,
+          columns: columnsWithoutSwitchedOff(
+            settings.columns as Column[],
+            customisation
+          ),
+        }
+      : settings;
   } catch (cause) {
     throw new ShelfError({
       cause,

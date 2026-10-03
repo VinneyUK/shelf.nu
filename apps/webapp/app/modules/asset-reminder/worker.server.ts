@@ -2,6 +2,7 @@ import type { Prisma, User } from "@prisma/client";
 import type PgBoss from "pg-boss";
 import { db } from "~/database/db.server";
 import { sendEmail } from "~/emails/mail.server";
+import { isFeatureSwitchedOff } from "~/modules/customisation/service.server"; // customise feature
 import { ShelfError } from "~/utils/error";
 import { Logger } from "~/utils/logger";
 import { stripMarkdocDelimiters } from "~/utils/markdoc-sanitize";
@@ -62,6 +63,13 @@ const ASSET_SCHEDULER_EVENT_HANDLERS: Record<
           shouldBeCaptured: false,
         })
       );
+      return;
+    }
+
+    // customise feature: no reminder emails while reminders are switched off
+    if (
+      await isFeatureSwitchedOff(reminder.organizationId, "remindersEnabled")
+    ) {
       return;
     }
 

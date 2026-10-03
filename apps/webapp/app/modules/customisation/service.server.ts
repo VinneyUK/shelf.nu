@@ -111,3 +111,39 @@ export async function saveCustomisePageSettings(
     }),
   ]);
 }
+
+/**
+ * For background jobs: is this feature switched off for the workspace? Used
+ * to stop reminder and booking emails while their feature is off.
+ */
+export async function isFeatureSwitchedOff(
+  organizationId: string,
+  feature: "bookingsEnabled" | "remindersEnabled"
+) {
+  // A failed check must never stop a job, so when unsure, say "not switched off"
+  try {
+    const row = await db.workspaceCustomisation.findUnique({
+      where: { organizationId },
+      select: { bookingsEnabled: true, remindersEnabled: true },
+    });
+    return row ? !row[feature] : false;
+  } catch {
+    return false;
+  }
+}
+
+/** For the booking worker: are bookings switched off for this booking's workspace? False if unsure. */
+export async function bookingsSwitchedOffForBooking(bookingId: string) {
+  try {
+    const booking = await db.booking.findFirst({
+      // eslint-disable-next-line local-rules/require-org-scope-on-id-queries -- idor-safe: background pg-boss job with no request context; the booking id comes from the scheduler queue, and only its organizationId is read
+      where: { id: bookingId },
+      select: { organizationId: true },
+    });
+    return booking
+      ? await isFeatureSwitchedOff(booking.organizationId, "bookingsEnabled")
+      : false;
+  } catch {
+    return false;
+  }
+}

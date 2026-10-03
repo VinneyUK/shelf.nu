@@ -758,7 +758,8 @@ async function handleMoveUnitsIntent({
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
 export default function AssetOverview() {
-  const { remindersEnabled, custodyEnabled } = useCustomisations(); // customise feature
+  const { remindersEnabled, custodyEnabled, bookingsEnabled } =
+    useCustomisations(); // customise feature
   const {
     asset,
     locale,
@@ -1450,7 +1451,11 @@ export default function AssetOverview() {
         </div>
 
         <div className="w-full md:w-[360px] lg:ml-4">
-          <When truthy={canUpdateAvailability}>
+          <When
+            truthy={
+              bookingsEnabled /* customise feature */ && canUpdateAvailability
+            }
+          >
             <Card className="my-3">
               <fetcher.Form
                 ref={zo.ref}

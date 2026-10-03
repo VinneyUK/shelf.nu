@@ -14,6 +14,7 @@ import {
 import { useAssetIndexViewState } from "~/hooks/use-asset-index-view-state";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { userHasCustodyViewPermission } from "~/utils/permissions/custody-and-bookings-permissions.validator.client";
 import type { OrganizationPermissionSettings } from "~/utils/permissions/custody-and-bookings-permissions.validator.client";
 import { resolveTeamMemberName } from "~/utils/user";
@@ -33,6 +34,7 @@ export function AssetIndexFilters({
 }: {
   disableTeamMemberFilter?: boolean;
 }) {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   /** Used for filtering based on user type */
   const filterParams: string[] = ["category", "tag", "location"];
   if (!disableTeamMemberFilter) {
@@ -142,7 +144,13 @@ export function AssetIndexFilters({
                 </div>
               )}
             />
-            <When truthy={canSeeAllCustody && !disableTeamMemberFilter}>
+            <When
+              truthy={
+                custodyEnabled /* customise feature */ &&
+                canSeeAllCustody &&
+                !disableTeamMemberFilter
+              }
+            >
               <DynamicDropdown
                 trigger={
                   <div className="flex cursor-pointer items-center gap-2">

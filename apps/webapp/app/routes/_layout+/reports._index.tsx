@@ -16,6 +16,8 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import Header from "~/components/layout/header";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
 
+import { reportIsAvailable } from "~/modules/customisation/catalogue"; // customise feature
+import { getWorkspaceCustomisations } from "~/modules/customisation/service.server"; // customise feature
 import {
   REPORTS,
   REPORT_CATEGORIES,
@@ -38,14 +40,24 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const authSession = context.getSession();
   const { userId } = authSession;
 
-  await requirePermission({
+  const { organizationId, currentOrganization } = await requirePermission({
     userId,
     request,
     entity: PermissionEntity.reports,
     action: PermissionAction.read,
   });
 
-  const reportsByCategory = getReportsByCategory();
+  // customise feature: no reports for switched-off features
+  const customisations = await getWorkspaceCustomisations(
+    organizationId,
+    currentOrganization
+  );
+  const reportsByCategory = Object.fromEntries(
+    Object.entries(getReportsByCategory()).map(([category, reports]) => [
+      category,
+      reports.filter((report) => reportIsAvailable(report, customisations)),
+    ])
+  );
 
   // Standard header object for app Header component
   const header = {

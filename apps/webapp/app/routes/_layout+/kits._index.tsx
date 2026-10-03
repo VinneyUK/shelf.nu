@@ -41,6 +41,7 @@ import { LOCATION_WITH_HIERARCHY } from "~/modules/asset/fields";
 import { getLocationsForCreateAndEdit } from "~/modules/asset/service.server";
 import type { EntityForCodeResolution } from "~/modules/barcode/display";
 import { resolveDisplayCode } from "~/modules/barcode/display";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   getPaginatedAndFilterableKits,
   updateKitsWithBookingCustodians,
@@ -310,6 +311,7 @@ export const handle = {
 };
 
 export default function KitsIndexPage() {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const { items } = useLoaderData<typeof loader>();
   const { roles, isBase } = useUserRoleHelper();
   const canCreateKit = userHasPermission({
@@ -352,7 +354,7 @@ export default function KitsIndexPage() {
             "right-of-search": <AvailabilityViewToggle />,
           }}
         >
-          {canReadCustody && (
+          {custodyEnabled /* customise feature */ && canReadCustody && (
             <DynamicDropdown
               trigger={
                 <div className="my-2 flex cursor-pointer items-center gap-2 md:my-0">
@@ -446,24 +448,26 @@ export default function KitsIndexPage() {
                 <Th>Location</Th>
                 <Th>Description</Th>
                 <Th>Assets</Th>
-                <Th className="flex items-center gap-1 whitespace-nowrap">
-                  Custodian{" "}
-                  <InfoTooltip
-                    iconClassName="size-4"
-                    content={
-                      <>
-                        <h6>Asset custody</h6>
-                        <p>
-                          This column shows if a user has custody of the asset
-                          either via direct assignment or via a booking. If you
-                          see <GrayBadge>private</GrayBadge> that means you
-                          don't have the permissions to see who has custody of
-                          the asset.
-                        </p>
-                      </>
-                    }
-                  />
-                </Th>
+                {custodyEnabled ? ( // customise feature
+                  <Th className="flex items-center gap-1 whitespace-nowrap">
+                    Custodian{" "}
+                    <InfoTooltip
+                      iconClassName="size-4"
+                      content={
+                        <>
+                          <h6>Asset custody</h6>
+                          <p>
+                            This column shows if a user has custody of the asset
+                            either via direct assignment or via a booking. If
+                            you see <GrayBadge>private</GrayBadge> that means
+                            you don't have the permissions to see who has
+                            custody of the asset.
+                          </p>
+                        </>
+                      }
+                    />
+                  </Th>
+                ) : null}
                 <Th>Actions</Th>
               </>
             }
@@ -533,6 +537,7 @@ function ListContent({
   }>;
   bulkActions?: ReactNode;
 }) {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const locationWithHierarchy = item.location as Prisma.LocationGetPayload<
     typeof LOCATION_WITH_HIERARCHY
   > | null;
@@ -627,9 +632,11 @@ function ListContent({
         ) : null}
       </Td>
       <Td>{item._count.assetKits}</Td>
-      <Td>
-        <TeamMemberBadge teamMember={item?.custody?.custodian} />
-      </Td>
+      {custodyEnabled ? ( // customise feature
+        <Td>
+          <TeamMemberBadge teamMember={item?.custody?.custodian} />
+        </Td>
+      ) : null}
 
       <Td>
         <KitQuickActions

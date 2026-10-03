@@ -53,7 +53,7 @@ export default function BulkActionsDropdown() {
 }
 
 function ConditionalDropdown() {
-  const { custodyEnabled } = useCustomisations(); // customise feature
+  const { custodyEnabled, auditsEnabled } = useCustomisations(); // customise feature
   const {
     ref: dropdownRef,
     defaultApplied,
@@ -140,11 +140,14 @@ function ConditionalDropdown() {
       </When>
 
       <When
-        truthy={userHasPermission({
-          roles,
-          entity: PermissionEntity.audit,
-          action: PermissionAction.create,
-        })}
+        truthy={
+          auditsEnabled /* customise feature */ &&
+          userHasPermission({
+            roles,
+            entity: PermissionEntity.audit,
+            action: PermissionAction.create,
+          })
+        }
       >
         <KitsBulkStartAuditDialog />
       </When>
@@ -189,11 +192,14 @@ function ConditionalDropdown() {
         >
           <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-[180px] md:rounded-t-[4px]">
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.audit,
-                action: PermissionAction.create,
-              })}
+              truthy={
+                auditsEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.audit,
+                  action: PermissionAction.create,
+                })
+              }
             >
               <DropdownMenuItem
                 className="px-4 py-1 md:p-0"
