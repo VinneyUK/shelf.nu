@@ -590,7 +590,10 @@ export const buildCsvExportDataFromAssets = ({
 
   // Get visible columns in the correct order
   const visibleColumns = columns
-    .filter((col) => col.visible && col.name !== "actions")
+    .filter(
+      (col) =>
+        col.visible && col.name !== "actions" && col.name !== "attachments" // attachments feature: on-screen only
+    )
     .sort((a, b) => a.position - b.position);
 
   // Create headers row using column names
@@ -759,6 +762,7 @@ export const buildCsvExportDataFromAssets = ({
             value = asset.assetModelName ?? "";
             break;
           case "actions":
+          case "attachments": // attachments feature: on-screen only
             value = "";
             break;
           default:

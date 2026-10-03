@@ -21,6 +21,7 @@ import {
   updateAssetMainImage,
 } from "~/modules/asset/service.server";
 import { getPrimaryLocation } from "~/modules/asset/utils";
+import { claimStagedAttachments } from "~/modules/asset-attachment/service.server"; // attachments feature
 import { getAssetModels } from "~/modules/asset-model/service.server";
 
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
@@ -286,6 +287,9 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         thumbnailImage: null,
       }),
     });
+
+    // attachments feature: files added in the form before saving
+    await claimStagedAttachments({ formData, assetId: id, organizationId });
 
     sendNotification({
       title: "Asset updated",

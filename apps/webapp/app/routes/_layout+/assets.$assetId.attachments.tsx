@@ -4,8 +4,6 @@
  * Part of the attachments feature; not in upstream Shelf.
  */
 import { useCallback, useEffect, useState } from "react";
-import type { FileRejection } from "react-dropzone";
-import { useDropzone } from "react-dropzone";
 import {
   data,
   useFetcher,
@@ -14,7 +12,8 @@ import {
 } from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
-import { FileUploadIcon, TrashIcon } from "~/components/icons/library";
+import { AttachmentDropzone } from "~/components/asset-attachment/attachment-dropzone";
+import { TrashIcon } from "~/components/icons/library";
 import type { HeaderData } from "~/components/layout/header/types";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -30,11 +29,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/shared/modal";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
-import {
-  ATTACHMENT_ACCEPT,
-  ATTACHMENT_TYPES_DESCRIPTION,
-  attachmentTypeLabel,
-} from "~/modules/asset-attachment/constants";
+import { attachmentTypeLabel } from "~/modules/asset-attachment/constants";
 import {
   assertAssetInOrganization,
   cleanUpDeletedAssetAttachments,
@@ -115,7 +110,11 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         organizationId,
         userId,
       });
-      return payload({ success: true, uploaded: saved, deleted: null });
+      return payload({
+        success: true,
+        uploaded: saved.map((file) => file.fileName),
+        deleted: null,
+      });
     }
 
     const { attachmentId } = parseData(
@@ -224,52 +223,14 @@ function AttachmentUpload({ maxBytes }: { maxBytes: number }) {
     [fetcher]
   );
 
-  const onDropRejected = useCallback(
-    (rejections: FileRejection[]) => {
-      const first = rejections[0];
-      const reason =
-        first?.errors[0]?.code === "file-too-large"
-          ? `is bigger than ${formatBytes(maxBytes, 0)}`
-          : first?.errors[0]?.code === "file-invalid-type"
-          ? `isn't a ${ATTACHMENT_TYPES_DESCRIPTION} file`
-          : "can't be uploaded";
-      setMessage({ text: `"${first?.file.name}" ${reason}.`, error: true });
-    },
-    [maxBytes]
-  );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDropAccepted,
-    onDropRejected,
-    accept: ATTACHMENT_ACCEPT,
-    maxSize: maxBytes,
-    multiple: true,
-    disabled: isPending,
-  });
-
   return (
     <div className="flex flex-col gap-2">
-      <div
-        {...getRootProps({
-          className: tw(
-            "flex flex-col items-center gap-1 rounded-xl border-2 border-dashed border-gray-200 p-4 text-center",
-            isDragActive && "border-solid border-primary bg-gray-50",
-            isPending && "opacity-60"
-          ),
-        })}
-      >
-        <input {...getInputProps()} name="file" />
-        <FileUploadIcon />
-        <p className="text-sm">
-          <span className="font-semibold text-primary-700 hover:cursor-pointer hover:text-primary-800">
-            Click to upload
-          </span>{" "}
-          or drag and drop
-        </p>
-        <p className="text-xs text-gray-500">
-          {ATTACHMENT_TYPES_DESCRIPTION}, up to {formatBytes(maxBytes, 0)} each
-        </p>
-      </div>
+      <AttachmentDropzone
+        maxBytes={maxBytes}
+        disabled={isPending}
+        onFiles={onDropAccepted}
+        onReject={(text) => setMessage({ text, error: true })}
+      />
       {message ? (
         <p
           role={message.error ? "alert" : "status"}

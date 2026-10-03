@@ -6,6 +6,12 @@
 /** Private storage bucket the files live in. Created on first upload. */
 export const ATTACHMENTS_BUCKET = "attachments";
 
+/** Form field the asset form uses to pass files staged before saving. */
+export const STAGED_ATTACHMENTS_FIELD = "stagedAttachmentIds";
+
+/** Where the asset form uploads files before the asset is saved. */
+export const STAGE_ATTACHMENTS_URL = "/api/asset-attachments/stage";
+
 /** Upload size limit when ATTACHMENT_MAX_SIZE_MB isn't set. */
 export const DEFAULT_ATTACHMENT_MAX_SIZE_MB = 100;
 

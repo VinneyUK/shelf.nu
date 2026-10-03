@@ -18,6 +18,7 @@ import {
   updateAssetMainImage,
 } from "~/modules/asset/service.server";
 import { getInitialPlacementNoteContent } from "~/modules/asset/utils.server";
+import { claimStagedAttachments } from "~/modules/asset-attachment/service.server"; // attachments feature
 import {
   getAssetModel,
   getAssetModels,
@@ -306,6 +307,8 @@ export async function action({ context, request }: LoaderFunctionArgs) {
 
     // Run independent post-creation tasks in parallel
     const postCreationTasks: Promise<unknown>[] = [
+      // attachments feature: files added in the form before saving
+      claimStagedAttachments({ formData, assetId: asset.id, organizationId }),
       updateAssetMainImage({
         request,
         assetId: asset.id,

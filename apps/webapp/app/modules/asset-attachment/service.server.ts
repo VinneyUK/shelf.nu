@@ -4,7 +4,8 @@
  *
  * Files go in the private "attachments" bucket at
  *   <organizationId>/<assetId>/<attachmentId>-<file name>
- * and are only ever reached through short-lived signed links.
+ * (or <organizationId>/staged/... for files added in the asset form before the
+ * asset is saved) and are only ever reached through short-lived signed links.
  */
 import {
   MaxFileSizeExceededError,
@@ -21,6 +22,7 @@ import {
   ATTACHMENTS_BUCKET,
   ATTACHMENT_TYPES_DESCRIPTION,
   DEFAULT_ATTACHMENT_MAX_SIZE_MB,
+  STAGED_ATTACHMENTS_FIELD,
 } from "./constants";
 import { detectAttachmentType } from "./detect";
 
@@ -156,6 +158,17 @@ export async function getAssetAttachments({
  * its contents, stores it, and records it against the asset. Files are handled
  * one at a time, so a bad file stops the upload with the earlier ones saved.
  */
+export type SavedAttachment = {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+};
+
+/**
+ * With `assetId: null` the files are staged: stored, but not on any asset
+ * until `claimStagedAttachments` runs when the asset form is saved.
+ */
 export async function uploadAssetAttachments({
   request,
   assetId,
@@ -163,14 +176,14 @@ export async function uploadAssetAttachments({
   userId,
 }: {
   request: Request;
-  assetId: string;
+  assetId: string | null;
   organizationId: string;
   userId: string;
-}) {
+}): Promise<SavedAttachment[]> {
   const maxBytes = getAttachmentMaxBytes();
   await ensureBucket(maxBytes);
   const bucket = getSupabaseAdmin().storage.from(ATTACHMENTS_BUCKET);
-  const saved: string[] = [];
+  const saved: SavedAttachment[] = [];
 
   try {
     await parseFormData(request, { maxFileSize: maxBytes }, async (upload) => {
@@ -214,9 +227,9 @@ export async function uploadAssetAttachments({
       }
 
       const attachmentId = createId();
-      const storagePath = `${organizationId}/${assetId}/${attachmentId}-${sanitizeFilename(
-        fileName
-      )}`;
+      const storagePath = `${organizationId}/${
+        assetId ?? "staged"
+      }/${attachmentId}-${sanitizeFilename(fileName)}`;
 
       const { error } = await bucket.upload(storagePath, bytes, {
         contentType: detected.contentType,
@@ -249,7 +262,12 @@ export async function uploadAssetAttachments({
         await bucket.remove([storagePath]);
         throw cause;
       }
-      saved.push(fileName);
+      saved.push({
+        id: attachmentId,
+        fileName,
+        contentType: detected.contentType,
+        size: bytes.length,
+      });
       return attachmentId;
     });
   } catch (cause) {
@@ -300,7 +318,8 @@ export async function deleteAssetAttachment({
   organizationId,
 }: {
   attachmentId: string;
-  assetId: string;
+  /** null deletes a staged file, one not yet on any asset */
+  assetId: string | null;
   organizationId: string;
 }) {
   const attachment = await db.assetAttachment.findFirst({
@@ -329,20 +348,53 @@ export async function deleteAssetAttachment({
       label,
     });
   }
-  await db.assetAttachment.delete({ where: { id: attachment.id } });
+  await db.assetAttachment.deleteMany({
+    where: { id: attachment.id, organizationId },
+  });
   return attachment.fileName;
 }
 
 /**
- * Removes files left behind by deleted assets. When Shelf deletes an asset,
- * its attachment records lose their asset (assetId becomes null) rather than
- * being deleted, so the files can be found and removed here. Never throws:
- * a failed tidy-up just gets retried next time.
+ * Puts files staged in the asset form onto the asset that was just saved.
+ * Only claims files that are still unattached and in the same workspace.
+ */
+export async function claimStagedAttachments({
+  formData,
+  assetId,
+  organizationId,
+}: {
+  formData: FormData;
+  assetId: string;
+  organizationId: string;
+}) {
+  const ids = formData
+    .getAll(STAGED_ATTACHMENTS_FIELD)
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  if (ids.length === 0) return 0;
+  const { count } = await db.assetAttachment.updateMany({
+    where: { id: { in: ids }, organizationId, assetId: null },
+    data: { assetId },
+  });
+  return count;
+}
+
+/** Unattached files younger than this are left alone: they may be staged in a form that's still open. */
+const STAGED_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Removes files that belong to no asset: ones left behind by deleted assets
+ * (when Shelf deletes an asset its attachment records lose their asset rather
+ * than being deleted), and files staged in an asset form that was never
+ * saved. Never throws: a failed tidy-up just gets retried next time.
  */
 export async function cleanUpDeletedAssetAttachments(organizationId: string) {
   try {
     const orphans = await db.assetAttachment.findMany({
-      where: { organizationId, assetId: null },
+      where: {
+        organizationId,
+        assetId: null,
+        createdAt: { lt: new Date(Date.now() - STAGED_GRACE_MS) },
+      },
       select: { id: true, storagePath: true },
       take: 100,
     });
@@ -354,7 +406,11 @@ export async function cleanUpDeletedAssetAttachments(organizationId: string) {
     if (error) throw error;
 
     await db.assetAttachment.deleteMany({
-      where: { id: { in: orphans.map((o) => o.id) }, assetId: null },
+      where: {
+        id: { in: orphans.map((o) => o.id) },
+        organizationId,
+        assetId: null,
+      },
     });
   } catch (cause) {
     Logger.error(

@@ -9,6 +9,7 @@ import {
   PopoverContent,
 } from "@radix-ui/react-popover";
 import { Link, useLoaderData } from "react-router";
+import { AttachmentCountCell } from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { EventCardContent } from "~/components/calendar/event-card";
 import LineBreakText from "~/components/layout/line-break-text";
 import { LocationBadge } from "~/components/location/location-badge";
@@ -290,6 +291,9 @@ export function AdvancedIndexColumn({
 
     case "availableToBook":
       return <TextColumn value={item.availableToBook ? "Yes" : "No"} />;
+
+    case "attachments": // attachments feature
+      return <AttachmentCountCell assetId={item.id} />;
 
     case "upcomingReminder":
       return (

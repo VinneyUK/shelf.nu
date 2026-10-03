@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { m } from "framer-motion";
 import { Package } from "lucide-react";
 import { useFetcher, useFetchers, useLoaderData } from "react-router";
+import { AttachmentCountBadge } from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
 import { LocationBadge } from "~/components/location/location-badge";
@@ -326,6 +327,8 @@ export const ListAssetContent = ({
                   asset={item}
                 />
                 {displayCode ? <AssetCodeBadge {...displayCode} /> : null}
+                <AttachmentCountBadge assetId={item.id} />{" "}
+                {/* attachments feature */}
               </div>
             </div>
           </div>

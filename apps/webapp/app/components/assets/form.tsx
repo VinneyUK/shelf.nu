@@ -20,6 +20,7 @@ import { useZorm } from "react-zorm";
 import { z } from "zod";
 import { updateDynamicTitleAtom } from "~/atoms/dynamic-title-atom";
 import { fileErrorAtom, assetImageValidateFileAtom } from "~/atoms/file";
+import { FormAttachments } from "~/components/asset-attachment/form-attachments"; // attachments feature
 import { useAutoFocus } from "~/hooks/use-auto-focus";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { getPrimaryKit, isQuantityTracked } from "~/modules/asset/utils";
@@ -1090,6 +1091,9 @@ export const AssetForm = ({
             </div>
           </div>
         </FormRow>
+
+        {/* attachments feature: upload receipts etc. while adding or editing */}
+        {!bulkMode ? <FormAttachments editing={Boolean(id)} /> : null}
 
         <div>
           <FormRow
