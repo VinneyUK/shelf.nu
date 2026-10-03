@@ -2671,3 +2671,15 @@ model AssetAttachment {
   @@index([assetId])
   @@index([organizationId])
 }
+
+// ---------------------------------------------------------------------------
+// Workspace customisations — added by the customise feature. One row per
+// workspace; a missing row means "everything as Shelf ships it".
+// ---------------------------------------------------------------------------
+model WorkspaceCustomisation {
+  organizationId   String   @id
+  bookingsEnabled  Boolean  @default(true)
+  remindersEnabled Boolean  @default(true)
+  hiddenMenuItems  String[] @default([])
+  updatedAt        DateTime @updatedAt
+}

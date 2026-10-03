@@ -5,6 +5,7 @@ import Header from "~/components/layout/header";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
 import When from "~/components/when/when";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import type { RouteHandleWithName } from "~/modules/types";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
@@ -57,13 +58,17 @@ export const shouldRevalidate = () => false;
 
 export default function SettingsPage() {
   const { _isPersonalOrg } = useLoaderData<typeof loader>();
+  const { bookingsEnabled } = useCustomisations(); // customise feature
   let items = [
     { to: "general", content: "General" },
-    ...(!_isPersonalOrg ? [{ to: "bookings", content: "Bookings" }] : []),
+    ...(!_isPersonalOrg && bookingsEnabled
+      ? [{ to: "bookings", content: "Bookings" }]
+      : []),
     ...(!_isPersonalOrg ? [{ to: "emails", content: "Emails" }] : []),
     { to: "custom-fields", content: "Custom fields" },
     { to: "asset-models", content: "Asset models" },
     { to: "team", content: "Team" },
+    { to: "customise", content: "Customise" }, // customise feature
   ];
 
   const { isBaseOrSelfService } = useUserRoleHelper();
@@ -78,6 +83,7 @@ export default function SettingsPage() {
           "bookings",
           "emails",
           "asset-models",
+          "customise",
         ].includes(item.to)
     );
   }

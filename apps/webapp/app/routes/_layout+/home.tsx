@@ -36,6 +36,7 @@ import { db } from "~/database/db.server";
 import { ASSET_MODEL_IMAGE_SELECT } from "~/modules/asset/image-select";
 import { getUpcomingRemindersForHomePage } from "~/modules/asset-reminder/service.server";
 import { getBookings } from "~/modules/booking/service.server";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 
 import styles from "~/styles/layout/skeleton-loading.css?url";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
@@ -443,6 +444,7 @@ export const handle = {
 };
 
 export default function HomePage() {
+  const { bookingsEnabled, remindersEnabled } = useCustomisations(); // customise feature
   const { skipOnboardingChecklist, checklistOptions } =
     useLoaderData<typeof loader>();
   const completedAllChecks = Object.values(checklistOptions).every(Boolean);
@@ -470,12 +472,16 @@ export default function HomePage() {
           {/* Widget Grid — 3-column rows */}
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {/* Row 2: Bookings pipeline */}
-            <UpcomingBookings />
-            <ActiveBookings />
-            <OverdueBookings />
+            {bookingsEnabled ? ( // customise feature
+              <>
+                <UpcomingBookings />
+                <ActiveBookings />
+                <OverdueBookings />
+              </>
+            ) : null}
 
             {/* Row 3: Reminders, Status & Locations */}
-            <UpcomingReminders />
+            {remindersEnabled ? <UpcomingReminders /> : null}
             <AssetsByStatusChart />
             <LocationDistribution />
           </div>

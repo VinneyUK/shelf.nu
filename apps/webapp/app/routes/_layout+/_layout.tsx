@@ -42,6 +42,8 @@ import { NoSubscription } from "~/components/subscription/no-subscription";
 import { UnpaidInvoiceBanner } from "~/components/subscription/unpaid-invoice-banner";
 import { config } from "~/config/shelf.config";
 import { getBookingSettingsForOrganization } from "~/modules/booking-settings/service.server";
+import { redirectForSwitchedOffPage } from "~/modules/customisation/catalogue";
+import { getWorkspaceCustomisations } from "~/modules/customisation/service.server";
 import {
   getSelectedOrganization,
   setSelectedOrganizationIdCookie,
@@ -71,6 +73,7 @@ import {
   validateSubscriptionIsActive,
 } from "~/utils/stripe.server";
 import { canUseAudits, canUseBookings } from "~/utils/subscription.server";
+// Customise feature (not in upstream Shelf)
 import { tw } from "~/utils/tw";
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: styles }];
@@ -212,6 +215,19 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       });
     }
 
+    // Customise feature: features switched off for this workspace
+    const customisations = await getWorkspaceCustomisations(
+      currentOrganization.id,
+      currentOrganization
+    );
+    const switchedOffRedirect = redirectForSwitchedOffPage(
+      new URL(request.url).pathname,
+      customisations
+    );
+    if (switchedOffRedirect) {
+      return redirect(switchedOffRedirect);
+    }
+
     // Run booking settings, working hours, and unread count in parallel —
     // all only depend on organizationId/userId which are available now.
     const [bookingSettings, workingHours, unreadUpdatesCount] =
@@ -243,6 +259,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         isAdmin,
         canUseBookings: canUseBookings(currentOrganization),
         canUseAudits: canUseAudits(currentOrganization),
+        customisations, // customise feature
         unreadUpdatesCount,
         hasUnpaidInvoice: user.hasUnpaidInvoice,
         warnForNoPaymentMethod: user.warnForNoPaymentMethod,

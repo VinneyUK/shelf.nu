@@ -33,6 +33,7 @@ import {
   normalizeBarcodeValue,
 } from "~/modules/barcode/validation";
 import { getCustodyCardHolderUserId } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   deleteKit,
   deleteKitImage,
@@ -604,6 +605,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 }
 
 export default function KitDetails() {
+  const { bookingsEnabled } = useCustomisations(); // customise feature
   usePosition();
   const { kit, currentBooking, qrObj, lastScan, userId, currentOrganization } =
     useLoaderData<typeof loader>();
@@ -617,7 +619,7 @@ export default function KitDetails() {
   const items = [
     { to: "assets", content: "Assets" },
     { to: "overview", content: "Overview" },
-    { to: "bookings", content: "Bookings" },
+    ...(bookingsEnabled ? [{ to: "bookings", content: "Bookings" }] : []), // customise feature
   ];
 
   const matches = useMatches();
@@ -664,7 +666,7 @@ export default function KitDetails() {
         >
           <ActionsDropdown />
         </When>
-        <BookingActionsDropdown />
+        {bookingsEnabled ? <BookingActionsDropdown /> : null}
       </Header>
 
       <HorizontalTabs items={items} />

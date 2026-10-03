@@ -81,6 +81,7 @@ import {
 import { getRemindersForOverviewPage } from "~/modules/asset-reminder/service.server";
 import { getCustodyCardHolderUserId } from "~/modules/custody/utils";
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { moveAssetKitUnits } from "~/modules/kit/service.server";
 import { generateQrObj } from "~/modules/qr/utils.server";
 import { getLastScanForViewer } from "~/modules/scan/service.server";
@@ -757,6 +758,7 @@ async function handleMoveUnitsIntent({
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
 export default function AssetOverview() {
+  const { remindersEnabled } = useCustomisations(); // customise feature
   const {
     asset,
     locale,
@@ -1483,7 +1485,7 @@ export default function AssetOverview() {
             </Card>
           </When>
 
-          <AssetReminderCards className="my-2" />
+          {remindersEnabled ? <AssetReminderCards className="my-2" /> : null}
 
           {(() => {
             /**

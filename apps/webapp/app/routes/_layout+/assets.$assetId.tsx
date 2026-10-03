@@ -35,6 +35,7 @@ import {
   normalizeBarcodeValue,
 } from "~/modules/barcode/validation";
 import { computeBookingAssetRemainingToCheckOut } from "~/modules/booking/service.server";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { getTeamMembersForQuantityCustody } from "~/modules/team-member/service.server";
 import assetCss from "~/styles/asset.css?url";
 
@@ -541,6 +542,7 @@ export default function AssetDetailsPage() {
   const { asset } = useLoaderData<typeof loader>();
 
   const { roles } = useUserRoleHelper();
+  const { bookingsEnabled, remindersEnabled } = useCustomisations(); // customise feature
 
   const items = [
     { to: "overview", content: "Overview" },
@@ -554,9 +556,10 @@ export default function AssetDetailsPage() {
     })
       ? [{ to: "activity", content: "Activity" }]
       : []),
-    { to: "bookings", content: "Bookings" },
+    ...(bookingsEnabled ? [{ to: "bookings", content: "Bookings" }] : []), // customise feature
     { to: "attachments", content: "Attachments" }, // added by the attachments feature
-    ...(userHasPermission({
+    ...(remindersEnabled && // customise feature
+    userHasPermission({
       roles,
       entity: PermissionEntity.assetReminders,
       action: PermissionAction.read,
@@ -607,7 +610,7 @@ export default function AssetDetailsPage() {
         >
           <ActionsDropdown />
         </When>
-        <BookingActionsDropdown />
+        {bookingsEnabled ? <BookingActionsDropdown /> : null}
       </Header>
       <HorizontalTabs items={items} />
       <div>

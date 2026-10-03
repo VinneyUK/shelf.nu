@@ -14,6 +14,7 @@ import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { getPrimaryKit, isQuantityTracked } from "~/modules/asset/utils";
 import { getPrimaryCustody, hasCustody } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import type { loader } from "~/routes/_layout+/assets.$assetId";
 import {
   PermissionAction,
@@ -57,6 +58,8 @@ const ConditionalActionsDropdown = () => {
   const noneAvailable = isQtyTracked && quantityAvailable <= 0;
 
   const { roles, isSelfService, isAdministratorOrOwner } = useUserRoleHelper();
+
+  const { remindersEnabled } = useCustomisations(); // customise feature
   const user = useUserData();
 
   const { ref: popoverContentRef, open, setOpen } = useControlledDropdownMenu();
@@ -310,7 +313,12 @@ const ConditionalActionsDropdown = () => {
                     </span>
                   </Button>
                 </div>
-                <When truthy={isAdministratorOrOwner}>
+                <When
+                  truthy={
+                    isAdministratorOrOwner &&
+                    remindersEnabled /* customise feature */
+                  }
+                >
                   <div className="border-b px-0 py-1 md:p-0">
                     <Button
                       type="button"

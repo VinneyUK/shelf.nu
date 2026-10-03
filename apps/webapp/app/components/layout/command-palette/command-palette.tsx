@@ -512,7 +512,11 @@ export function CommandPalette() {
     return roles.includes("ADMIN") || roles.includes("OWNER");
   }, [layoutData?.currentOrganizationUserRoles]);
 
-  const canCreateBookings = layoutData?.canUseBookings ?? false;
+  // customise feature: bookings and audits can be switched off
+  const canCreateBookings =
+    (layoutData?.canUseBookings ?? false) &&
+    (layoutData?.customisations?.bookingsEnabled ?? true);
+  const auditsSwitchedOff = layoutData?.customisations?.auditsEnabled === false;
   const isPersonalWorkspace = isPersonalOrg(layoutData?.currentOrganization);
   const { isBaseOrSelfService } = useUserRoleHelper();
 
@@ -568,10 +572,12 @@ export function CommandPalette() {
 
   const availableNavigation = useMemo(
     () =>
-      NAVIGATION_COMMANDS.filter((nav) =>
-        nav.isVisible ? nav.isVisible(commandContext) : true
+      NAVIGATION_COMMANDS.filter(
+        (nav) =>
+          !(auditsSwitchedOff && nav.href === "/audits") && // customise feature
+          (nav.isVisible ? nav.isVisible(commandContext) : true)
       ),
-    [commandContext]
+    [commandContext, auditsSwitchedOff]
   );
 
   const navigationResults = useMemo(() => {

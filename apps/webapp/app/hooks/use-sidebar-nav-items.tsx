@@ -23,10 +23,13 @@ import {
 import { useLoaderData } from "react-router";
 import { UpgradeMessage } from "~/components/marketing/upgrade-message";
 import When from "~/components/when/when";
+import { applyCustomisationsToMenu } from "~/modules/customisation/apply-to-menu";
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import type { loader } from "~/routes/_layout+/_layout";
 import { isPersonalOrg } from "~/utils/organization";
 import { useCurrentOrganization } from "./use-current-organization";
 import { useUserRoleHelper } from "./user-user-role-helper";
+// Customise feature (not in upstream Shelf)
 
 type BaseNavItem = {
   title: string;
@@ -71,6 +74,7 @@ export function useSidebarNavItems() {
   const { isBaseOrSelfService } = useUserRoleHelper();
   const currentOrganization = useCurrentOrganization();
   const isPersonalOrganization = isPersonalOrg(currentOrganization);
+  const customisations = useCustomisations(); // customise feature
 
   const bookingDisabled = useMemo(() => {
     if (canUseBookings) {
@@ -286,10 +290,13 @@ export function useSidebarNavItems() {
     },
   ];
 
-  return {
-    topMenuItems: removeHiddenNavItems(topMenuItems),
-    bottomMenuItems: removeHiddenNavItems(bottomMenuItems),
-  };
+  return applyCustomisationsToMenu(
+    {
+      topMenuItems: removeHiddenNavItems(topMenuItems),
+      bottomMenuItems: removeHiddenNavItems(bottomMenuItems),
+    },
+    customisations
+  ); // customise feature
 }
 
 function removeHiddenNavItems(navItems: NavItem[]) {

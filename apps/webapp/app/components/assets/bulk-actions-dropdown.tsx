@@ -7,6 +7,7 @@ import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu"
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { getPrimaryCustody } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { isFormProcessing } from "~/utils/form";
 import { isSelectingAllItems } from "~/utils/list";
 import {
@@ -45,6 +46,7 @@ import BulkDownloadQrDialog from "./bulk-download-qr-dialog";
 import Icon from "../icons/icon";
 
 export default function BulkActionsDropdown() {
+  const { bookingsEnabled } = useCustomisations(); // customise feature
   const isHydrated = useHydrated();
 
   if (!isHydrated) {
@@ -60,7 +62,7 @@ export default function BulkActionsDropdown() {
   return (
     <div className="actions-dropdown flex w-full items-center gap-2">
       <ConditionalDropdown />
-      <BookSelectedAssetsDropdown />
+      {bookingsEnabled ? <BookSelectedAssetsDropdown /> : null}
     </div>
   );
 }
@@ -85,6 +87,7 @@ function ConditionalDropdown() {
   const allSelected = isSelectingAllItems(selectedAssets);
 
   const { roles, isSelfService } = useUserRoleHelper();
+  const { auditsEnabled } = useCustomisations(); // customise feature
   const user = useUserData();
 
   /**
@@ -137,20 +140,26 @@ function ConditionalDropdown() {
         })}
       >
         <When
-          truthy={userHasPermission({
-            roles,
-            entity: PermissionEntity.audit,
-            action: PermissionAction.create,
-          })}
+          truthy={
+            auditsEnabled /* customise feature */ &&
+            userHasPermission({
+              roles,
+              entity: PermissionEntity.audit,
+              action: PermissionAction.create,
+            })
+          }
         >
           <BulkStartAuditDialog />
         </When>
         <When
-          truthy={userHasPermission({
-            roles,
-            entity: PermissionEntity.audit,
-            action: PermissionAction.update,
-          })}
+          truthy={
+            auditsEnabled /* customise feature */ &&
+            userHasPermission({
+              roles,
+              entity: PermissionEntity.audit,
+              action: PermissionAction.update,
+            })
+          }
         >
           <BulkAddToAuditDialog />
         </When>
@@ -254,11 +263,14 @@ function ConditionalDropdown() {
               </Button>
             </DropdownMenuItem>
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.audit,
-                action: PermissionAction.create,
-              })}
+              truthy={
+                auditsEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.audit,
+                  action: PermissionAction.create,
+                })
+              }
             >
               <DropdownMenuItem className="py-1 lg:p-0">
                 <BulkUpdateDialogTrigger
@@ -271,11 +283,14 @@ function ConditionalDropdown() {
             </When>
 
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.audit,
-                action: PermissionAction.update,
-              })}
+              truthy={
+                auditsEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.audit,
+                  action: PermissionAction.update,
+                })
+              }
             >
               <DropdownMenuItem className="border-b py-1 lg:p-0">
                 <BulkUpdateDialogTrigger
