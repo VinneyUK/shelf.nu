@@ -758,7 +758,7 @@ async function handleMoveUnitsIntent({
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
 export default function AssetOverview() {
-  const { remindersEnabled } = useCustomisations(); // customise feature
+  const { remindersEnabled, custodyEnabled } = useCustomisations(); // customise feature
   const {
     asset,
     locale,
@@ -1755,7 +1755,8 @@ export default function AssetOverview() {
             );
           })()}
 
-          {!isQuantityTracked(asset) ? (
+          {custodyEnabled /* customise feature */ &&
+          !isQuantityTracked(asset) ? (
             <CustodyCard
               booking={booking}
               custody={asset?.custody || null}

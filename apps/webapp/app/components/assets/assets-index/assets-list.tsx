@@ -19,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/shared/tooltip";
+import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
 import { Th, Td } from "~/components/table";
 import { TeamMemberBadge } from "~/components/user/team-member-badge";
 import When from "~/components/when/when";
@@ -324,7 +325,7 @@ export const ListAssetContent = ({
                 safe when code/status are long on narrow viewports.
               */}
               <div className="flex flex-wrap items-center gap-2">
-                <AssetStatusBadge
+                <StatusOrSold /* sold feature */
                   id={item.id}
                   status={item.status}
                   availableToBook={item.availableToBook}

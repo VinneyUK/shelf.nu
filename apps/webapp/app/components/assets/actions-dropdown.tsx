@@ -5,10 +5,20 @@ import {
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import { AlarmClockIcon, ArrowUpDownIcon, PrinterIcon } from "lucide-react";
+import {
+  AlarmClockIcon,
+  ArrowUpDownIcon,
+  BadgePoundSterlingIcon,
+  PrinterIcon,
+} from "lucide-react";
 import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { ChevronRight } from "~/components/icons/library";
+import {
+  MarkSoldDialog,
+  useMarkNotSold,
+} from "~/components/sold/mark-sold-dialog"; // sold feature
+import { useSale } from "~/components/sold/use-sale"; // sold feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -59,8 +69,13 @@ const ConditionalActionsDropdown = () => {
 
   const { roles, isSelfService, isAdministratorOrOwner } = useUserRoleHelper();
 
-  const { remindersEnabled, labelsEnabled } = useCustomisations(); // customise feature
+  const { remindersEnabled, labelsEnabled, custodyEnabled } =
+    useCustomisations(); // customise feature
   const printFetcher = useFetcher(); // labels feature
+  // sold feature
+  const sale = useSale(asset.id);
+  const markNotSold = useMarkNotSold();
+  const [isMarkSoldOpen, setIsMarkSoldOpen] = useState(false);
   const user = useUserData();
 
   const { ref: popoverContentRef, open, setOpen } = useControlledDropdownMenu();
@@ -162,11 +177,14 @@ const ConditionalActionsDropdown = () => {
                 </div>
               </When>
               <When
-                truthy={userHasPermission({
-                  roles,
-                  entity: PermissionEntity.asset,
-                  action: PermissionAction.custody,
-                })}
+                truthy={
+                  custodyEnabled /* customise feature */ &&
+                  userHasPermission({
+                    roles,
+                    entity: PermissionEntity.asset,
+                    action: PermissionAction.custody,
+                  })
+                }
               >
                 <div
                   className="border-b px-0 py-1 md:p-0"
@@ -363,6 +381,29 @@ const ConditionalActionsDropdown = () => {
                     </Button>
                   </div>
                 </When>
+                {/* sold feature: mark as sold / not sold */}
+                <div className="border-b px-0 py-1 md:p-0">
+                  <Button
+                    type="button"
+                    role="button"
+                    variant="link"
+                    className="justify-start px-4 py-3 text-gray-700 hover:bg-slate-100 hover:text-gray-700"
+                    width="full"
+                    onClick={() => {
+                      handleMenuClose();
+                      if (sale) {
+                        markNotSold([asset.id]);
+                      } else {
+                        setIsMarkSoldOpen(true);
+                      }
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <BadgePoundSterlingIcon className="size-5" />
+                      {sale ? "Mark as not sold" : "Mark as sold…"}
+                    </span>
+                  </Button>
+                </div>
                 <div className="px-0 py-1 md:p-0">
                   <Button
                     to="edit"
@@ -454,6 +495,12 @@ const ConditionalActionsDropdown = () => {
           }}
         />
       </When>
+      <MarkSoldDialog
+        open={isMarkSoldOpen}
+        onOpenChange={setIsMarkSoldOpen}
+        assetIds={[asset.id]}
+        countLabel="this asset"
+      />
       <When truthy={isSetReminderDialogOpen && isAdministratorOrOwner}>
         <SetOrEditReminderDialog
           action={`/assets/${asset.id}`}

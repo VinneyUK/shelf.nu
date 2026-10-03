@@ -17,6 +17,8 @@ export type Customisations = {
   imagePreviewOnHover: boolean;
   /** Label printing (labels feature) */
   labelsEnabled: boolean;
+  /** Custody: assigning assets to people */
+  custodyEnabled: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -27,6 +29,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   hiddenMenuItems: [],
   imagePreviewOnHover: true,
   labelsEnabled: true,
+  custodyEnabled: true,
 };
 
 type MenuMatch = { to?: string; title?: string };
@@ -107,6 +110,10 @@ const REMINDER_PAGES = [
 ];
 const AUDIT_PAGES = [/^\/audits(\/|$)/];
 const LABEL_PAGES = [/^\/labels(\/|$)/];
+const CUSTODY_PAGES = [
+  /^\/assets\/[^/]+\/overview\/(assign|release)-custody(\/|$)/,
+  /^\/kits\/[^/]+\/assets\/(assign|release)-custody(\/|$)/,
+];
 
 /**
  * Where to send someone who opens a page for a feature that's switched off,
@@ -120,7 +127,8 @@ export function redirectForSwitchedOffPage(
     (!c.bookingsEnabled && BOOKING_PAGES.some((re) => re.test(pathname))) ||
     (!c.remindersEnabled && REMINDER_PAGES.some((re) => re.test(pathname))) ||
     (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname))) ||
-    (!c.labelsEnabled && LABEL_PAGES.some((re) => re.test(pathname)));
+    (!c.labelsEnabled && LABEL_PAGES.some((re) => re.test(pathname))) ||
+    (!c.custodyEnabled && CUSTODY_PAGES.some((re) => re.test(pathname)));
   if (!blocked) return null;
   return c.hiddenMenuItems.includes("home") ? "/assets" : "/home";
 }

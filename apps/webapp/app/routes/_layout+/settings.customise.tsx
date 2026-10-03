@@ -68,6 +68,7 @@ const CustomiseSchema = z.object({
   hiddenMenuItems: z.string().transform((v) => (v ? v.split(",") : [])),
   imagePreviewOnHover: flag,
   labelsEnabled: flag,
+  custodyEnabled: flag,
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -103,6 +104,12 @@ const FEATURES = [
       "Reminders on assets. Switching this off hides them; existing reminders are kept.",
   },
   {
+    name: "custodyEnabled",
+    title: "Custody",
+    description:
+      "Assigning assets to people. Switching this off hides custody on assets and kits, in bulk actions, the scanner and Home; existing custody is kept.",
+  },
+  {
     name: "auditsEnabled",
     title: "Audits",
     description: "Checking your assets against where they should be.",
@@ -134,6 +141,7 @@ export default function CustomiseSettings() {
     auditsEnabled: settings.auditsEnabled,
     barcodesEnabled: settings.barcodesEnabled,
     labelsEnabled: settings.labelsEnabled,
+    custodyEnabled: settings.custodyEnabled,
   });
   const [hidden, setHidden] = useState<string[]>(settings.hiddenMenuItems);
   const [imagePreview, setImagePreview] = useState<boolean>(

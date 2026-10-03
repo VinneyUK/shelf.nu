@@ -13,6 +13,7 @@ import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
 import { useDisabled } from "~/hooks/use-disabled";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { handleActivationKeyPress } from "~/utils/keyboard";
 import {
   PermissionAction,
@@ -52,6 +53,7 @@ const ACTION_CONFIGS = [
 export type ActionType = (typeof ACTION_CONFIGS)[number]["id"];
 
 export function ActionSwitcher() {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const [open, setOpen] = useState(false);
   const [action, setAction] = useAtom(scannerActionAtom);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -63,14 +65,17 @@ export function ActionSwitcher() {
   // Filter actions based on user permissions
   const availableActions = useMemo(
     () =>
-      ACTION_CONFIGS.filter(({ permissionEntity, permissionAction }) =>
-        userHasPermission({
-          roles,
-          entity: permissionEntity,
-          action: permissionAction,
-        })
+      ACTION_CONFIGS.filter(
+        ({ permissionEntity, permissionAction }) =>
+          // customise feature: no custody actions when custody is off
+          (custodyEnabled || permissionAction !== PermissionAction.custody) &&
+          userHasPermission({
+            roles,
+            entity: permissionEntity,
+            action: permissionAction,
+          })
       ).map((config) => config.id),
-    [roles]
+    [roles, custodyEnabled]
   );
 
   const filteredActions = useMemo(() => {

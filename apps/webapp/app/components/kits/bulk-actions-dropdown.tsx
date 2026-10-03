@@ -5,6 +5,7 @@ import { selectedBulkItemsAtom } from "~/atoms/list";
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { isFormProcessing } from "~/utils/form";
 import { someKitMemberBlocksCustodyAssignment } from "~/utils/kits";
 import { isSelectingAllItems } from "~/utils/list";
@@ -52,6 +53,7 @@ export default function BulkActionsDropdown() {
 }
 
 function ConditionalDropdown() {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const {
     ref: dropdownRef,
     defaultApplied,
@@ -124,11 +126,14 @@ function ConditionalDropdown() {
       </When>
 
       <When
-        truthy={userHasPermission({
-          roles,
-          entity: PermissionEntity.kit,
-          action: PermissionAction.custody,
-        })}
+        truthy={
+          custodyEnabled /* customise feature */ &&
+          userHasPermission({
+            roles,
+            entity: PermissionEntity.kit,
+            action: PermissionAction.custody,
+          })
+        }
       >
         <BulkAssignCustodyDialog />
         <BulkReleaseCustodyDialog />
@@ -205,11 +210,14 @@ function ConditionalDropdown() {
             </When>
 
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.kit,
-                action: PermissionAction.custody,
-              })}
+              truthy={
+                custodyEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.kit,
+                  action: PermissionAction.custody,
+                })
+              }
             >
               <DropdownMenuItem className="py-1 lg:p-0">
                 <BulkUpdateDialogTrigger

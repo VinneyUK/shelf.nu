@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/shared/tooltip";
+import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
 import { TeamMemberBadge } from "~/components/user/team-member-badge";
 import When from "~/components/when/when";
 import { useAssetIndexFreezeColumn } from "~/hooks/use-asset-index-freeze-column";
@@ -71,7 +72,6 @@ import AssetQuickActions from "./asset-quick-actions";
 import { freezeColumnClassNames } from "./freeze-column-classes";
 import { ListItemTagsColumn } from "./list-item-tags-column";
 import { AssetImage } from "../asset-image/component";
-import { AssetStatusBadge } from "../asset-status-badge";
 import { CategoryBadge } from "../category-badge";
 
 export function AdvancedIndexColumn({
@@ -437,7 +437,7 @@ function StatusColumn({
 }) {
   return (
     <Td className="w-full max-w-none whitespace-nowrap">
-      <AssetStatusBadge
+      <StatusOrSold /* sold feature */
         id={id}
         status={status}
         availableToBook={availableToBook ?? true}

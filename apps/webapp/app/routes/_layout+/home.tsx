@@ -444,7 +444,8 @@ export const handle = {
 };
 
 export default function HomePage() {
-  const { bookingsEnabled, remindersEnabled } = useCustomisations(); // customise feature
+  const { bookingsEnabled, remindersEnabled, custodyEnabled } =
+    useCustomisations(); // customise feature
   const { skipOnboardingChecklist, checklistOptions } =
     useLoaderData<typeof loader>();
   const completedAllChecks = Object.values(checklistOptions).every(Boolean);
@@ -488,7 +489,7 @@ export default function HomePage() {
 
           {/* Row 4: People & Assets — 2-column */}
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <CustodiansList />
+            {custodyEnabled ? <CustodiansList /> : null}
             <NewestAssets />
           </div>
         </div>

@@ -205,3 +205,21 @@ describe("applyCustomisationsToMenu", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("custody switch", () => {
+  it("blocks the assign and release custody pages for assets and kits", () => {
+    const c = { ...DEFAULT_CUSTOMISATIONS, custodyEnabled: false };
+    for (const path of [
+      "/assets/a1/overview/assign-custody",
+      "/assets/a1/overview/release-custody",
+      "/kits/k1/assets/assign-custody",
+      "/kits/k1/assets/release-custody",
+    ]) {
+      expect(redirectForSwitchedOffPage(path, c)).toBe("/home");
+      expect(
+        redirectForSwitchedOffPage(path, DEFAULT_CUSTOMISATIONS)
+      ).toBeNull();
+    }
+    expect(redirectForSwitchedOffPage("/assets/a1/overview", c)).toBeNull();
+  });
+});

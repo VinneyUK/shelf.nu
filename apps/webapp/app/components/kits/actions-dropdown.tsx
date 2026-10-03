@@ -7,6 +7,7 @@ import { StartAuditFromContextDialog } from "~/components/audit/start-audit-from
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import type { loader } from "~/routes/_layout+/kits.$kitId";
 import {
   PermissionAction,
@@ -53,6 +54,7 @@ export default function ActionsDropdown({
 }
 
 function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const { kit } = useLoaderData<typeof loader>();
   const kitCanBeReleased = kit.custody;
   const kitIsCheckedOut = kit.status === "CHECKED_OUT";
@@ -150,11 +152,14 @@ function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
         >
           <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-[180px] md:rounded-t-[4px]">
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.kit,
-                action: PermissionAction.custody,
-              })}
+              truthy={
+                custodyEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.kit,
+                  action: PermissionAction.custody,
+                })
+              }
             >
               <DropdownMenuItem className="border-b  px-4 py-1 md:p-0">
                 {kitCanBeReleased ? (

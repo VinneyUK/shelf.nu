@@ -260,6 +260,7 @@ model Asset {
   notes        Note[]
   attachments  AssetAttachment[] // added by the attachments feature
   labelPrintJobs LabelPrintJob[] // added by the labels feature
+  sale           AssetSale? // added by the sold feature
   qrCodes      Qr[]
   barcodes     Barcode[]              @relation("AssetBarcodes")
   reports      ReportFound[]
@@ -2686,6 +2687,8 @@ model WorkspaceCustomisation {
   imagePreviewOnHover Boolean @default(true)
   /// Label printing (menu item, print buttons, background printing)
   labelsEnabled    Boolean  @default(true)
+  /// Custody (assigning assets to people)
+  custodyEnabled   Boolean  @default(true)
   updatedAt        DateTime @updatedAt
 }
 
@@ -2734,4 +2737,21 @@ model LabelPrintJob {
 
   @@index([organizationId, status, createdAt])
   @@index([assetId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Sold assets — added by the sold feature. One row per sold asset; deleting
+// the row marks it not sold again.
+// ---------------------------------------------------------------------------
+model AssetSale {
+  assetId        String   @id
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  organizationId String
+  soldOn         DateTime @db.Date
+  /// In the workspace currency; null if no price was entered
+  price          Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, soldOn])
 }

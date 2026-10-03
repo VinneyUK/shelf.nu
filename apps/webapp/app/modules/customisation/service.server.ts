@@ -35,6 +35,8 @@ export async function getWorkspaceCustomisations(
     imagePreviewOnHover:
       row?.imagePreviewOnHover ?? DEFAULT_CUSTOMISATIONS.imagePreviewOnHover,
     labelsEnabled: row?.labelsEnabled ?? DEFAULT_CUSTOMISATIONS.labelsEnabled,
+    custodyEnabled:
+      row?.custodyEnabled ?? DEFAULT_CUSTOMISATIONS.custodyEnabled,
   };
 }
 
@@ -82,6 +84,7 @@ export async function saveCustomisePageSettings(
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
+        custodyEnabled: settings.custodyEnabled,
       },
       update: {
         bookingsEnabled: settings.bookingsEnabled,
@@ -89,6 +92,7 @@ export async function saveCustomisePageSettings(
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
+        custodyEnabled: settings.custodyEnabled,
       },
     }),
     db.organization.update({

@@ -200,6 +200,19 @@ export const REPORTS: ReportDefinition[] = [
     hasChart: false,
     exportable: true,
   },
+  // sold feature (not in upstream Shelf): its own page at /reports/sold-assets
+  {
+    id: "sold-assets",
+    title: "Sold Assets",
+    description:
+      "Everything you've sold: when, for how much, and against its recorded value.",
+    category: "assets",
+    icon: "BadgePoundSterling",
+    enabled: true,
+    filters: [],
+    hasChart: false,
+    exportable: true,
+  },
 ];
 
 /**

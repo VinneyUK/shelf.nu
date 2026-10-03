@@ -11,13 +11,13 @@ import { z } from "zod";
 import { createSetReminderSchema } from "~/components/asset-reminder/set-or-edit-reminder-dialog";
 import ActionsDropdown from "~/components/assets/actions-dropdown";
 import { AssetImage } from "~/components/assets/asset-image/component";
-import { AssetStatusBadge } from "~/components/assets/asset-status-badge";
 import BookingActionsDropdown from "~/components/assets/booking-actions-dropdown";
 
 import { AssetLabelledBadge } from "~/components/labels/labelled-badge"; // labels feature
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
+import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
 import When from "~/components/when/when";
 import { db } from "~/database/db.server";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -594,7 +594,7 @@ export default function AssetDetailsPage() {
         }}
         subHeading={
           <div className="flex gap-2">
-            <AssetStatusBadge
+            <StatusOrSold /* sold feature */
               id={asset.id}
               status={asset.status}
               availableToBook={asset.availableToBook}

@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { useAtomValue } from "jotai";
+import { BadgePoundSterlingIcon } from "lucide-react"; // sold feature
 import { useNavigation } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { selectedBulkItemsAtom } from "~/atoms/list";
 import { usePrintSelectedLabels } from "~/components/labels/use-print-selected-labels"; // labels feature
+import {
+  MarkSoldDialog,
+  useMarkNotSold,
+} from "~/components/sold/mark-sold-dialog"; // sold feature
+import { useSelectedAssets } from "~/components/sold/use-selected-assets"; // sold feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -88,8 +94,12 @@ function ConditionalDropdown() {
   const allSelected = isSelectingAllItems(selectedAssets);
 
   const { roles, isSelfService } = useUserRoleHelper();
-  const { auditsEnabled, labelsEnabled } = useCustomisations(); // customise feature
+  const { auditsEnabled, labelsEnabled, custodyEnabled } = useCustomisations(); // customise feature
   const printSelectedLabels = usePrintSelectedLabels(); // labels feature
+  // sold feature
+  const soldSelection = useSelectedAssets();
+  const markNotSold = useMarkNotSold();
+  const [isMarkSoldOpen, setIsMarkSoldOpen] = useState(false);
   const user = useUserData();
 
   /**
@@ -134,6 +144,18 @@ function ConditionalDropdown() {
           )}
         />
       )}
+      {/* sold feature */}
+      <MarkSoldDialog
+        open={isMarkSoldOpen}
+        onOpenChange={setIsMarkSoldOpen}
+        assetIds={soldSelection.assetIds}
+        currentSearchParams={soldSelection.currentSearchParams}
+        countLabel={
+          soldSelection.assetIds.length === 1
+            ? "this asset"
+            : "the selected assets"
+        }
+      />
       <When
         truthy={userHasPermission({
           roles,
@@ -186,11 +208,14 @@ function ConditionalDropdown() {
       />
 
       <When
-        truthy={userHasPermission({
-          roles,
-          entity: PermissionEntity.asset,
-          action: PermissionAction.custody,
-        })}
+        truthy={
+          custodyEnabled /* customise feature */ &&
+          userHasPermission({
+            roles,
+            entity: PermissionEntity.asset,
+            action: PermissionAction.custody,
+          })
+        }
       >
         <BulkAssignCustodyDialog />
         <BulkReleaseCustodyDialog />
@@ -285,6 +310,46 @@ function ConditionalDropdown() {
                 </Button>
               </DropdownMenuItem>
             ) : null}
+            {/* sold feature */}
+            <DropdownMenuItem
+              onClick={() => {
+                closeMenu();
+                setIsMarkSoldOpen(true);
+              }}
+              className="py-1 lg:p-0"
+            >
+              <Button
+                type="button"
+                variant="link"
+                className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                width="full"
+              >
+                <span className="flex items-center gap-2">
+                  <BadgePoundSterlingIcon className="size-4" /> Mark as sold
+                </span>
+              </Button>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                closeMenu();
+                markNotSold(
+                  soldSelection.assetIds,
+                  soldSelection.currentSearchParams
+                );
+              }}
+              className="border-b py-1 lg:p-0"
+            >
+              <Button
+                type="button"
+                variant="link"
+                className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                width="full"
+              >
+                <span className="flex items-center gap-2">
+                  <BadgePoundSterlingIcon className="size-4" /> Mark as not sold
+                </span>
+              </Button>
+            </DropdownMenuItem>
             <When
               truthy={
                 auditsEnabled /* customise feature */ &&
@@ -326,11 +391,14 @@ function ConditionalDropdown() {
             </When>
 
             <When
-              truthy={userHasPermission({
-                roles,
-                entity: PermissionEntity.asset,
-                action: PermissionAction.custody,
-              })}
+              truthy={
+                custodyEnabled /* customise feature */ &&
+                userHasPermission({
+                  roles,
+                  entity: PermissionEntity.asset,
+                  action: PermissionAction.custody,
+                })
+              }
             >
               <DropdownMenuItem className="py-1 lg:p-0">
                 <BulkUpdateDialogTrigger
