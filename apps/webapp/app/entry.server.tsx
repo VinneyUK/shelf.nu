@@ -12,6 +12,7 @@ import { registerAddonTrialWorkers } from "./modules/addon-trial/worker.server";
 import { regierAssetWorkers } from "./modules/asset-reminder/worker.server";
 import { registerAuditWorkers } from "./modules/audit/worker.server";
 import { registerBookingWorkers } from "./modules/booking/worker.server";
+import { startLabelWorker } from "./modules/labels/service.server"; // labels feature
 import { ShelfError } from "./utils/error";
 import { Logger } from "./utils/logger";
 import * as schedulerService from "./utils/scheduler.server";
@@ -95,6 +96,9 @@ schedulerService
     );
   });
 // === end: register scheduler and workers ===
+
+// labels feature: background label printing (not in upstream Shelf)
+startLabelWorker();
 
 /**
  * Handle errors that are not handled by a loader or action try/catch block.

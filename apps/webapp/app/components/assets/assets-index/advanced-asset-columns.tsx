@@ -11,6 +11,7 @@ import {
 import { Link, useLoaderData } from "react-router";
 import { AttachmentCountCell } from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { EventCardContent } from "~/components/calendar/event-card";
+import { AssetLabelledBadge } from "~/components/labels/labelled-badge"; // labels feature
 import LineBreakText from "~/components/layout/line-break-text";
 import { LocationBadge } from "~/components/location/location-badge";
 import { MarkdownViewer } from "~/components/markdown/markdown-viewer";
@@ -80,7 +81,7 @@ export function AdvancedIndexColumn({
   column: ColumnLabelKey;
   item: AdvancedIndexAsset;
 }) {
-  const { imagePreviewOnHover } = useCustomisations(); // customise feature
+  const { imagePreviewOnHover, labelsEnabled } = useCustomisations(); // customise feature
   const { locale, currentOrganization } = useLoaderData<AssetIndexLoaderData>();
   const { prefs } = useDateFormatter();
   const showAssetImage = useAssetIndexShowImage();
@@ -195,6 +196,9 @@ export function AdvancedIndexColumn({
                     <span className="inline-flex shrink-0 items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
                       QTY
                     </span>
+                  ) : null}
+                  {labelsEnabled ? ( // labels feature
+                    <AssetLabelledBadge assetId={item.id} compact />
                   ) : null}
                 </div>
               </div>

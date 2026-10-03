@@ -34,6 +34,7 @@ export async function getWorkspaceCustomisations(
     hiddenMenuItems: cleanHiddenMenuItems(row?.hiddenMenuItems ?? []),
     imagePreviewOnHover:
       row?.imagePreviewOnHover ?? DEFAULT_CUSTOMISATIONS.imagePreviewOnHover,
+    labelsEnabled: row?.labelsEnabled ?? DEFAULT_CUSTOMISATIONS.labelsEnabled,
   };
 }
 
@@ -80,12 +81,14 @@ export async function saveCustomisePageSettings(
         remindersEnabled: settings.remindersEnabled,
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
+        labelsEnabled: settings.labelsEnabled,
       },
       update: {
         bookingsEnabled: settings.bookingsEnabled,
         remindersEnabled: settings.remindersEnabled,
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
+        labelsEnabled: settings.labelsEnabled,
       },
     }),
     db.organization.update({

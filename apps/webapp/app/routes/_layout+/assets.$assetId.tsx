@@ -14,6 +14,7 @@ import { AssetImage } from "~/components/assets/asset-image/component";
 import { AssetStatusBadge } from "~/components/assets/asset-status-badge";
 import BookingActionsDropdown from "~/components/assets/booking-actions-dropdown";
 
+import { AssetLabelledBadge } from "~/components/labels/labelled-badge"; // labels feature
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
@@ -542,7 +543,8 @@ export default function AssetDetailsPage() {
   const { asset } = useLoaderData<typeof loader>();
 
   const { roles } = useUserRoleHelper();
-  const { bookingsEnabled, remindersEnabled } = useCustomisations(); // customise feature
+  const { bookingsEnabled, remindersEnabled, labelsEnabled } =
+    useCustomisations(); // customise feature
 
   const items = [
     { to: "overview", content: "Overview" },
@@ -598,6 +600,7 @@ export default function AssetDetailsPage() {
               availableToBook={asset.availableToBook}
               asset={asset}
             />
+            {labelsEnabled ? <AssetLabelledBadge assetId={asset.id} /> : null}
           </div>
         }
       >

@@ -4,6 +4,7 @@ import { m } from "framer-motion";
 import { Package } from "lucide-react";
 import { useFetcher, useFetchers, useLoaderData } from "react-router";
 import { AttachmentCountBadge } from "~/components/asset-attachment/attachment-count"; // attachments feature
+import { AssetLabelledBadge } from "~/components/labels/labelled-badge"; // labels feature
 import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
 import { LocationBadge } from "~/components/location/location-badge";
@@ -244,7 +245,7 @@ export const ListAssetContent = ({
   bulkActions?: ReactNode;
   isUserPage?: boolean;
 }) => {
-  const { imagePreviewOnHover } = useCustomisations(); // customise feature
+  const { imagePreviewOnHover, labelsEnabled } = useCustomisations(); // customise feature
   const { category, tags, custody: custodyArray } = item;
   // Render only the single primary-location badge in the list column —
   // a qty-tracked asset can sit at multiple locations via AssetLocation.
@@ -331,6 +332,9 @@ export const ListAssetContent = ({
                 />
                 {displayCode ? <AssetCodeBadge {...displayCode} /> : null}
                 <AttachmentCountBadge assetId={item.id} />{" "}
+                {labelsEnabled ? (
+                  <AssetLabelledBadge assetId={item.id} />
+                ) : null}{" "}
                 {/* attachments feature */}
               </div>
             </div>

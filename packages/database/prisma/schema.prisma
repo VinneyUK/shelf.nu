@@ -259,6 +259,7 @@ model Asset {
   custody      Custody[]
   notes        Note[]
   attachments  AssetAttachment[] // added by the attachments feature
+  labelPrintJobs LabelPrintJob[] // added by the labels feature
   qrCodes      Qr[]
   barcodes     Barcode[]              @relation("AssetBarcodes")
   reports      ReportFound[]
@@ -2683,5 +2684,54 @@ model WorkspaceCustomisation {
   hiddenMenuItems  String[] @default([])
   /// Show a larger image when hovering a thumbnail in the assets list
   imagePreviewOnHover Boolean @default(true)
+  /// Label printing (menu item, print buttons, background printing)
+  labelsEnabled    Boolean  @default(true)
   updatedAt        DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Label printing — added by the labels feature. Labels print on a Niimbot
+// through Home Assistant's niimbot.print. One settings row per workspace.
+// ---------------------------------------------------------------------------
+model LabelSettings {
+  organizationId String   @id
+  haUrl          String   @default("")
+  /// Home Assistant long-lived access token. Never sent to the browser.
+  haToken        String   @default("")
+  deviceId       String   @default("")
+  /// Label length in printer dots (8 per mm); the printable height is 96
+  labelWidth     Int      @default(240)
+  leftMargin     Int      @default(8)
+  rotate         Int      @default(90)
+  /// Print darkness; null = the printer's default
+  density        Int?
+  /// Assets given this tag are queued for printing, and the tag removed. Empty = off.
+  queueTagName   String   @default("QRP")
+  updatedAt      DateTime @updatedAt
+}
+
+/// One label to print. Also the printing history, and what makes an asset "Labelled".
+model LabelPrintJob {
+  id             String    @id @default(cuid())
+  organizationId String
+  asset          Asset?    @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assetId        String?
+  /// What the label shows, captured when queued
+  sequentialId   String    @default("")
+  title          String
+  qrId           String
+  /// queued | printing | printed | cancelled
+  status         String    @default("queued")
+  /// asset | bulk | tag | labels-page
+  source         String
+  attempts       Int       @default(0)
+  lastError      String?
+  nextAttemptAt  DateTime?
+  requestedById  String?
+  createdAt      DateTime  @default(now())
+  startedAt      DateTime?
+  printedAt      DateTime?
+
+  @@index([organizationId, status, createdAt])
+  @@index([assetId, status])
 }

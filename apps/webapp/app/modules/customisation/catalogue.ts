@@ -15,6 +15,8 @@ export type Customisations = {
   hiddenMenuItems: string[];
   /** Larger image when hovering a thumbnail in the assets list */
   imagePreviewOnHover: boolean;
+  /** Label printing (labels feature) */
+  labelsEnabled: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -24,6 +26,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   auditsEnabled: true,
   hiddenMenuItems: [],
   imagePreviewOnHover: true,
+  labelsEnabled: true,
 };
 
 type MenuMatch = { to?: string; title?: string };
@@ -77,6 +80,7 @@ export function hiddenMenuMatches(c: Customisations): MenuMatch[] {
   }
   if (!c.auditsEnabled) matches.push({ to: "/audits" });
   if (!c.remindersEnabled) matches.push({ to: "/reminders" });
+  if (!c.labelsEnabled) matches.push({ to: "/labels" });
   return matches;
 }
 
@@ -102,6 +106,7 @@ const REMINDER_PAGES = [
   /^\/assets\/[^/]+\/reminders(\/|$)/,
 ];
 const AUDIT_PAGES = [/^\/audits(\/|$)/];
+const LABEL_PAGES = [/^\/labels(\/|$)/];
 
 /**
  * Where to send someone who opens a page for a feature that's switched off,
@@ -114,7 +119,8 @@ export function redirectForSwitchedOffPage(
   const blocked =
     (!c.bookingsEnabled && BOOKING_PAGES.some((re) => re.test(pathname))) ||
     (!c.remindersEnabled && REMINDER_PAGES.some((re) => re.test(pathname))) ||
-    (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname)));
+    (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname))) ||
+    (!c.labelsEnabled && LABEL_PAGES.some((re) => re.test(pathname)));
   if (!blocked) return null;
   return c.hiddenMenuItems.includes("home") ? "/assets" : "/home";
 }

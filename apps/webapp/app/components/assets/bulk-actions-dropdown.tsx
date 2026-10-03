@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { useNavigation } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { selectedBulkItemsAtom } from "~/atoms/list";
+import { usePrintSelectedLabels } from "~/components/labels/use-print-selected-labels"; // labels feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -87,7 +88,8 @@ function ConditionalDropdown() {
   const allSelected = isSelectingAllItems(selectedAssets);
 
   const { roles, isSelfService } = useUserRoleHelper();
-  const { auditsEnabled } = useCustomisations(); // customise feature
+  const { auditsEnabled, labelsEnabled } = useCustomisations(); // customise feature
+  const printSelectedLabels = usePrintSelectedLabels(); // labels feature
   const user = useUserData();
 
   /**
@@ -262,6 +264,27 @@ function ConditionalDropdown() {
                 </span>
               </Button>
             </DropdownMenuItem>
+            {labelsEnabled ? ( // labels feature
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMenu();
+                  printSelectedLabels.print();
+                }}
+                className="border-b py-1 lg:p-0"
+                disabled={printSelectedLabels.isPrinting}
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                  width="full"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon icon="print" /> Print labels
+                  </span>
+                </Button>
+              </DropdownMenuItem>
+            ) : null}
             <When
               truthy={
                 auditsEnabled /* customise feature */ &&

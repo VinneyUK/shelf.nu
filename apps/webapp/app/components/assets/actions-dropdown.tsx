@@ -5,8 +5,8 @@ import {
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import { AlarmClockIcon, ArrowUpDownIcon } from "lucide-react";
-import { useLoaderData } from "react-router";
+import { AlarmClockIcon, ArrowUpDownIcon, PrinterIcon } from "lucide-react";
+import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { ChevronRight } from "~/components/icons/library";
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
@@ -59,7 +59,8 @@ const ConditionalActionsDropdown = () => {
 
   const { roles, isSelfService, isAdministratorOrOwner } = useUserRoleHelper();
 
-  const { remindersEnabled } = useCustomisations(); // customise feature
+  const { remindersEnabled, labelsEnabled } = useCustomisations(); // customise feature
+  const printFetcher = useFetcher(); // labels feature
   const user = useUserData();
 
   const { ref: popoverContentRef, open, setOpen } = useControlledDropdownMenu();
@@ -334,6 +335,30 @@ const ConditionalActionsDropdown = () => {
                       <span className="flex items-center gap-2">
                         <AlarmClockIcon className="size-5" />
                         Set reminder
+                      </span>
+                    </Button>
+                  </div>
+                </When>
+                {/* labels feature: queue a label for this asset */}
+                <When truthy={labelsEnabled}>
+                  <div className="border-b px-0 py-1 md:p-0">
+                    <Button
+                      type="button"
+                      role="button"
+                      variant="link"
+                      className="justify-start px-4 py-3 text-gray-700 hover:bg-slate-100 hover:text-gray-700"
+                      width="full"
+                      onClick={() => {
+                        handleMenuClose();
+                        void printFetcher.submit(
+                          { "assetIds[0]": asset.id, source: "asset" },
+                          { method: "post", action: "/api/labels/print" }
+                        );
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <PrinterIcon className="size-5" />
+                        Print label
                       </span>
                     </Button>
                   </div>

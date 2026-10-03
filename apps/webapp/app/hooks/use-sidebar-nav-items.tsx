@@ -19,6 +19,7 @@ import {
   TagsIcon,
   UsersRoundIcon,
   type LucideIcon,
+  PrinterIcon,
 } from "lucide-react";
 import { useLoaderData } from "react-router";
 import { UpgradeMessage } from "~/components/marketing/upgrade-message";
@@ -295,7 +296,8 @@ export function useSidebarNavItems() {
       topMenuItems: removeHiddenNavItems(topMenuItems),
       bottomMenuItems: removeHiddenNavItems(bottomMenuItems),
     },
-    customisations
+    customisations,
+    PrinterIcon // labels feature: the Labels menu item's icon
   ); // customise feature
 }
 

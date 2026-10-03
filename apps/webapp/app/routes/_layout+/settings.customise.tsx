@@ -67,6 +67,7 @@ const CustomiseSchema = z.object({
   barcodesEnabled: flag,
   hiddenMenuItems: z.string().transform((v) => (v ? v.split(",") : [])),
   imagePreviewOnHover: flag,
+  labelsEnabled: flag,
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -112,6 +113,12 @@ const FEATURES = [
     description:
       "Barcode fields on assets (Code 128, EAN-13 and others), alongside Shelf's QR codes.",
   },
+  {
+    name: "labelsEnabled",
+    title: "Labels",
+    description:
+      "Printing QR code labels on a Niimbot through Home Assistant: the Labels page, Print label buttons and the Labelled badge. Switching this off also stops printing by tag.",
+  },
 ] as const;
 
 type FeatureName = (typeof FEATURES)[number]["name"];
@@ -126,6 +133,7 @@ export default function CustomiseSettings() {
     remindersEnabled: settings.remindersEnabled,
     auditsEnabled: settings.auditsEnabled,
     barcodesEnabled: settings.barcodesEnabled,
+    labelsEnabled: settings.labelsEnabled,
   });
   const [hidden, setHidden] = useState<string[]>(settings.hiddenMenuItems);
   const [imagePreview, setImagePreview] = useState<boolean>(
