@@ -47,10 +47,13 @@ export function AssetStatusBadge({
   suppressQtyAware = false,
   availableToBook = true,
   asset,
+  noDotWhenAvailable = false,
 }: {
   id: string;
   status: ExtendedAssetStatus;
   availableToBook: boolean;
+  /** Fork: show "Available" as plain text, without its green dot */
+  noDotWhenAvailable?: boolean;
   /**
    * Booking-row escape hatch for the qty-aware treatment. When `true`
    * AND the asset is `QUANTITY_TRACKED`, the badge:
@@ -186,7 +189,11 @@ export function AssetStatusBadge({
         <HoverCard openDelay={150} closeDelay={150}>
           <HoverCardTrigger asChild>
             <span>
-              <Badge color={colors.bg} textColor={colors.text}>
+              <Badge
+                color={colors.bg}
+                textColor={colors.text}
+                withDot={!(noDotWhenAvailable && label === "Available")}
+              >
                 {label}
               </Badge>
             </span>
@@ -219,7 +226,16 @@ export function AssetStatusBadge({
     <HoverCard openDelay={0}>
       <HoverCardTrigger asChild>
         <span className="flex items-center gap-1.5">
-          <Badge color={colors.bg} textColor={colors.text}>
+          <Badge
+            color={colors.bg}
+            textColor={colors.text}
+            withDot={
+              !(
+                noDotWhenAvailable &&
+                userFriendlyAssetStatus(status) === "Available"
+              )
+            }
+          >
             {userFriendlyAssetStatus(status)}
           </Badge>
           {!availableToBook && (

@@ -8,7 +8,7 @@ export const THEME_KEY = "shelf-theme";
 export const THEMES: { value: Theme; label: string }[] = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
-  { value: "auto", label: "Auto (follow the device)" },
+  { value: "auto", label: "Auto" },
 ];
 
 export function getTheme(): Theme {

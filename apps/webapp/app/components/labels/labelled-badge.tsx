@@ -62,3 +62,19 @@ export function AssetLabelledBadge({
     <LabelledBadge labelledAt={useLabelledAt(assetId)} compact={compact} />
   );
 }
+
+/**
+ * After queueing a label: refresh now, and again as the print finishes (it
+ * takes a few seconds), so the green chip and Labelled state follow it.
+ */
+export function refreshLabelledSoon() {
+  void labelledLookup.refresh();
+  for (const ms of [4000, 10000, 25000]) {
+    setTimeout(() => void labelledLookup.refresh(), ms);
+  }
+}
+
+/** Every labelled asset and box, for working out what a selection holds. */
+export function useLabelledMap(): Record<string, string> {
+  return labelledLookup.useData()?.labelled ?? {};
+}

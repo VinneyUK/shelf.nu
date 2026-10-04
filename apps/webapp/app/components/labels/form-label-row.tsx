@@ -8,7 +8,11 @@ import { useFetcher } from "react-router";
 import FormRow from "~/components/forms/form-row";
 import { Button } from "~/components/shared/button";
 import { useCustomisations } from "~/modules/customisation/use-customisations";
-import { LabelledBadge, labelledLookup, useLabelledAt } from "./labelled-badge";
+import {
+  LabelledBadge,
+  refreshLabelledSoon,
+  useLabelledAt,
+} from "./labelled-badge";
 
 export function FormLabelRow({ assetId }: { assetId: string }) {
   const { labelsEnabled } = useCustomisations();
@@ -21,7 +25,7 @@ export function FormLabelRow({ assetId }: { assetId: string }) {
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success)
-      void labelledLookup.refresh();
+      refreshLabelledSoon();
   }, [fetcher.state, fetcher.data]);
 
   if (!labelsEnabled) return null;

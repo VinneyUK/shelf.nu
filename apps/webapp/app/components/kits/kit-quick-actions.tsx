@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 import type { Kit } from "@prisma/client";
 import { PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
+import { PrintLabelButton } from "~/components/labels/print-label-button"; // labels feature
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   PermissionAction,
   PermissionEntity,
@@ -25,6 +27,7 @@ export default function KitQuickActions({
   kit,
 }: KitQuickActionsProps) {
   const { roles } = useUserRoleHelper();
+  const { qrDownloadsEnabled } = useCustomisations(); // customise feature
 
   return (
     <div className={tw("flex items-center gap-2", className)} style={style}>
@@ -46,13 +49,26 @@ export default function KitQuickActions({
           <PencilIcon className="size-4" />
         </Button>
       </When>
-
+      {/* labels feature: print (or re-print) this box's label */}
       <When
         truthy={userHasPermission({
           roles,
-          entity: PermissionEntity.qr,
-          action: PermissionAction.read,
+          entity: PermissionEntity.kit,
+          action: PermissionAction.update,
         })}
+      >
+        <PrintLabelButton id={kit.id} kind="box" />
+      </When>
+
+      <When
+        truthy={
+          qrDownloadsEnabled /* customise feature */ &&
+          userHasPermission({
+            roles,
+            entity: PermissionEntity.qr,
+            action: PermissionAction.read,
+          })
+        }
       >
         <CodePreviewDialog
           item={{

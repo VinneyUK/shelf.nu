@@ -609,6 +609,12 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
   }
 }
 
+/**
+ * Fork (VinneyUK/shelf.nu): Shelf's own QR section on the box page is switched
+ * off; the printed box label stands in for it. Set to true to bring it back.
+ */
+const SHOW_SHELF_QR_SECTION = false as boolean;
+
 export default function KitDetails() {
   const { bookingsEnabled } = useCustomisations(); // customise feature
   usePosition();
@@ -722,19 +728,21 @@ export default function KitDetails() {
 
           <PrintedLabelCard assetId={kit.id} />
 
-          <CodePreview
-            qrObj={qrObj}
-            barcodes={
-              canUseBarcodes
-                ? (kit as KitWithOptionalBarcodes).barcodes || []
-                : []
-            }
-            item={{
-              id: kit.id,
-              name: kit.name,
-              type: "kit",
-            }}
-          />
+          {SHOW_SHELF_QR_SECTION ? (
+            <CodePreview
+              qrObj={qrObj}
+              barcodes={
+                canUseBarcodes
+                  ? (kit as KitWithOptionalBarcodes).barcodes || []
+                  : []
+              }
+              item={{
+                id: kit.id,
+                name: kit.name,
+                type: "kit",
+              }}
+            />
+          ) : null}
           {userHasPermission({
             roles,
             entity: PermissionEntity.scan,

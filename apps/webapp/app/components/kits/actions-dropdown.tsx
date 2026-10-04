@@ -6,7 +6,7 @@ import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { StartAuditFromContextDialog } from "~/components/audit/start-audit-from-context-dialog";
 import {
-  labelledLookup,
+  refreshLabelledSoon,
   useLabelledAt,
 } from "~/components/labels/labelled-badge"; // labels feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
@@ -67,7 +67,7 @@ function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
   const labelFetcher = useFetcher<{ success?: boolean }>();
   useEffect(() => {
     if (labelFetcher.state === "idle" && labelFetcher.data?.success)
-      void labelledLookup.refresh();
+      refreshLabelledSoon();
   }, [labelFetcher.state, labelFetcher.data]);
   const kitCanBeReleased = kit.custody;
   const kitIsCheckedOut = kit.status === "CHECKED_OUT";

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { CopyIcon, PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
+import { PrintLabelButton } from "~/components/labels/print-label-button"; // labels feature
 import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -52,6 +53,16 @@ export default function AssetQuickActions({
         </Button>
       </When>
 
+      {/* labels feature: print (or re-print) this asset's label */}
+      <When
+        truthy={userHasPermission({
+          roles,
+          entity: PermissionEntity.asset,
+          action: PermissionAction.update,
+        })}
+      >
+        <PrintLabelButton id={asset.id} />
+      </When>
       {qrDownloadsEnabled ? ( // customise feature
         <CodePreviewDialog
           item={{

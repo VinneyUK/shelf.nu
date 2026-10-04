@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/shared/tooltip";
+import { SoldPriceLine } from "~/components/sold/sold-price-line"; // sold feature
 import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
 import { TeamMemberBadge } from "~/components/user/team-member-badge";
 import When from "~/components/when/when";
@@ -247,6 +248,11 @@ export function AdvancedIndexColumn({
         return (
           <Td className="w-full max-w-none whitespace-nowrap">
             <EmptyTableValue />
+            <SoldPriceLine
+              assetId={item.id}
+              currency={currentOrganization.currency}
+              locale={locale}
+            />
           </Td>
         );
       }
@@ -268,6 +274,12 @@ export function AdvancedIndexColumn({
           ) : (
             <span className="tabular-nums">{breakdown.total}</span>
           )}
+          {/* sold feature: what it sold for, under the value */}
+          <SoldPriceLine
+            assetId={item.id}
+            currency={currentOrganization.currency}
+            locale={locale}
+          />
         </Td>
       );
     }

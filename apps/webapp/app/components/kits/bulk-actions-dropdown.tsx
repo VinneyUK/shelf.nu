@@ -195,27 +195,35 @@ function ConditionalDropdown() {
           ref={dropdownRef}
         >
           <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-[180px] md:rounded-t-[4px]">
-            {labelsEnabled ? ( // labels feature
-              <DropdownMenuItem
-                className="border-b px-4 py-1 md:p-0"
-                onClick={() => {
-                  closeMenu();
-                  printSelectedBoxes.print();
-                }}
-                disabled={printSelectedBoxes.isPrinting}
-              >
-                <Button
-                  type="button"
-                  variant="link"
-                  className="w-full justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
-                  width="full"
-                >
-                  <span className="flex items-center gap-2">
-                    <Icon icon="print" /> Print labels
-                  </span>
-                </Button>
-              </DropdownMenuItem>
-            ) : null}
+            {/* labels feature: print / re-print / remove, by what's selected */}
+            {labelsEnabled
+              ? printSelectedBoxes.entries.map((entry, i, all) => (
+                  <DropdownMenuItem
+                    key={entry.intent}
+                    onClick={() => {
+                      closeMenu();
+                      printSelectedBoxes.run(entry.intent);
+                    }}
+                    className={
+                      i === all.length - 1
+                        ? "border-b px-4 py-1 md:p-0"
+                        : "px-4 py-1 md:p-0"
+                    }
+                    disabled={printSelectedBoxes.isBusy}
+                  >
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="w-full justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
+                      width="full"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon icon="print" /> {entry.label}
+                      </span>
+                    </Button>
+                  </DropdownMenuItem>
+                ))
+              : null}
             <When
               truthy={
                 auditsEnabled /* customise feature */ &&

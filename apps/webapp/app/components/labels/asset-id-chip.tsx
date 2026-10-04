@@ -1,6 +1,7 @@
 /**
- * The asset ID as a chip in the assets list. Click copies it; it turns green
- * once a label has been printed; double-click opens Print / Remove label.
+ * The asset ID (or a box's ID) as a chip in the lists. A single click copies
+ * it; a double-click opens Print / Re-print / Remove label; it turns green
+ * once a label has been printed.
  * Part of the labels feature; not in upstream Shelf.
  */
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +14,35 @@ import {
 } from "~/components/shared/dropdown";
 import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { tw } from "~/utils/tw";
-import { labelledLookup, useLabelledAt } from "./labelled-badge";
+import { refreshLabelledSoon, useLabelledAt } from "./labelled-badge";
+
+/** Gap within which two clicks count as a double-click. */
+const DOUBLE_CLICK_MS = 250;
+
+/** Copies text, with a fallback for pages the clipboard API isn't offered on. */
+export async function copyText(text: string) {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to the fallback
+  }
+  try {
+    const box = document.createElement("textarea");
+    box.value = text;
+    box.style.position = "fixed";
+    box.style.opacity = "0";
+    document.body.appendChild(box);
+    box.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(box);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export function AssetIdChip({
   assetId,
@@ -36,7 +65,7 @@ export function AssetIdChip({
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success)
-      void labelledLookup.refresh();
+      refreshLabelledSoon();
   }, [fetcher.state, fetcher.data]);
   useEffect(
     () => () => {
@@ -46,7 +75,8 @@ export function AssetIdChip({
   );
 
   const copy = () => {
-    void navigator.clipboard?.writeText(sequentialId).then(() => {
+    void copyText(sequentialId).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     });
@@ -76,18 +106,34 @@ export function AssetIdChip({
         "Click to copy" +
         (labelsEnabled ? "; double-click for label options" : "")
       }
+      // The dropdown trigger opens on the mouse PRESS. Stopping that here is
+      // what makes a single click copy only, and a double-click open the menu.
+      onPointerDown={(e) => e.preventDefault()}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Wait a moment: a double-click opens the menu instead of copying
         if (clickTimer.current) clearTimeout(clickTimer.current);
-        clickTimer.current = setTimeout(copy, 220);
+        // Wait a moment: a second click means the menu was wanted, not a copy
+        clickTimer.current = setTimeout(copy, DOUBLE_CLICK_MS);
       }}
       onDoubleClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         if (clickTimer.current) clearTimeout(clickTimer.current);
         if (labelsEnabled) setMenuOpen(true);
+      }}
+      onKeyDown={(e) => {
+        // Keyboard: Enter or Space copies; the menu key or Arrow Down opens it
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          copy();
+        } else if (
+          labelsEnabled &&
+          (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))
+        ) {
+          e.preventDefault();
+          setMenuOpen(true);
+        }
       }}
     >
       {copied ? "Copied" : sequentialId}
@@ -101,7 +147,7 @@ export function AssetIdChip({
       <DropdownMenuTrigger asChild>{chip}</DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-44">
         <DropdownMenuItem onSelect={() => act("print")}>
-          {labelledAt ? "Print label again" : "Print label"}
+          {labelledAt ? "Re-print label" : "Print label"}
         </DropdownMenuItem>
         {labelledAt ? (
           <DropdownMenuItem onSelect={() => act("remove")}>

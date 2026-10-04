@@ -1,6 +1,8 @@
 import type { ComponentProps } from "react";
+import { useLoaderData } from "react-router";
 import { ShelfSidebarLogo } from "~/components/marketing/logos";
 import { useSidebarNavItems } from "~/hooks/use-sidebar-nav-items";
+import type { loader } from "~/routes/_layout+/_layout"; // fork
 import OrganizationSelector from "./organization-selector";
 import {
   Sidebar,
@@ -17,6 +19,7 @@ type AppSidebarProps = ComponentProps<typeof Sidebar>;
 
 export default function AppSidebar(props: AppSidebarProps) {
   const { state } = useSidebar();
+  const { organizations } = useLoaderData<typeof loader>(); // fork
   const { topMenuItems, bottomMenuItems } = useSidebarNavItems();
 
   return (
@@ -26,7 +29,8 @@ export default function AppSidebar(props: AppSidebarProps) {
           <ShelfSidebarLogo minimized={state === "collapsed"} />
         </div>
 
-        <OrganizationSelector />
+        {/* fork: the workspace switcher only shows with more than one workspace */}
+        {organizations.length > 1 ? <OrganizationSelector /> : null}
       </SidebarHeader>
 
       <SidebarContent>

@@ -15,7 +15,7 @@ import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { ChevronRight } from "~/components/icons/library";
 import {
-  labelledLookup,
+  refreshLabelledSoon,
   useLabelledAt,
 } from "~/components/labels/labelled-badge"; // labels feature
 import {
@@ -83,7 +83,7 @@ const ConditionalActionsDropdown = () => {
   useEffect(() => {
     // the Labelled badge and label card follow a print or removal
     if (printFetcher.state === "idle" && printFetcher.data)
-      void labelledLookup.refresh();
+      refreshLabelledSoon();
   }, [printFetcher.state, printFetcher.data]);
   // sold feature
   const sale = useSale(asset.id);

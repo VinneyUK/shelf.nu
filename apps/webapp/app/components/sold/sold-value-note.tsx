@@ -23,11 +23,14 @@ export function SoldValueNote({
     year: "numeric",
   });
   return (
-    <p className="mt-1 text-sm text-gray-500">
-      Sold {when}
+    <span className="mt-0.5 block text-xs tabular-nums text-gray-500">
       {sale.price !== null
-        ? ` for ${formatCurrency({ value: sale.price, currency, locale })}`
-        : ""}
-    </p>
+        ? `Sold ${formatCurrency({
+            value: sale.price,
+            currency,
+            locale,
+          })} · ${when}`
+        : `Sold ${when}`}
+    </span>
   );
 }

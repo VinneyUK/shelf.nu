@@ -1864,7 +1864,8 @@ export default function AssetOverview() {
             </Card>
           ) : null}
 
-          {isQuantityTracked(asset) ? (
+          {custodyEnabled /* customise feature */ &&
+          isQuantityTracked(asset) ? (
             <QuantityCustodyList
               custody={asset.custody}
               assetId={asset.id}

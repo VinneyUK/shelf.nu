@@ -300,27 +300,35 @@ function ConditionalDropdown() {
                 </Button>
               </DropdownMenuItem>
             ) : null}
-            {labelsEnabled ? ( // labels feature
-              <DropdownMenuItem
-                onClick={() => {
-                  closeMenu();
-                  printSelectedLabels.print();
-                }}
-                className="border-b py-1 lg:p-0"
-                disabled={printSelectedLabels.isPrinting}
-              >
-                <Button
-                  type="button"
-                  variant="link"
-                  className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
-                  width="full"
-                >
-                  <span className="flex items-center gap-2">
-                    <Icon icon="print" /> Print labels
-                  </span>
-                </Button>
-              </DropdownMenuItem>
-            ) : null}
+            {/* labels feature: print / re-print / remove, by what's selected */}
+            {labelsEnabled
+              ? printSelectedLabels.entries.map((entry, i, all) => (
+                  <DropdownMenuItem
+                    key={entry.intent}
+                    onClick={() => {
+                      closeMenu();
+                      printSelectedLabels.run(entry.intent);
+                    }}
+                    className={
+                      i === all.length - 1
+                        ? "border-b py-1 lg:p-0"
+                        : "py-1 lg:p-0"
+                    }
+                    disabled={printSelectedLabels.isBusy}
+                  >
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                      width="full"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon icon="print" /> {entry.label}
+                      </span>
+                    </Button>
+                  </DropdownMenuItem>
+                ))
+              : null}
             {/* sold feature */}
             <DropdownMenuItem
               onClick={() => {
