@@ -5,10 +5,15 @@
  */
 import { data, type ActionFunctionArgs } from "react-router";
 import { z } from "zod";
+import { db } from "~/database/db.server";
 import { resolveAssetIdsForBulkOperation } from "~/modules/asset/bulk-operations-helper.server";
 import { CurrentSearchParamsSchema } from "~/modules/asset/utils.server";
 import { getAssetIndexSettings } from "~/modules/asset-index-settings/service.server";
-import { queueLabels, removeLabels } from "~/modules/labels/service.server";
+import {
+  queueBoxLabels,
+  queueLabels,
+  removeLabels,
+} from "~/modules/labels/service.server";
 import { sendNotification } from "~/utils/emitter/send-notification.server";
 import { makeShelfError, ShelfError } from "~/utils/error";
 import { assertIsPost, error, parseData, payload } from "~/utils/http.server";
@@ -21,7 +26,11 @@ import { requirePermission } from "~/utils/roles.server";
 
 const PrintSchema = z
   .object({
-    assetIds: z.array(z.string()).min(1, "Choose at least one asset."),
+    assetIds: z.array(z.string()).default([]),
+    /** Boxes (kits) to print labels for */
+    kitIds: z.array(z.string()).default([]),
+    /** Every box in the workspace (the boxes list's "select all") */
+    allBoxes: z.enum(["true"]).optional(),
     source: z.enum(["asset", "bulk", "labels-page"]).default("asset"),
     /** "remove" takes the Labelled status off instead of printing */
     intent: z.enum(["print", "remove"]).default("print"),
@@ -40,10 +49,14 @@ export async function action({ context, request }: ActionFunctionArgs) {
       entity: PermissionEntity.asset,
       action: PermissionAction.update,
     });
-    const { assetIds, source, currentSearchParams, intent } = parseData(
-      formData,
-      PrintSchema
-    );
+    const {
+      assetIds,
+      kitIds: chosenKitIds,
+      allBoxes,
+      source,
+      currentSearchParams,
+      intent,
+    } = parseData(formData, PrintSchema);
 
     // A cross-page "select all" resolves through the list's filters, as
     // Shelf's own bulk actions do
@@ -66,10 +79,28 @@ export async function action({ context, request }: ActionFunctionArgs) {
       });
     }
 
+    const kitIds = allBoxes
+      ? (
+          await db.kit.findMany({
+            where: { organizationId },
+            select: { id: true },
+          })
+        ).map((k) => k.id)
+      : chosenKitIds;
+    if (assetIds.length === 0 && kitIds.length === 0) {
+      throw new ShelfError({
+        cause: null,
+        message: "Choose at least one asset or box.",
+        status: 400,
+        label: "Assets",
+        shouldBeCaptured: false,
+      });
+    }
+
     if (intent === "remove") {
       const removed = await removeLabels({
         organizationId,
-        assetIds: ids,
+        assetIds: [...ids, ...kitIds],
         userId,
       });
       sendNotification({
@@ -85,12 +116,23 @@ export async function action({ context, request }: ActionFunctionArgs) {
       return payload({ success: true, removed });
     }
 
-    const result = await queueLabels({
+    const assets = await queueLabels({
       organizationId,
       assetIds: ids,
       source,
       userId,
     });
+    const boxes = await queueBoxLabels({
+      organizationId,
+      kitIds,
+      source,
+      userId,
+    });
+    const result = {
+      queued: assets.queued + boxes.queued,
+      alreadyQueued: assets.alreadyQueued + boxes.alreadyQueued,
+      noQrCode: assets.noQrCode + boxes.noQrCode,
+    };
     if (result.queued === 0 && result.alreadyQueued === 0) {
       throw new ShelfError({
         cause: null,

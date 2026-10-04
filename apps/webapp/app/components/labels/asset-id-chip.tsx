@@ -19,10 +19,13 @@ export function AssetIdChip({
   assetId,
   sequentialId,
   className,
+  kind = "asset",
 }: {
+  /** The asset's id, or the box's (kit's) id */
   assetId: string;
   sequentialId: string;
   className?: string;
+  kind?: "asset" | "box";
 }) {
   const { labelsEnabled } = useCustomisations();
   const labelledAt = useLabelledAt(assetId);
@@ -50,7 +53,11 @@ export function AssetIdChip({
   };
   const act = (intent: "print" | "remove") =>
     void fetcher.submit(
-      { "assetIds[0]": assetId, intent, source: "asset" },
+      {
+        [kind === "box" ? "kitIds[0]" : "assetIds[0]"]: assetId,
+        intent,
+        source: "asset",
+      },
       { method: "post", action: "/api/labels/print" }
     );
 

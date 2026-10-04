@@ -23,12 +23,18 @@ import { db } from "~/database/db.server";
 import { useSearchParams } from "~/hooks/search-params";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import {
+  formatBoxId,
+  getBoxIds,
+  parseBoxNumber,
+} from "~/modules/box-numbers/service.server";
+import {
   cancelLabelJob,
   getLabelledAssets,
   getLabelQueue,
   getLabelSettings,
   getPrinterStatus,
   qrUrlFor,
+  queueBoxLabels,
   queueLabels,
   retryLabelJobsNow,
   type PrinterEntity,
@@ -88,6 +94,35 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         : Promise.resolve([]),
     ]);
 
+    // labels feature: boxes (kits) in the search, by name or BOX-0003
+    const boxNumber = q ? parseBoxNumber(q) : null;
+    const boxIds = q ? await getBoxIds(organizationId) : {};
+    const boxes = q
+      ? (
+          await db.kit.findMany({
+            where: {
+              organizationId,
+              name: { contains: q, mode: "insensitive" },
+            },
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+            take: 25,
+          })
+        ).map((k) => ({ ...k, boxId: boxIds[k.id] ?? "" }))
+      : [];
+    if (boxNumber !== null) {
+      const match = Object.entries(boxIds).find(
+        ([, id]) => id === formatBoxId(boxNumber)
+      );
+      if (match && !boxes.some((b) => b.id === match[0])) {
+        const kit = await db.kit.findFirst({
+          where: { organizationId, id: match[0] },
+          select: { id: true, name: true },
+        });
+        if (kit) boxes.unshift({ ...kit, boxId: match[1] });
+      }
+    }
+
     const withQr = <T extends { qrId: string }>(job: T) => ({
       ...job,
       qrUrl: qrUrlFor(job.qrId),
@@ -103,6 +138,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         ...a,
         labelledAt: labelled[a.id] ?? null,
       })),
+      boxes: boxes.map((b) => ({ ...b, labelledAt: labelled[b.id] ?? null })),
     });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
@@ -113,7 +149,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 const ActionSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("print"),
-    assetIds: z.array(z.string()).min(1),
+    assetIds: z.array(z.string()).default([]),
+    kitIds: z.array(z.string()).default([]),
   }),
   z.object({ intent: z.literal("cancel"), jobId: z.string().min(1) }),
   z.object({ intent: z.literal("retry") }),
@@ -131,13 +168,24 @@ export async function action({ context, request }: ActionFunctionArgs) {
     });
     const input = parseData(await request.formData(), ActionSchema);
     if (input.intent === "print") {
-      const result = await queueLabels({
+      const assets = await queueLabels({
         organizationId,
         assetIds: input.assetIds,
         source: "labels-page",
         userId,
       });
-      return payload({ success: true, ...result });
+      const boxes = await queueBoxLabels({
+        organizationId,
+        kitIds: input.kitIds,
+        source: "labels-page",
+        userId,
+      });
+      return payload({
+        success: true,
+        queued: assets.queued + boxes.queued,
+        alreadyQueued: assets.alreadyQueued + boxes.alreadyQueued,
+        noQrCode: assets.noQrCode + boxes.noQrCode,
+      });
     }
     if (input.intent === "cancel") {
       await cancelLabelJob(organizationId, input.jobId);
@@ -189,7 +237,7 @@ function printerSummary(entities: PrinterEntity[] | null) {
 }
 
 export default function LabelsQueue() {
-  const { settings, printer, printing, waiting, history, q, results } =
+  const { settings, printer, printing, waiting, history, q, results, boxes } =
     useLoaderData<typeof loader>();
   const { isAdministratorOrOwner } = useUserRoleHelper();
   const revalidator = useRevalidator();
@@ -345,7 +393,7 @@ export default function LabelsQueue() {
         )}
       </Card>
 
-      <SearchAndPrint q={q} results={results} />
+      <SearchAndPrint q={q} results={results} boxes={boxes} />
 
       <Card className="my-0">
         <h3 className="mb-3 text-text-md font-semibold text-gray-900">
@@ -442,8 +490,15 @@ function RetryNowButton() {
 function SearchAndPrint({
   q,
   results,
+  boxes,
 }: {
   q: string;
+  boxes: {
+    id: string;
+    name: string;
+    boxId: string;
+    labelledAt: string | null;
+  }[];
   results: {
     id: string;
     title: string;
@@ -493,8 +548,37 @@ function SearchAndPrint({
           {done}
         </p>
       ) : null}
-      {q && results.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-500">No assets match "{q}".</p>
+      {q && results.length === 0 && boxes.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">Nothing matches "{q}".</p>
+      ) : null}
+      {boxes.length > 0 ? (
+        <ul className="mt-3 divide-y">
+          {boxes.map((box) => (
+            <li key={box.id} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <Link
+                  to={`/kits/${box.id}`}
+                  className="font-medium text-gray-900 hover:underline"
+                >
+                  {box.name}
+                </Link>{" "}
+                <span className="text-sm text-gray-500">{box.boxId} · Box</span>{" "}
+                <LabelledBadge labelledAt={box.labelledAt} />
+              </div>
+              <fetcher.Form method="post">
+                <input type="hidden" name="intent" value="print" />
+                <input type="hidden" name="kitIds[0]" value={box.id} />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isFormProcessing(fetcher.state)}
+                >
+                  Print
+                </Button>
+              </fetcher.Form>
+            </li>
+          ))}
+        </ul>
       ) : null}
       {results.length > 0 ? (
         <>

@@ -1958,6 +1958,8 @@ model Kit {
   assetKits AssetKit[]
   custody  KitCustody?
   qrCodes  Qr[]
+  boxNumber      BoxNumber?      // added by the labels feature
+  labelPrintJobs LabelPrintJob[] // added by the labels feature
   barcodes Barcode[]
   reports  ReportFound[]
 
@@ -2727,6 +2729,9 @@ model LabelPrintJob {
   organizationId String
   asset          Asset?    @relation(fields: [assetId], references: [id], onDelete: SetNull)
   assetId        String?
+  /// A box (kit) label instead of an asset label
+  kit            Kit?      @relation(fields: [kitId], references: [id], onDelete: SetNull)
+  kitId          String?
   /// What the label shows, captured when queued
   sequentialId   String    @default("")
   title          String
@@ -2747,6 +2752,7 @@ model LabelPrintJob {
 
   @@index([organizationId, status, createdAt])
   @@index([assetId, status])
+  @@index([kitId, status])
 }
 
 // ---------------------------------------------------------------------------
@@ -2820,4 +2826,17 @@ model HomeLayout {
   updatedAt      DateTime @updatedAt
 
   @@id([userId, organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Box numbers — added by the labels feature. Shelf doesn't number kits
+// ("boxes" here); labels need an ID, so each box gets BOX-0001, BOX-0002…
+// ---------------------------------------------------------------------------
+model BoxNumber {
+  kitId          String @id
+  kit            Kit    @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  organizationId String
+  number         Int
+
+  @@unique([organizationId, number])
 }

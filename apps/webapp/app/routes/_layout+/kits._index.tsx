@@ -20,6 +20,7 @@ import BulkActionsDropdown from "~/components/kits/bulk-actions-dropdown";
 import KitImage from "~/components/kits/kit-image";
 import KitQuickActions from "~/components/kits/kit-quick-actions";
 import { KitStatusBadge } from "~/components/kits/kit-status-badge";
+import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import Header from "~/components/layout/header";
 import LineBreakText from "~/components/layout/line-break-text";
 import { List } from "~/components/list";
@@ -41,6 +42,7 @@ import { LOCATION_WITH_HIERARCHY } from "~/modules/asset/fields";
 import { getLocationsForCreateAndEdit } from "~/modules/asset/service.server";
 import type { EntityForCodeResolution } from "~/modules/barcode/display";
 import { resolveDisplayCode } from "~/modules/barcode/display";
+import { getBoxIds } from "~/modules/box-numbers/service.server"; // labels feature
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   getPaginatedAndFilterableKits,
@@ -269,6 +271,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     return data(
       payload({
         header,
+        boxIds: await getBoxIds(organizationId).catch(
+          () => ({}) as Record<string, string>
+        ), // labels feature
         // `TeamMemberBadge` only decides whether to DRAW the custodian; the
         // name and `user.email` shipped in this payload regardless, so a
         // restricted viewer read them straight out of `/kits.data` while the
@@ -537,6 +542,7 @@ function ListContent({
   }>;
   bulkActions?: ReactNode;
 }) {
+  const { boxIds } = useLoaderData<typeof loader>(); // labels feature
   const { custodyEnabled } = useCustomisations(); // customise feature
   const locationWithHierarchy = item.location as Prisma.LocationGetPayload<
     typeof LOCATION_WITH_HIERARCHY
@@ -597,7 +603,16 @@ function ListContent({
                       : !item.assetKits.some((ak) => !ak.asset.availableToBook)
                   }
                 />
-                {displayCode ? <AssetCodeBadge {...displayCode} /> : null}
+                {/* labels feature: the box's ID chip (click copies, green when labelled) */}
+                {boxIds[item.id] ? (
+                  <AssetIdChip
+                    assetId={item.id}
+                    sequentialId={boxIds[item.id]}
+                    kind="box"
+                  />
+                ) : displayCode ? (
+                  <AssetCodeBadge {...displayCode} />
+                ) : null}
               </div>
             </div>
           </div>

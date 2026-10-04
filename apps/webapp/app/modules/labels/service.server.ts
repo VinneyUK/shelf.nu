@@ -11,6 +11,7 @@
  */
 import { db } from "~/database/db.server";
 import { addAssetActivity } from "~/modules/activity/service.server";
+import { getBoxIds } from "~/modules/box-numbers/service.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { SERVER_URL } from "~/utils/env";
 import { ShelfError } from "~/utils/error";
@@ -248,6 +249,69 @@ export async function queueLabels({
   };
 }
 
+/**
+ * Queues a label for each box (kit): QR code, BOX-0001, and the box's name.
+ * Boxes already waiting or printing are skipped.
+ */
+export async function queueBoxLabels({
+  organizationId,
+  kitIds,
+  source,
+  userId,
+}: {
+  organizationId: string;
+  kitIds: string[];
+  source: PrintSource;
+  userId: string | null;
+}) {
+  const unique = [...new Set(kitIds)];
+  if (unique.length === 0) return { queued: 0, alreadyQueued: 0, noQrCode: 0 };
+  const [kits, boxIds] = await Promise.all([
+    db.kit.findMany({
+      where: { id: { in: unique }, organizationId },
+      select: {
+        id: true,
+        name: true,
+        qrCodes: {
+          select: { id: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    }),
+    getBoxIds(organizationId),
+  ]);
+  const pending = await db.labelPrintJob.findMany({
+    where: {
+      organizationId,
+      kitId: { in: kits.map((k) => k.id) },
+      status: { in: ["queued", "printing"] },
+    },
+    select: { kitId: true },
+  });
+  const pendingIds = new Set(pending.map((p) => p.kitId));
+  const toQueue = kits.filter((k) => !pendingIds.has(k.id) && k.qrCodes[0]);
+  if (toQueue.length > 0) {
+    await db.labelPrintJob.createMany({
+      data: toQueue.map((k) => ({
+        organizationId,
+        kitId: k.id,
+        sequentialId: boxIds[k.id] ?? "",
+        title: k.name,
+        qrId: k.qrCodes[0].id,
+        source,
+        requestedById: userId,
+      })),
+    });
+    nudgeLabelPrinter();
+  }
+  return {
+    queued: toQueue.length,
+    alreadyQueued: kits.filter((k) => pendingIds.has(k.id)).length,
+    noQrCode: kits.filter((k) => !k.qrCodes[0]).length,
+  };
+}
+
 /** Everything the Labels page shows. */
 export async function getLabelQueue(organizationId: string) {
   const [active, history] = await Promise.all([
@@ -304,6 +368,21 @@ export async function getLabelledAssets(organizationId: string) {
       labelled[row.assetId] = row._max.printedAt.toISOString();
     }
   }
+  // Boxes (kits) too; asset and kit ids never collide
+  const boxRows = await db.labelPrintJob.groupBy({
+    by: ["kitId"],
+    where: {
+      organizationId,
+      status: "printed",
+      kitId: { not: null },
+      labelRemovedAt: null,
+    },
+    _max: { printedAt: true },
+  });
+  for (const row of boxRows) {
+    if (row.kitId && row._max.printedAt)
+      labelled[row.kitId] = row._max.printedAt.toISOString();
+  }
   return labelled;
 }
 
@@ -320,7 +399,7 @@ export async function removeLabels({
   const { count } = await db.labelPrintJob.updateMany({
     where: {
       organizationId,
-      assetId: { in: assetIds },
+      OR: [{ assetId: { in: assetIds } }, { kitId: { in: assetIds } }],
       status: "printed",
       labelRemovedAt: null,
     },
@@ -346,7 +425,13 @@ export async function getPrintedLabel({
   assetId: string;
 }) {
   const job = await db.labelPrintJob.findFirst({
-    where: { organizationId, assetId, status: "printed", labelRemovedAt: null },
+    // the id may be an asset's or a box's (kit's)
+    where: {
+      organizationId,
+      OR: [{ assetId }, { kitId: assetId }],
+      status: "printed",
+      labelRemovedAt: null,
+    },
     orderBy: { printedAt: "desc" },
     select: { sequentialId: true, title: true, qrId: true, printedAt: true },
   });

@@ -19,6 +19,8 @@ import ActionsDropdown from "~/components/kits/actions-dropdown";
 import BookingActionsDropdown from "~/components/kits/booking-actions-dropdown";
 import KitImage from "~/components/kits/kit-image";
 import { KitStatusBadge } from "~/components/kits/kit-status-badge";
+import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
+import { PrintedLabelCard } from "~/components/labels/printed-label-card"; // labels feature
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
@@ -32,6 +34,7 @@ import {
   validateBarcodeValue,
   normalizeBarcodeValue,
 } from "~/modules/barcode/validation";
+import { getBoxId } from "~/modules/box-numbers/service.server"; // labels feature
 import { getCustodyCardHolderUserId } from "~/modules/custody/utils";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
@@ -249,6 +252,8 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 
     return payload({
       kit: redactedKit,
+      // labels feature; a box without a number is still a box
+      boxId: await getBoxId(organizationId, redactedKit.id).catch(() => null),
       currentBooking,
       header,
       modelName,
@@ -607,8 +612,15 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 export default function KitDetails() {
   const { bookingsEnabled } = useCustomisations(); // customise feature
   usePosition();
-  const { kit, currentBooking, qrObj, lastScan, userId, currentOrganization } =
-    useLoaderData<typeof loader>();
+  const {
+    kit,
+    currentBooking,
+    qrObj,
+    lastScan,
+    userId,
+    currentOrganization,
+    boxId,
+  } = useLoaderData<typeof loader>();
   const { roles } = useUserRoleHelper();
   const { canUseBarcodes } = useBarcodePermissions();
 
@@ -637,10 +649,16 @@ export default function KitDetails() {
     <>
       <Header
         subHeading={
-          <KitStatusBadge
-            status={kit.status}
-            availableToBook={!kitHasUnavailableAssets}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <KitStatusBadge
+              status={kit.status}
+              availableToBook={!kitHasUnavailableAssets}
+            />
+            {/* labels feature: the box's ID chip */}
+            {boxId ? (
+              <AssetIdChip assetId={kit.id} sequentialId={boxId} kind="box" />
+            ) : null}
+          </div>
         }
         slots={{
           "left-of-title": (
@@ -699,6 +717,10 @@ export default function KitDetails() {
               custody={kit.custody ? [kit.custody] : null}
             />
           </When>
+
+          {/* labels feature: the printed box label, when there is one */}
+
+          <PrintedLabelCard assetId={kit.id} />
 
           <CodePreview
             qrObj={qrObj}

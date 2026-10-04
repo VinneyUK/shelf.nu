@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { useNavigation } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { selectedBulkItemsAtom } from "~/atoms/list";
+import { usePrintSelectedBoxes } from "~/components/labels/use-print-selected-boxes"; // labels feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -21,6 +22,7 @@ import KitBulkLocationUpdateDialog from "./bulk-location-update-dialog";
 import BulkReleaseCustodyDialog from "./bulk-release-custody-dialog";
 import KitsBulkStartAuditDialog from "./bulk-start-audit-dialog";
 import { BulkUpdateDialogTrigger } from "../bulk-update-dialog/bulk-update-dialog";
+import Icon from "../icons/icon"; // labels feature
 import { ChevronRight } from "../icons/library";
 import { Button } from "../shared/button";
 import {
@@ -54,6 +56,8 @@ export default function BulkActionsDropdown() {
 
 function ConditionalDropdown() {
   const { custodyEnabled, auditsEnabled } = useCustomisations(); // customise feature
+  const { labelsEnabled } = useCustomisations(); // labels feature
+  const printSelectedBoxes = usePrintSelectedBoxes(); // labels feature
   const {
     ref: dropdownRef,
     defaultApplied,
@@ -191,6 +195,27 @@ function ConditionalDropdown() {
           ref={dropdownRef}
         >
           <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-[180px] md:rounded-t-[4px]">
+            {labelsEnabled ? ( // labels feature
+              <DropdownMenuItem
+                className="border-b px-4 py-1 md:p-0"
+                onClick={() => {
+                  closeMenu();
+                  printSelectedBoxes.print();
+                }}
+                disabled={printSelectedBoxes.isPrinting}
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
+                  width="full"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon icon="print" /> Print labels
+                  </span>
+                </Button>
+              </DropdownMenuItem>
+            ) : null}
             <When
               truthy={
                 auditsEnabled /* customise feature */ &&

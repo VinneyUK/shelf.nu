@@ -1,9 +1,14 @@
+import { useEffect } from "react"; // labels feature
 import { useState } from "react";
 import type { Prisma } from "@prisma/client";
 import { MapPinIcon } from "lucide-react";
-import { useLoaderData } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { StartAuditFromContextDialog } from "~/components/audit/start-audit-from-context-dialog";
+import {
+  labelledLookup,
+  useLabelledAt,
+} from "~/components/labels/labelled-badge"; // labels feature
 import { useControlledDropdownMenu } from "~/hooks/use-controlled-dropdown-menu";
 import { useUserData } from "~/hooks/use-user-data";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -56,6 +61,14 @@ export default function ActionsDropdown({
 function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
   const { custodyEnabled, auditsEnabled } = useCustomisations(); // customise feature
   const { kit } = useLoaderData<typeof loader>();
+  // labels feature
+  const { labelsEnabled } = useCustomisations();
+  const boxLabelledAt = useLabelledAt(kit.id);
+  const labelFetcher = useFetcher<{ success?: boolean }>();
+  useEffect(() => {
+    if (labelFetcher.state === "idle" && labelFetcher.data?.success)
+      void labelledLookup.refresh();
+  }, [labelFetcher.state, labelFetcher.data]);
   const kitCanBeReleased = kit.custody;
   const kitIsCheckedOut = kit.status === "CHECKED_OUT";
 
@@ -281,6 +294,52 @@ function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
                 </Button>
               </DropdownMenuItem>
 
+              {/* labels feature: a box label */}
+              {labelsEnabled ? (
+                <DropdownMenuItem className="border-b px-4 py-1 md:p-0">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
+                    width="full"
+                    onClick={() =>
+                      void labelFetcher.submit(
+                        {
+                          "kitIds[0]": kit.id,
+                          intent: "print",
+                          source: "asset",
+                        },
+                        { method: "post", action: "/api/labels/print" }
+                      )
+                    }
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon icon="print" />{" "}
+                      {boxLabelledAt ? "Print label again" : "Print label"}
+                    </span>
+                  </Button>
+                </DropdownMenuItem>
+              ) : null}
+              {labelsEnabled && boxLabelledAt ? (
+                <DropdownMenuItem className="border-b px-4 py-1 md:p-0">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
+                    width="full"
+                    onClick={() =>
+                      void labelFetcher.submit(
+                        { "kitIds[0]": kit.id, intent: "remove" },
+                        { method: "post", action: "/api/labels/print" }
+                      )
+                    }
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon icon="print" /> Remove label
+                    </span>
+                  </Button>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem
                 className="px-4 py-1 md:p-0"
                 onSelect={(e) => {
