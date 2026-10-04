@@ -94,7 +94,11 @@ export function AreaChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" className={className}>
+    <ResponsiveContainer
+      width="100%"
+      height="100%"
+      className={`reports-chart ${className ?? ""}`} // fork: dark theme flips the chart's fixed colours
+    >
       <RechartsAreaChart
         data={chartData}
         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

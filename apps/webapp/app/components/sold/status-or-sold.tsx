@@ -15,7 +15,7 @@ import { useSale } from "./use-sale";
 export function StatusOrSold(props: ComponentProps<typeof AssetStatusBadge>) {
   const sale = useSale(props.id);
   const organization = useCurrentOrganization();
-  if (!sale) return <AssetStatusBadge {...props} noDotWhenAvailable />;
+  if (!sale) return <AssetStatusBadge {...props} />;
 
   const when = new Date(`${sale.soldOn}T00:00:00`).toLocaleDateString(
     undefined,

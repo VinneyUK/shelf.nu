@@ -105,12 +105,48 @@ export const HOME_TILES: Tile[] = [
   },
 ];
 
-const SPAN_CLASS = {
+/** Written out in full so Tailwind sees every class. */
+const SPAN_CLASS: Record<number, string> = {
+  1: "md:col-span-1",
   2: "md:col-span-2",
   3: "md:col-span-3",
   4: "md:col-span-4",
+  5: "md:col-span-5",
   6: "md:col-span-6",
 };
+
+/**
+ * Lays tiles out in rows of `columns`, in order. A row that comes up short
+ * (because tiles were hidden or switched off) has its spare columns shared out
+ * from the left, so every row fills the width: [2, 3] becomes [3, 3], and a
+ * tile left on its own takes the whole row.
+ */
+export function packTiles<T extends { span: number }>(
+  tiles: T[],
+  columns = 6
+): { tile: T; span: number }[] {
+  const rows: { tile: T; span: number }[][] = [];
+  let row: { tile: T; span: number }[] = [];
+  let used = 0;
+  for (const tile of tiles) {
+    if (row.length && used + tile.span > columns) {
+      rows.push(row);
+      row = [];
+      used = 0;
+    }
+    row.push({ tile, span: tile.span });
+    used += tile.span;
+  }
+  if (row.length) rows.push(row);
+  for (const r of rows) {
+    let spare = columns - r.reduce((n, cell) => n + cell.span, 0);
+    for (let i = 0; spare > 0; i = (i + 1) % r.length) {
+      r[i].span += 1;
+      spare -= 1;
+    }
+  }
+  return rows.flat();
+}
 
 /** Saved order first, then any tiles added since, in Shelf's order. */
 export function orderedTiles(order: string[], tiles: Tile[] = HOME_TILES) {
@@ -203,11 +239,11 @@ export function HomeDashboard({ initial }: { initial: HomeLayoutState }) {
       ) : null}
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-6">
-        {visible.map((tile, i) => (
+        {packTiles(visible).map(({ tile, span }, i) => (
           <div
             key={tile.id}
             className={tw(
-              SPAN_CLASS[tile.span],
+              SPAN_CLASS[span],
               editing && "rounded-lg border-2 border-dashed border-gray-300"
             )}
           >

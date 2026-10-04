@@ -39,5 +39,4 @@ export const VOCABULARY_SKIP_SELECTOR = [
   "[contenteditable]",
   "[data-vocabulary-skip]",
   'a[href^="/assets/"]', // asset names in lists
-  'a[href^="/kits/"] .font-medium', // kit names in lists
 ].join(",");

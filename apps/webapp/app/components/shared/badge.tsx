@@ -33,6 +33,7 @@ export const Badge = ({
 
   return (
     <span
+      data-badge // fork: lets the dark theme flip user-chosen badge colours
       style={{
         backgroundColor: !noBg ? finalBgColor : undefined,
         color: finalTextColor,

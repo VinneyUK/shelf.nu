@@ -28,32 +28,31 @@ const asset: QuantityAwareAsset = {
 const hasDot = (container: HTMLElement) =>
   container.querySelector(".size-1\\.5") !== null;
 
-describe("AssetStatusBadge noDotWhenAvailable", () => {
-  it("keeps the dot by default", () => {
+describe("Available has no green dot, on every page", () => {
+  it("drops the dot from Available by default", () => {
     const { container } = render(
       <AssetStatusBadge
         id="a"
         status="AVAILABLE"
         availableToBook
         asset={asset}
-      />
-    );
-    expect(screen.getByText("Available")).toBeTruthy();
-    expect(hasDot(container)).toBe(true);
-  });
-
-  it("drops the dot from Available when asked", () => {
-    const { container } = render(
-      <AssetStatusBadge
-        id="a"
-        status="AVAILABLE"
-        availableToBook
-        asset={asset}
-        noDotWhenAvailable
       />
     );
     expect(screen.getByText("Available")).toBeTruthy();
     expect(hasDot(container)).toBe(false);
+  });
+
+  it("can be switched back on", () => {
+    const { container } = render(
+      <AssetStatusBadge
+        id="a"
+        status="AVAILABLE"
+        availableToBook
+        asset={asset}
+        noDotWhenAvailable={false}
+      />
+    );
+    expect(hasDot(container)).toBe(true);
   });
 
   it("leaves other statuses' dots alone", () => {
@@ -63,7 +62,6 @@ describe("AssetStatusBadge noDotWhenAvailable", () => {
         status="CHECKED_OUT"
         availableToBook
         asset={asset}
-        noDotWhenAvailable
       />
     );
     expect(hasDot(container)).toBe(true);

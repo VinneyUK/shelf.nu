@@ -78,7 +78,12 @@ export function KitStatusBadge({
   const colors = kitStatusColorMap(status);
   return (
     <div className="flex items-center gap-[6px]">
-      <Badge color={colors.bg} textColor={colors.text}>
+      {/* fork: "Available" has no green dot, as on assets */}
+      <Badge
+        color={colors.bg}
+        textColor={colors.text}
+        withDot={userFriendlyKitStatus(status) !== "Available"}
+      >
         {userFriendlyKitStatus(status)}
       </Badge>
       {!availableToBook && (

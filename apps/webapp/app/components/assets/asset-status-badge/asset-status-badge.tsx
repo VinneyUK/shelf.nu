@@ -47,12 +47,12 @@ export function AssetStatusBadge({
   suppressQtyAware = false,
   availableToBook = true,
   asset,
-  noDotWhenAvailable = false,
+  noDotWhenAvailable = true,
 }: {
   id: string;
   status: ExtendedAssetStatus;
   availableToBook: boolean;
-  /** Fork: show "Available" as plain text, without its green dot */
+  /** Fork: "Available" is shown without its green dot, on every page. Pass false to bring it back. */
   noDotWhenAvailable?: boolean;
   /**
    * Booking-row escape hatch for the qty-aware treatment. When `true`

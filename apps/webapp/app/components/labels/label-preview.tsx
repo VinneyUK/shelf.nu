@@ -58,7 +58,13 @@ export function LabelPreview({
         "relative shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white text-gray-900 shadow-sm",
         className
       )}
-      style={{ width: px(settings.labelWidth), height: px(LABEL_HEIGHT) }}
+      data-keep-light
+      style={{
+        width: px(settings.labelWidth),
+        height: px(LABEL_HEIGHT),
+        backgroundColor: "#ffffff",
+        color: "#101828",
+      }}
     >
       <svg
         viewBox={`0 0 ${qr.size} ${qr.size}`}

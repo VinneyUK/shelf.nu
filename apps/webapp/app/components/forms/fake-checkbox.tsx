@@ -12,6 +12,7 @@ export const FakeCheckbox = ({
 }: FakeCheckboxProps) =>
   checked ? (
     <svg
+      data-fake-checkbox="on"
       width="20"
       height="20"
       viewBox="0 0 20 20"
@@ -38,6 +39,7 @@ export const FakeCheckbox = ({
     </svg>
   ) : (
     <svg
+      data-fake-checkbox="off"
       width="20"
       height="20"
       viewBox="0 0 20 20"
