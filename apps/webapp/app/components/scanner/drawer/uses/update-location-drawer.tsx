@@ -419,7 +419,7 @@ function SubmissionState({
         </span>
         <div className="font-mono">
           
-          Assets/box successfully added to place
+          Assets/kit successfully added to place
         </div>
       </div>
     );
@@ -428,7 +428,7 @@ function SubmissionState({
       <div>
         <div className="flex flex-row items-center gap-2 text-left">
           <CircleX className="size-[18px] text-error-500" />
-          <div className="font-mono">Failed to add assets/box to place</div>
+          <div className="font-mono">Failed to add assets/kit to place</div>
         </div>
         {errorMessage && (
           <span className="text-[12px] text-error-500">

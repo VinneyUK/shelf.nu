@@ -48,7 +48,7 @@ export function CodePreviewDialog({
     sequentialId?: string | null;
     showShelfBranding?: boolean;
   }>({
-    api: `/api/${item.type === "asset" ? "assets" : "boxes"}/${
+    api: `/api/${item.type === "asset" ? "assets" : "kits"}/${
       item.id
     }/generate-code-obj`,
     enabled: isDialogOpen,

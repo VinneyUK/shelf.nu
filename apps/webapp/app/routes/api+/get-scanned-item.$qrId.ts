@@ -344,7 +344,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
       payload({
         qr: {
           ...qr,
-          type: qr.asset ? "asset" : qr.kit ? "box" : undefined,
+          type: qr.asset ? "asset" : qr.kit ? "kit" : undefined,
           asset: qr.asset
             ? await serializeScannedAsset({
                 asset: qr.asset,

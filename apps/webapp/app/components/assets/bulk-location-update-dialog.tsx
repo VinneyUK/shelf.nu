@@ -42,9 +42,9 @@ export default function BulkLocationUpdateDialog() {
             <div className="mb-4">
               <WarningBox>
                 <span>
-                  {quantityTrackedCount}  quantity-tracked asset(s) in your
+                  {quantityTrackedCount} quantity-tracked asset(s) in your
                   selection will be skipped. Quantity-tracked assets must have
-                  their placements managed individually with a per-place
+                  their placements managed individually with a per-location
                   quantity.
                 </span>
               </WarningBox>

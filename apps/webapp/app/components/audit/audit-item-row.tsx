@@ -218,7 +218,7 @@ export function AuditItemRow({
               )}
               <div className="flex flex-wrap items-center gap-1">
                 <span className={assetTypeBadgeClass}>
-                  {itemType === "asset" ? "asset" : "box"}
+                  {itemType === "asset" ? "asset" : "kit"}
                 </span>
                 <AuditLabels />
                 {/* Action buttons for notes and images */}

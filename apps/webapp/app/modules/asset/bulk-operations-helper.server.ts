@@ -35,7 +35,7 @@ export function buildAdvancedFilteredAssetIdsQuery(
     FROM public."Asset" a
     LEFT JOIN public."Category" c ON a."categoryId" = c.id
     -- Placement lives on the AssetLocation pivot (no Asset.locationId FK).
-    -- LATERAL primary-pick yields one place per asset so the search
+    -- LATERAL primary-pick yields one location per asset so the search
     -- clause's l.name reference resolves without row fan-out.
     LEFT JOIN LATERAL (
       SELECT l.id, l.name, l."parentId"

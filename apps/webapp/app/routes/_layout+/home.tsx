@@ -163,7 +163,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       >`
         SELECT date_trunc('month', "createdAt") AS month_start,
                COUNT(*)::int AS assets_created,
-               COALESCE(SUM("valuation" * COALESCE("quantity", 1)), 0)::float AS value_added
+               COALESCE(SUM("value" * COALESCE("quantity", 1)), 0)::float AS value_added
         FROM "Asset"
         WHERE "organizationId" = ${organizationId}
           AND "createdAt" >= ${twelveMonthsAgo}
@@ -384,13 +384,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const [valueSoldRows, baselineValue] = await Promise.all([
       db.$queryRaw<{ month_start: Date; value_sold: number }[]>`
         SELECT date_trunc('month', s."soldOn") AS month_start,
-               COALESCE(SUM(a."valuation" * COALESCE(a."quantity", 1)), 0)::float AS value_sold
+               COALESCE(SUM(a."value" * COALESCE(a."quantity", 1)), 0)::float AS value_sold
         FROM "AssetSale" s JOIN "Asset" a ON a.id = s."assetId"
         WHERE a."organizationId" = ${organizationId}
           AND s."soldOn" >= ${twelveMonthsAgo}
         GROUP BY 1`,
       db.$queryRaw<{ value: number }[]>`
-        SELECT COALESCE(SUM(a."valuation" * COALESCE(a."quantity", 1)), 0)::float AS value
+        SELECT COALESCE(SUM(a."value" * COALESCE(a."quantity", 1)), 0)::float AS value
         FROM "Asset" a
         LEFT JOIN "AssetSale" s ON s."assetId" = a.id
         WHERE a."organizationId" = ${organizationId}

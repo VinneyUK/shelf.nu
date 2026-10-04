@@ -593,7 +593,7 @@ function SubmissionState({
           <CheckmarkIcon />
         </span>
         <div className="font-mono">
-          {type === "asset" ? "Assets" : "Boxes"} have been released from custody
+          {type === "asset" ? "Assets" : "Kits"} have been released from custody
         </div>
       </div>
     );

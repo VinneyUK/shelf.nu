@@ -226,7 +226,7 @@ export default function LocationsBulkStartAuditDialog() {
                 
                 The audit will include every asset directly assigned to the
                 selected place{displayCount === 1 ? "" : "s"}. Assets in
-                sub-places aren&apos;t included.
+                sub-locations aren&apos;t included.
               </p>
             </div>
           </div>

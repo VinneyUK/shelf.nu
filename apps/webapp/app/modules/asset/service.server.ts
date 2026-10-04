@@ -6722,7 +6722,7 @@ export async function bulkUpdateAssetLocation({
       throw new ShelfError({
         cause: null,
         message:
-          "All selected assets are quantity-tracked. Quantity-tracked assets must have their placements managed individually with a per-place quantity.",
+          "All selected assets are quantity-tracked. Quantity-tracked assets must have their placements managed individually with a per-location quantity.",
         additionalData: {
           userId,
           organizationId,

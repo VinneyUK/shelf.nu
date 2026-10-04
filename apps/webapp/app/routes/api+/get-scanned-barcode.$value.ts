@@ -235,7 +235,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
       payload({
         barcode: {
           ...barcode,
-          type: barcode.asset ? "asset" : barcode.kit ? "box" : undefined,
+          type: barcode.asset ? "asset" : barcode.kit ? "kit" : undefined,
           asset: barcode.asset
             ? {
                 // Collapse the model-image cascade into the flat image

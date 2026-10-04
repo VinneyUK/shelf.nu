@@ -185,8 +185,7 @@ export default function QrLink() {
                 className=" max-w-full"
                 to={`/qr/${qrId}/link/asset`}
               >
-                
-                Link to existing asset/box
+                Link to existing asset/kit
               </Button>
 
               <Button variant="secondary" className="max-w-full" to={"/"}>

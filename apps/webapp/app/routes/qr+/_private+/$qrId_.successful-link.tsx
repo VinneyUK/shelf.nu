@@ -106,7 +106,7 @@ export default function QrSuccessfullLink() {
         </p>
         <div className="mt-8 flex w-full flex-col gap-3">
           <Button
-            to={`/${type === "asset" ? "assets" : "boxes"}/${item.id}`}
+            to={`/${type === "asset" ? "assets" : "kits"}/${item.id}`}
             width="full"
             variant="secondary"
           >
