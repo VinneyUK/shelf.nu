@@ -76,6 +76,7 @@ import {
 } from "~/modules/location/service.server";
 import { createLoadUserForNotes } from "~/modules/note/load-user-for-notes.server";
 import { getQr, parseQrCodesFromImportData } from "~/modules/qr/service.server";
+import { SOLD_STATUS } from "~/modules/sold/constants"; // sold feature
 import { createTagsIfNotExists } from "~/modules/tag/service.server";
 import {
   createTeamMemberIfNotExists,
@@ -684,7 +685,23 @@ export async function getAssets(params: {
       }
     }
 
-    if (status) {
+    // sold feature: "Sold" is a status in the list's filter; "Available" means not sold
+    const andSold = (clause: Prisma.AssetWhereInput) => {
+      where.AND = [
+        ...(Array.isArray(where.AND)
+          ? where.AND
+          : where.AND
+          ? [where.AND]
+          : []),
+        clause,
+      ];
+    };
+    if ((status as string) === SOLD_STATUS) {
+      andSold({ sale: { isNot: null } });
+    } else if (status === AssetStatus.AVAILABLE) {
+      andSold({ sale: null });
+    }
+    if (status && (status as string) !== SOLD_STATUS) {
       // why: Asset.status flips to IN_CUSTODY/CHECKED_OUT for QUANTITY_TRACKED
       // assets as soon as ANY unit is allocated, even if other units remain
       // available. Filtering with `where.status = AVAILABLE` would incorrectly

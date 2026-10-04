@@ -4,3 +4,6 @@ export const SOLD_FIELDS = {
   soldOn: "forkSoldOn",
   price: "forkSoldPrice",
 } as const;
+
+/** The "SOLD" value the status filters accept alongside Shelf's statuses. */
+export const SOLD_STATUS = "SOLD";

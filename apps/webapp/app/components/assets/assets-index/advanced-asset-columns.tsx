@@ -11,6 +11,9 @@ import {
 import { Link, useLoaderData } from "react-router";
 import { AttachmentCountCell } from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { EventCardContent } from "~/components/calendar/event-card";
+import { InlineCell } from "~/components/inline-edit/inline-cell"; // inline editing
+import { InlineStatusCell } from "~/components/inline-edit/inline-status-cell"; // inline editing
+import { LabelledCell } from "~/components/labels/labelled-badge"; // labels feature
 import LineBreakText from "~/components/layout/line-break-text";
 import { LocationBadge } from "~/components/location/location-badge";
 import { MarkdownViewer } from "~/components/markdown/markdown-viewer";
@@ -226,17 +229,27 @@ export function AdvancedIndexColumn({
       );
 
     case "status":
+      // inline editing: Available or Sold; anything else is changed from the asset's page
       return (
-        <StatusColumn
-          id={item.id}
-          status={item.status}
-          availableToBook={item.availableToBook}
-          asset={item}
-        />
+        <Td className="w-full max-w-none whitespace-nowrap">
+          <InlineStatusCell assetId={item.id} status={item.status}>
+            <StatusOrSold
+              id={item.id}
+              status={item.status}
+              availableToBook={item.availableToBook}
+              asset={item}
+            />
+          </InlineStatusCell>
+        </Td>
       );
 
     case "description":
-      return <DescriptionColumn value={item.description ?? ""} />;
+      return (
+        <DescriptionColumn
+          value={item.description ?? ""}
+          edit={{ assetId: item.id }} // inline editing
+        />
+      );
 
     case "valuation": {
       // Quantity-aware: render TOTAL (valuation × quantity) on top, with a
@@ -247,7 +260,12 @@ export function AdvancedIndexColumn({
       if (item?.valuation == null) {
         return (
           <Td className="w-full max-w-none whitespace-nowrap">
-            <EmptyTableValue />
+            <InlineCell
+              assetId={item.id}
+              current={{ field: "valuation", value: null }}
+            >
+              <EmptyTableValue />
+            </InlineCell>
             <SoldPriceLine
               assetId={item.id}
               currency={currentOrganization.currency}
@@ -264,16 +282,21 @@ export function AdvancedIndexColumn({
 
       return (
         <Td className="w-full max-w-none whitespace-nowrap">
-          {breakdown.unit && breakdown.suffix ? (
-            <div className="flex flex-col leading-tight">
+          <InlineCell
+            assetId={item.id}
+            current={{ field: "valuation", value: item.valuation }}
+          >
+            {breakdown.unit && breakdown.suffix ? (
+              <div className="flex flex-col leading-tight">
+                <span className="tabular-nums">{breakdown.total}</span>
+                <span className="text-xs tabular-nums text-gray-500">
+                  {breakdown.unit} {breakdown.suffix}
+                </span>
+              </div>
+            ) : (
               <span className="tabular-nums">{breakdown.total}</span>
-              <span className="text-xs tabular-nums text-gray-500">
-                {breakdown.unit} {breakdown.suffix}
-              </span>
-            </div>
-          ) : (
-            <span className="tabular-nums">{breakdown.total}</span>
-          )}
+            )}
+          </InlineCell>
           {/* sold feature: what it sold for, under the value */}
           <SoldPriceLine
             assetId={item.id}
@@ -290,16 +313,39 @@ export function AdvancedIndexColumn({
       return <DateColumn value={item.updatedAt} includeTime />;
 
     case "category":
-      return <CategoryColumn category={item.category} />;
+      return (
+        <Td className="w-full max-w-none whitespace-nowrap">
+          <InlineCell
+            assetId={item.id}
+            current={{ field: "category", value: item.category?.id ?? null }}
+          >
+            <CategoryBadge category={item.category} />
+          </InlineCell>
+        </Td>
+      );
 
     case "tags":
-      return <TagsColumn tags={item.tags} />;
+      return (
+        <Td className="text-left">
+          <InlineCell
+            assetId={item.id}
+            current={{ field: "tags", value: item.tags.map((t) => t.id) }}
+          >
+            <ListItemTagsColumn tags={item.tags} />
+          </InlineCell>
+        </Td>
+      );
 
     case "location":
-      return <LocationColumn locations={item.locations} />;
+      return (
+        <LocationColumn
+          locations={item.locations}
+          edit={{ assetId: item.id, disabled: isQuantityTracked(item) }} // inline editing
+        />
+      );
 
     case "kit":
-      return <KitColumn kits={item.kits} />;
+      return <KitColumn kits={item.kits} edit={{ assetId: item.id }} />; // inline editing
 
     case "custody":
       return <CustodyColumn custody={item.custody} />;
@@ -309,6 +355,9 @@ export function AdvancedIndexColumn({
 
     case "attachments": // attachments feature
       return <AttachmentCountCell assetId={item.id} />;
+
+    case "labelled": // labels feature
+      return <LabelledCell assetId={item.id} />;
 
     case "upcomingReminder":
       return (
@@ -361,10 +410,19 @@ export function AdvancedIndexColumn({
     case "quantity":
       return (
         <Td className="w-full max-w-none whitespace-nowrap">
-          {isQuantityTracked(item) && item.quantity != null ? (
-            `${item.quantity}${
-              item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""
-            }`
+          {isQuantityTracked(item) ? (
+            <InlineCell
+              assetId={item.id}
+              current={{ field: "quantity", value: item.quantity ?? null }}
+            >
+              {item.quantity != null ? (
+                `${item.quantity}${
+                  item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""
+                }`
+              ) : (
+                <EmptyTableValue />
+              )}
+            </InlineCell>
           ) : (
             <EmptyTableValue />
           )}
@@ -460,34 +518,57 @@ function StatusColumn({
  * the full markdown-rendered content inside a tooltip on hover.
  * Description column component - exported for reuse in other index pages
  */
-export function DescriptionColumn({ value }: { value: string }) {
+export function DescriptionColumn({
+  value,
+  edit,
+}: {
+  value: string;
+  /** inline editing: when given, the cell can be clicked to edit */
+  edit?: { assetId: string };
+}) {
+  const wrap = (node: ReactNode) =>
+    edit ? (
+      <InlineCell
+        assetId={edit.assetId}
+        current={{ field: "description", value }}
+        className="max-w-full"
+      >
+        {node}
+      </InlineCell>
+    ) : (
+      node
+    );
   const plainPreview = cleanMarkdownFormatting(value ?? "");
   const hasContent = Boolean(value && value.trim().length > 0);
   const previewText = plainPreview.length > 0 ? plainPreview : value.trim();
 
   return (
     <Td className="max-w-62 min-w-60 whitespace-pre-wrap">
-      {!hasContent ? (
-        <EmptyTableValue />
-      ) : (plainPreview || value).length > 60 ? (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger className="text-left">
-              <LineBreakText text={previewText} charactersPerLine={28} />
-            </TooltipTrigger>
+      {wrap(
+        <>
+          {!hasContent ? (
+            <EmptyTableValue />
+          ) : (plainPreview || value).length > 60 ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger className="text-left">
+                  <LineBreakText text={previewText} charactersPerLine={28} />
+                </TooltipTrigger>
 
-            <TooltipContent side="top" className="max-w-[400px]">
-              <h5>Asset description</h5>
-              {/* No `allowExternalLinks`: descriptions are authored in a plain
+                <TooltipContent side="top" className="max-w-[400px]">
+                  <h5>Asset description</h5>
+                  {/* No `allowExternalLinks`: descriptions are authored in a plain
                   textarea and rendered as plain text on the asset page, so
                   they are not a markdown surface. Links here would also be
                   unreachable — Radix tooltip content is not interactive. */}
-              <MarkdownViewer content={value} className="mt-2 text-sm" />
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ) : (
-        <span>{previewText}</span>
+                  <MarkdownViewer content={value} className="mt-2 text-sm" />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span>{previewText}</span>
+          )}
+        </>
       )}
     </Td>
   );
@@ -652,15 +733,32 @@ function CustodyColumnContent({
  * listing every kit name on its own line. Mirrors `CustodyColumn` so
  * the asset-index never silently hides kit membership 2..N.
  */
-export function KitColumn({ kits }: { kits: AdvancedIndexAsset["kits"] }) {
+export function KitColumn({
+  kits,
+  edit,
+}: {
+  kits: AdvancedIndexAsset["kits"];
+  /** inline editing: when given, the cell can be clicked to change the box */
+  edit?: { assetId: string };
+}) {
   const { primary, others } = formatCustodyList(kits);
+  const content = !primary ? (
+    <EmptyTableValue />
+  ) : (
+    <KitColumnContent primary={primary} others={others} />
+  );
 
   return (
     <Td>
-      {!primary ? (
-        <EmptyTableValue />
+      {edit ? (
+        <InlineCell
+          assetId={edit.assetId}
+          current={{ field: "box", value: primary?.id ?? null }}
+        >
+          {content}
+        </InlineCell>
       ) : (
-        <KitColumnContent primary={primary} others={others} />
+        content
       )}
     </Td>
   );
@@ -730,17 +828,31 @@ function KitColumnContent({
  */
 export function LocationColumn({
   locations,
+  edit,
 }: {
   locations: AdvancedIndexAsset["locations"];
+  /** inline editing: when given (and not a quantity asset), click to change the location */
+  edit?: { assetId: string; disabled?: boolean };
 }) {
   const { primary, others } = formatCustodyList(locations);
+  const content = !primary ? (
+    <EmptyTableValue />
+  ) : (
+    <LocationColumnContent primary={primary} others={others} />
+  );
 
   return (
     <Td>
-      {!primary ? (
-        <EmptyTableValue />
+      {edit ? (
+        <InlineCell
+          assetId={edit.assetId}
+          current={{ field: "location", value: primary?.id ?? null }}
+          disabled={edit.disabled}
+        >
+          {content}
+        </InlineCell>
       ) : (
-        <LocationColumnContent primary={primary} others={others} />
+        content
       )}
     </Td>
   );

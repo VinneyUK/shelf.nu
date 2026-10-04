@@ -30,6 +30,7 @@ import {
   resolvePlannedEnd,
   resolvePlannedStart,
 } from "~/modules/booking/lateness";
+import { getWorkspaceCustomisations } from "~/modules/customisation/service.server"; // fork
 import { getAssetTotalValue } from "~/utils/asset-value";
 import { formatCurrency } from "~/utils/currency";
 import { ShelfError } from "~/utils/error";
@@ -4221,6 +4222,27 @@ interface AssetActivityArgs {
  * @param args - Report parameters
  * @returns Complete report payload
  */
+/** Fork: at most this many events and notes are merged for the report window. */
+const MERGED_HISTORY_CAP = 5000;
+/** Fork: the phrases `addAssetActivity` writes (modules/activity), used to find its notes. */
+const FORK_ACTIVITY_PHRASES = [
+  "marked this asset as sold",
+  "marked this asset as not sold",
+  "printed a label",
+  "removed the label",
+  "attached **",
+  "deleted the attachment",
+  "from an emailed receipt",
+];
+/** "[Ant](/link) printed a **label**." → "printed a label." */
+function plainNoteText(content: string) {
+  return content
+    .replace(/^\[[^\]]*\]\([^)]*\)\s*/, "")
+    .replace(/^\*\*Shelf\*\*\s*/, "")
+    .replace(/\*\*/g, "")
+    .trim();
+}
+
 export async function assetActivityReport(
   args: AssetActivityArgs
 ): Promise<ReportPayload<AssetActivityRow>> {
@@ -4276,23 +4298,81 @@ export async function assetActivityReport(
     }
 
     // Fetch activity events
-    const [events, totalCount] = await Promise.all([
+    // Fork: switched-off features leave no trace in the report either
+    const customisations = await getWorkspaceCustomisations(organizationId, {
+      auditsEnabled: null,
+    });
+    const switchedOff = new Set<ActivityAction>([
+      ...(customisations.custodyEnabled
+        ? []
+        : (["CUSTODY_ASSIGNED", "CUSTODY_RELEASED"] as ActivityAction[])),
+      ...(customisations.bookingsEnabled
+        ? []
+        : (["BOOKING_CHECKED_OUT", "BOOKING_CHECKED_IN"] as ActivityAction[])),
+    ]);
+    where.action = { in: assetActions.filter((a) => !switchedOff.has(a)) };
+
+    // Fork: the fork's own activity (sold, labels, attachments, emailed
+    // receipts) lives in asset notes, not ActivityEvent. Both are fetched for
+    // the window, merged, and paged here; a home inventory's history is small.
+    const [rawEvents, forkNotes] = await Promise.all([
       db.activityEvent.findMany({
         where,
-        // `id` tiebreaker keeps skip/take paging deterministic for events
-        // sharing an `occurredAt` (bulk mutations emit same-instant events).
         orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: MERGED_HISTORY_CAP,
       }),
-      db.activityEvent.count({ where }),
+      db.note.findMany({
+        where: {
+          type: "UPDATE",
+          createdAt: { gte: timeframe.from, lte: timeframe.to },
+          asset: { organizationId, ...(assetId ? { id: assetId } : {}) },
+          OR: FORK_ACTIVITY_PHRASES.map((phrase) => ({
+            content: { contains: phrase },
+          })),
+        },
+        select: {
+          id: true,
+          assetId: true,
+          content: true,
+          createdAt: true,
+          user: {
+            select: { firstName: true, lastName: true, displayName: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: MERGED_HISTORY_CAP,
+      }),
     ]);
+    type Merged =
+      | { kind: "event"; at: Date; event: (typeof rawEvents)[number] }
+      | { kind: "note"; at: Date; note: (typeof forkNotes)[number] };
+    const merged: Merged[] = [
+      ...rawEvents.map((event) => ({
+        kind: "event" as const,
+        at: event.occurredAt,
+        event,
+      })),
+      ...forkNotes.map((note) => ({
+        kind: "note" as const,
+        at: note.createdAt,
+        note,
+      })),
+    ].sort((a, b) => b.at.getTime() - a.at.getTime());
+    const totalCount = merged.length;
+    const pageItems = merged.slice((page - 1) * pageSize, page * pageSize);
+    const events = pageItems.flatMap((i) =>
+      i.kind === "event" ? [i.event] : []
+    );
 
     // Get asset details for the events. `mainImage`, `mainImageExpiration`,
     // `organizationId` are selected so we can pipe assets through
     // `refreshExpiredAssetImages` below without an extra round-trip.
     const assetIds = [
-      ...new Set(events.map((e) => e.assetId).filter(Boolean)),
+      ...new Set(
+        pageItems
+          .map((i) => (i.kind === "event" ? i.event.assetId : i.note.assetId))
+          .filter(Boolean)
+      ),
     ] as string[];
     const assets = await db.asset.findMany({
       where: { id: { in: assetIds }, organizationId },
@@ -4311,7 +4391,27 @@ export async function assetActivityReport(
     const assetMap = new Map(refreshedAssets.map((a) => [a.id, a]));
 
     // Map events to rows
-    const rows: AssetActivityRow[] = events.map((event) => {
+    const rows: AssetActivityRow[] = pageItems.map((item) => {
+      if (item.kind === "note") {
+        const { note } = item;
+        const asset = note.assetId ? assetMap.get(note.assetId) : null;
+        return {
+          id: note.id,
+          assetId: note.assetId || "",
+          assetName: asset?.title || "Unknown Asset",
+          thumbnailImage: asset?.thumbnailImage || null,
+          mainImage: asset?.mainImage || null,
+          assetModel: asset?.assetModel ?? null,
+          activityType: "UPDATED" as const,
+          description: plainNoteText(note.content),
+          occurredAt: note.createdAt,
+          performedBy: note.user
+            ? stripNameSuffix(resolveUserDisplayName(note.user))
+            : null,
+          context: null,
+        };
+      }
+      const { event } = item;
       const asset = event.assetId ? assetMap.get(event.assetId) : null;
       const actorSnapshot = event.actorSnapshot as UserNameFields | null;
 

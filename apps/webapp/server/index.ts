@@ -18,6 +18,7 @@ import {
   refreshSession,
   urlShortener,
 } from "./middleware";
+import { openAccess } from "./open-access"; // fork
 import {
   appLoaderRateLimit,
   calendarFeedRateLimit,
@@ -200,6 +201,9 @@ export default createHonoServer<ServerEnv>({
      * Add refresh session middleware
      *
      */
+    /** Fork: open access signs every visitor in as one user (SHELF_OPEN_ACCESS_USER) */
+    server.use("*", openAccess());
+
     server.use("*", refreshSession());
 
     /**

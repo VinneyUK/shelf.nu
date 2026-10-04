@@ -216,6 +216,8 @@ export type AdvancedIndexAsset = Pick<
   | "consumptionType"
   | "availableToBook"
 > & {
+  /** labels feature: a label is printed and not removed (worked out in SQL) */
+  labelled?: boolean;
   qrId: string; // QR code will always be available
   assetModelId?: string | null;
   assetModelName?: string | null;

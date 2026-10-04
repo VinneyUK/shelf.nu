@@ -103,6 +103,7 @@ export const fixedFields = [
   "upcomingBookings",
   "assetModel",
   "attachments", // attachments feature
+  "labelled", // labels feature
 ] as const;
 
 // Define barcode field names
@@ -168,6 +169,7 @@ export const columnsLabelsMap: { [key in ColumnLabelKey]: string } = {
   upcomingBookings: "Upcoming Bookings",
   assetModel: "Asset model",
   attachments: "Attachments", // attachments feature
+  labelled: "Labelled", // labels feature
 };
 
 export const defaultFields: Column[] = [
@@ -193,6 +195,7 @@ export const defaultFields: Column[] = [
   { name: "assetModel", visible: false, position: 19 },
   { name: "minQuantity", visible: false, position: 20 },
   { name: "attachments", visible: true, position: 21 }, // attachments feature
+  { name: "labelled", visible: false, position: 22 }, // labels feature
 ];
 
 // Generate barcode columns when barcodes are enabled

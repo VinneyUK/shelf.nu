@@ -761,6 +761,9 @@ export const buildCsvExportDataFromAssets = ({
           case "assetModel":
             value = asset.assetModelName ?? "";
             break;
+          case "labelled": // labels feature
+            value = asset.labelled ? "Yes" : "No";
+            break;
           case "actions":
           case "attachments": // attachments feature: on-screen only
             value = "";

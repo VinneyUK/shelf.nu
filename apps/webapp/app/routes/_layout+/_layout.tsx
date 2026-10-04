@@ -60,6 +60,7 @@ import {
   setCookie,
   userPrefs,
 } from "~/utils/cookies.server";
+import { OPEN_ACCESS_USER } from "~/utils/env"; // fork
 import { isLikeShelfError, makeShelfError, ShelfError } from "~/utils/error";
 import { isRouteError } from "~/utils/http";
 import { payload, error } from "~/utils/http.server";
@@ -260,7 +261,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         isAdmin,
         canUseBookings: canUseBookings(currentOrganization),
         canUseAudits: canUseAudits(currentOrganization),
-        customisations, // customise feature
+        customisations,
+        openAccess: Boolean(OPEN_ACCESS_USER), // fork // customise feature
         unreadUpdatesCount,
         hasUnpaidInvoice: user.hasUnpaidInvoice,
         warnForNoPaymentMethod: user.warnForNoPaymentMethod,

@@ -157,6 +157,7 @@ export async function getAssetIndexSettings({
         locationsEnabled: true,
         kitsEnabled: true,
         assetModelsEnabled: true,
+        labelsEnabled: true,
       },
     });
     return customisation

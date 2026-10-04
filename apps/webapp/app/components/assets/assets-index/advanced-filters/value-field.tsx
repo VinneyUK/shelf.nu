@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "~/components/shared/tooltip";
 import { useFormatPrefs } from "~/hooks/use-format-prefs";
+import { SOLD_STATUS } from "~/modules/sold/constants";
 import type { AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import {
   adjustDateToUserTimezone,
@@ -882,10 +883,13 @@ function StatusEnumField({
   name,
   disabled = false,
 }: Omit<EnumFieldProps, "options">) {
-  const options: EnumOption[] = Object.values(AssetStatus).map((status) => ({
-    id: status,
-    label: userFriendlyAssetStatus(status),
-  }));
+  const options: EnumOption[] = [
+    ...Object.values(AssetStatus).map((status) => ({
+      id: status,
+      label: userFriendlyAssetStatus(status),
+    })),
+    { id: SOLD_STATUS, label: "Sold" }, // sold feature
+  ];
 
   return (
     <EnumField

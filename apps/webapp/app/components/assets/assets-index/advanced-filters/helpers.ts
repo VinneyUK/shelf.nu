@@ -78,6 +78,7 @@ export function getUIFieldType({
       fieldType = "number";
       break;
     case "availableToBook":
+    case "labelled": // labels feature
       fieldType = "boolean";
       break;
     case "createdAt":

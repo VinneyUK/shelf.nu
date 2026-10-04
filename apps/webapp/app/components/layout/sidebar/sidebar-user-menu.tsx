@@ -21,7 +21,7 @@ import {
 import { ThemeMenuItems } from "./theme-menu-items"; // fork
 
 export default function SidebarUserMenu() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, openAccess } = useLoaderData<typeof loader>(); // fork: openAccess
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isMobile } = useSidebar();
   const fetcher = useFetcher();
@@ -101,13 +101,15 @@ export default function SidebarUserMenu() {
                 Account settings
               </NavLink>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="mt-1 cursor-pointer gap-2 border-b border-gray-200 p-2"
-              onSelect={logOut}
-            >
-              <LogOutIcon className="size-4" />
-              Log Out
-            </DropdownMenuItem>
+            {openAccess ? null : ( // fork: no Log Out when access is open
+              <DropdownMenuItem
+                className="mt-1 cursor-pointer gap-2 border-b border-gray-200 p-2"
+                onSelect={logOut}
+              >
+                <LogOutIcon className="size-4" />
+                Log Out
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

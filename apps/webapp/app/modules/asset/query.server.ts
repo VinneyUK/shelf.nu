@@ -5,6 +5,11 @@ import type { BarcodeType } from "@prisma/client";
 
 import type { Filter } from "~/components/assets/assets-index/advanced-filters/schema";
 import { normalizeBarcodeValue } from "~/modules/barcode/validation";
+import {
+  ASSET_IS_LABELLED,
+  ASSET_IS_SOLD,
+  SOLD_STATUS,
+} from "~/modules/sold/sql.server"; // sold + labels features
 import { ShelfError } from "~/utils/error";
 import { Logger } from "~/utils/logger";
 import { isSafeSqlIdentifier } from "~/utils/sql";
@@ -408,6 +413,13 @@ function addNumberFilter(whereClause: Prisma.Sql, filter: Filter): Prisma.Sql {
 }
 
 function addBooleanFilter(whereClause: Prisma.Sql, filter: Filter): Prisma.Sql {
+  // labels feature: "labelled" is worked out from the print jobs
+  if (filter.name === "labelled") {
+    const wants = filter.value === true || filter.value === "true";
+    return wants
+      ? Prisma.sql`${whereClause} AND ${ASSET_IS_LABELLED}`
+      : Prisma.sql`${whereClause} AND NOT ${ASSET_IS_LABELLED}`;
+  }
   return Prisma.sql`${whereClause} AND a."${Prisma.raw(filter.name)}" = ${
     filter.value
   }`;
@@ -493,15 +505,33 @@ function addEnumFilter(whereClause: Prisma.Sql, filter: Filter): Prisma.Sql {
       case "is": {
         const trimmedValue =
           typeof filter.value === "string" ? filter.value.trim() : filter.value;
+        // sold feature: "Sold" is a status here, and "Available" means not sold
+        if (trimmedValue === SOLD_STATUS)
+          return Prisma.sql`${whereClause} AND ${ASSET_IS_SOLD}`;
+        if (trimmedValue === "AVAILABLE")
+          return Prisma.sql`${whereClause} AND a.status = 'AVAILABLE' AND NOT ${ASSET_IS_SOLD}`;
         return Prisma.sql`${whereClause} AND a.status = ${trimmedValue}::public."AssetStatus"`;
       }
       case "isNot": {
         const trimmedValue =
           typeof filter.value === "string" ? filter.value.trim() : filter.value;
+        if (trimmedValue === SOLD_STATUS)
+          return Prisma.sql`${whereClause} AND NOT ${ASSET_IS_SOLD}`;
         return Prisma.sql`${whereClause} AND a.status != ${trimmedValue}::public."AssetStatus"`;
       }
       case "containsAny": {
-        const values = (filter.value as string).split(",").map((v) => v.trim());
+        const all = (filter.value as string).split(",").map((v) => v.trim());
+        const wantsSold = all.includes(SOLD_STATUS);
+        const values = all.filter((v) => v !== SOLD_STATUS);
+        if (values.length === 0)
+          return Prisma.sql`${whereClause} AND ${ASSET_IS_SOLD}`;
+        if (wantsSold) {
+          const arr = Prisma.join(
+            values.map((v) => Prisma.sql`${v}`),
+            ", "
+          );
+          return Prisma.sql`${whereClause} AND (a.status = ANY(ARRAY[${arr}]::public."AssetStatus"[]) OR ${ASSET_IS_SOLD})`;
+        }
         const valuesArray = Prisma.join(
           values.map((v) => Prisma.sql`${v}`),
           ", "
@@ -1457,6 +1487,7 @@ type DirectAssetField =
   | "createdAt"
   | "updatedAt"
   | "availableToBook"
+  | "labelled"
   | "type"
   | "quantity"
   | "minQuantity";
@@ -1471,6 +1502,7 @@ const directAssetFields: Record<DirectAssetField, string> = {
   createdAt: "assetCreatedAt",
   updatedAt: "assetUpdatedAt",
   availableToBook: "assetAvailableToBook",
+  labelled: "assetLabelled", // labels feature
   type: "assetType",
   quantity: "assetQuantity",
   minQuantity: "assetMinQuantity",
@@ -2138,6 +2170,7 @@ export const assetQueryFragment = (options: AssetQueryOptions = {}) => {
       a."minQuantity" AS "assetMinQuantity",
       a."consumptionType" AS "assetConsumptionType",
       a."availableToBook" AS "assetAvailableToBook",
+      EXISTS (SELECT 1 FROM public."LabelPrintJob" j WHERE j."assetId" = a.id AND j.status = 'printed' AND j."labelRemovedAt" IS NULL) AS "assetLabelled", -- labels feature
       k.id AS "assetKitId",
       a."categoryId" AS "assetCategoryId",
       a."assetModelId" AS "assetModelId",
@@ -2466,6 +2499,7 @@ export const assetReturnFragment = (options: AssetReturnOptions = {}) => {
           'minQuantity', aq."assetMinQuantity",
           'consumptionType', aq."assetConsumptionType",
           'availableToBook', aq."assetAvailableToBook",
+          'labelled', aq."assetLabelled",
           'kitId', aq."assetKitId",
           'kit', CASE WHEN aq."kitId" IS NOT NULL THEN jsonb_build_object('id', aq."kitId", 'name', aq."kitName", 'status', aq."kitStatus") ELSE NULL END,
           'kits', COALESCE(aq.kits, '[]'::jsonb),

@@ -187,6 +187,7 @@ type FeatureFlags = Pick<
   | "locationsEnabled"
   | "kitsEnabled"
   | "assetModelsEnabled"
+  | "labelsEnabled"
 >;
 
 /** Assets list columns that only mean something with a feature switched on. */
@@ -195,6 +196,7 @@ const FEATURE_COLUMNS: Record<string, (c: FeatureFlags) => boolean> = {
   upcomingBookings: (c) => c.bookingsEnabled,
   upcomingReminder: (c) => c.remindersEnabled,
   custody: (c) => c.custodyEnabled,
+  labelled: (c) => c.labelsEnabled, // labels feature
   location: (c) => c.locationsEnabled,
   kit: (c) => c.kitsEnabled,
   assetModel: (c) => c.assetModelsEnabled,

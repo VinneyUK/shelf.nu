@@ -15,6 +15,7 @@ import { useAssetIndexViewState } from "~/hooks/use-asset-index-view-state";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
+import { SOLD_STATUS } from "~/modules/sold/constants"; // sold feature
 import { userHasCustodyViewPermission } from "~/utils/permissions/custody-and-bookings-permissions.validator.client";
 import type { OrganizationPermissionSettings } from "~/utils/permissions/custody-and-bookings-permissions.validator.client";
 import { resolveTeamMemberName } from "~/utils/user";
@@ -55,7 +56,10 @@ export function AssetIndexFilters({
     return (
       <Filters
         slots={{
-          "left-of-search": <StatusFilter statusItems={AssetStatus} />,
+          // sold feature
+          "left-of-search": (
+            <StatusFilter statusItems={{ ...AssetStatus, SOLD: SOLD_STATUS }} />
+          ),
           "right-of-search": (
             <div className="flex items-center gap-2">
               <SortBy

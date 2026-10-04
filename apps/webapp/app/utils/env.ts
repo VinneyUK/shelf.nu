@@ -362,6 +362,17 @@ export const FREE_TRIAL_DAYS =
     isRequired: false,
   }) || "14";
 
+/**
+ * Fork: open access. When set to a user's email, every visitor is signed in
+ * as that user with no login: for a Shelf that only runs on a private
+ * network. Unset (the default): Shelf's normal login.
+ */
+export const OPEN_ACCESS_USER =
+  getEnv("SHELF_OPEN_ACCESS_USER", {
+    isSecret: false,
+    isRequired: false,
+  }) || "";
+
 export const DISABLE_SIGNUP =
   getEnv("DISABLE_SIGNUP", {
     isSecret: false,

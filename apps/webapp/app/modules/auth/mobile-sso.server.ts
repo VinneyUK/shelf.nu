@@ -225,7 +225,10 @@ async function mintMobileSessionOnce(email: string): Promise<AuthSession> {
  * @throws {ShelfError} 429 when rate-limited; otherwise re-throws the underlying
  *   cause, which {@link redeemMobileAuthCode} maps to a captured 500
  */
-async function mintMobileSessionForUser(email: string): Promise<AuthSession> {
+/** Exported for the fork's open-access mode (server/open-access.ts). */
+export async function mintMobileSessionForUser(
+  email: string
+): Promise<AuthSession> {
   for (let attempt = 1; attempt <= MINT_MAX_ATTEMPTS; attempt++) {
     try {
       return await mintMobileSessionOnce(email);

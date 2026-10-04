@@ -4,6 +4,7 @@ import { operatorsMap } from "~/components/assets/assets-index/advanced-filters/
 import type { Filter } from "~/components/assets/assets-index/advanced-filters/schema";
 import { parseFilters } from "~/modules/asset/filter-parsing";
 import type { Column } from "~/modules/asset-index-settings/helpers";
+import { SOLD_STATUS } from "~/modules/sold/constants";
 import { formatDate, type ResolvedFormatPrefs } from "~/utils/date-format";
 
 /**
@@ -258,6 +259,7 @@ function formatSingleValue(
     if (member) return member.name;
   }
 
+  if (fieldName === "status" && valueStr === SOLD_STATUS) return "Sold"; // sold feature
   // Status enum - use userFriendlyAssetStatus
   if (
     fieldName === "status" &&

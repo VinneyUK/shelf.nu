@@ -3,6 +3,8 @@
  * Part of the labels feature; not in upstream Shelf.
  */
 import { Badge } from "~/components/shared/badge";
+import { DateS } from "~/components/shared/date";
+import { Td } from "~/components/table";
 import { createSharedLookup } from "~/utils/shared-lookup";
 
 export const labelledLookup = createSharedLookup<{
@@ -77,4 +79,20 @@ export function refreshLabelledSoon() {
 /** Every labelled asset and box, for working out what a selection holds. */
 export function useLabelledMap(): Record<string, string> {
   return labelledLookup.useData()?.labelled ?? {};
+}
+
+/** The Labelled column in the advanced list: when the label was printed, or a dash. */
+export function LabelledCell({ assetId }: { assetId: string }) {
+  const labelledAt = useLabelledAt(assetId);
+  return (
+    <Td className="w-full max-w-none whitespace-nowrap">
+      {labelledAt ? (
+        <span className="text-success-700">
+          <DateS date={labelledAt} />
+        </span>
+      ) : (
+        <span className="text-gray-400">—</span>
+      )}
+    </Td>
+  );
 }

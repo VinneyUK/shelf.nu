@@ -4,6 +4,8 @@ import { m } from "framer-motion";
 import { Package } from "lucide-react";
 import { useFetcher, useFetchers, useLoaderData } from "react-router";
 import { AttachmentCountBadge } from "~/components/asset-attachment/attachment-count"; // attachments feature
+import { InlineCell } from "~/components/inline-edit/inline-cell"; // inline editing
+import { InlineStatusCell } from "~/components/inline-edit/inline-status-cell"; // inline editing
 import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
@@ -326,12 +328,15 @@ export const ListAssetContent = ({
                 safe when code/status are long on narrow viewports.
               */}
               <div className="flex flex-wrap items-center gap-2">
-                <StatusOrSold /* sold feature */
-                  id={item.id}
-                  status={item.status}
-                  availableToBook={item.availableToBook}
-                  asset={item}
-                />
+                {/* inline editing: Available or Sold */}
+                <InlineStatusCell assetId={item.id} status={item.status}>
+                  <StatusOrSold /* sold feature */
+                    id={item.id}
+                    status={item.status}
+                    availableToBook={item.availableToBook}
+                    asset={item}
+                  />
+                </InlineStatusCell>
                 {/* labels feature: the asset ID chip (click copies, green when labelled) */}
                 {item.sequentialId ? (
                   <AssetIdChip
@@ -349,14 +354,24 @@ export const ListAssetContent = ({
         </div>
       </Td>
 
-      {/* Category */}
+      {/* Category (inline editing) */}
       <Td>
-        <CategoryBadge category={category} />
+        <InlineCell
+          assetId={item.id}
+          current={{ field: "category", value: category?.id ?? null }}
+        >
+          <CategoryBadge category={category} />
+        </InlineCell>
       </Td>
 
-      {/* Tags */}
+      {/* Tags (inline editing) */}
       <Td className="text-left">
-        <ListItemTagsColumn tags={tags} />
+        <InlineCell
+          assetId={item.id}
+          current={{ field: "tags", value: tags.map((t) => t.id) }}
+        >
+          <ListItemTagsColumn tags={tags} />
+        </InlineCell>
       </Td>
 
       {/* Custodian */}
@@ -416,29 +431,44 @@ export const ListAssetContent = ({
         </Td>
       </When>
 
-      {/* Location */}
+      {/* Location (inline editing; a quantity asset's placements are managed on its page) */}
       <Td>
-        {location ? (
-          <LocationBadge
-            location={{
-              id: location.id,
-              name: location.name,
-              parentId: location.parentId ?? undefined,
-              childCount: location._count?.children ?? 0,
-            }}
-          />
-        ) : (
-          <EmptyTableValue />
-        )}
+        <InlineCell
+          assetId={item.id}
+          current={{ field: "location", value: location?.id ?? null }}
+          disabled={isQuantityTracked(item)}
+        >
+          {location ? (
+            <LocationBadge
+              location={{
+                id: location.id,
+                name: location.name,
+                parentId: location.parentId ?? undefined,
+                childCount: location._count?.children ?? 0,
+              }}
+            />
+          ) : (
+            <EmptyTableValue />
+          )}
+        </InlineCell>
       </Td>
 
-      {/* Quantity */}
+      {/* Quantity (inline editing) */}
       <Td>
-        {isQuantityTracked(item) && item.quantity != null ? (
-          <span>
-            {item.quantity}
-            {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
-          </span>
+        {isQuantityTracked(item) ? (
+          <InlineCell
+            assetId={item.id}
+            current={{ field: "quantity", value: item.quantity ?? null }}
+          >
+            {item.quantity != null ? (
+              <span>
+                {item.quantity}
+                {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
+              </span>
+            ) : (
+              <EmptyTableValue />
+            )}
+          </InlineCell>
         ) : (
           <EmptyTableValue />
         )}
