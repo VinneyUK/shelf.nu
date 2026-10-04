@@ -444,8 +444,12 @@ export const handle = {
 };
 
 export default function HomePage() {
-  const { bookingsEnabled, remindersEnabled, custodyEnabled } =
-    useCustomisations(); // customise feature
+  const {
+    bookingsEnabled,
+    remindersEnabled,
+    custodyEnabled,
+    locationsEnabled,
+  } = useCustomisations(); // customise feature
   const { skipOnboardingChecklist, checklistOptions } =
     useLoaderData<typeof loader>();
   const completedAllChecks = Object.values(checklistOptions).every(Boolean);
@@ -484,7 +488,7 @@ export default function HomePage() {
             {/* Row 3: Reminders, Status & Locations */}
             {remindersEnabled ? <UpcomingReminders /> : null}
             <AssetsByStatusChart />
-            <LocationDistribution />
+            {locationsEnabled ? <LocationDistribution /> : null}
           </div>
 
           {/* Row 4: People & Assets — 2-column */}

@@ -69,6 +69,10 @@ const CustomiseSchema = z.object({
   imagePreviewOnHover: flag,
   labelsEnabled: flag,
   custodyEnabled: flag,
+  locationsEnabled: flag,
+  kitsEnabled: flag,
+  assetModelsEnabled: flag,
+  qrDownloadsEnabled: flag,
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -110,6 +114,30 @@ const FEATURES = [
       "Assigning assets to people. Switching this off hides custody on assets and kits, in bulk actions, the scanner and Home; existing custody is kept.",
   },
   {
+    name: "locationsEnabled",
+    title: "Locations",
+    description:
+      "Where assets are kept. Switching this off hides the Locations page, the location column, filter and bulk action, and location on assets.",
+  },
+  {
+    name: "kitsEnabled",
+    title: "Kits",
+    description:
+      "Grouping assets into kits. Switching this off hides the Kits page, the kit column, filter and bulk actions, and kits on assets.",
+  },
+  {
+    name: "assetModelsEnabled",
+    title: "Asset models",
+    description:
+      "Shared templates for identical items. Switching this off hides asset models in settings, the column and filter, and the bulk actions.",
+  },
+  {
+    name: "qrDownloadsEnabled",
+    title: "Shelf QR code downloads",
+    description:
+      "Shelf's own printable QR codes: Download QR Codes in bulk actions and the QR button on each row. Your Niimbot labels replace these.",
+  },
+  {
     name: "auditsEnabled",
     title: "Audits",
     description: "Checking your assets against where they should be.",
@@ -142,6 +170,10 @@ export default function CustomiseSettings() {
     barcodesEnabled: settings.barcodesEnabled,
     labelsEnabled: settings.labelsEnabled,
     custodyEnabled: settings.custodyEnabled,
+    locationsEnabled: settings.locationsEnabled,
+    kitsEnabled: settings.kitsEnabled,
+    assetModelsEnabled: settings.assetModelsEnabled,
+    qrDownloadsEnabled: settings.qrDownloadsEnabled,
   });
   const [hidden, setHidden] = useState<string[]>(settings.hiddenMenuItems);
   const [imagePreview, setImagePreview] = useState<boolean>(

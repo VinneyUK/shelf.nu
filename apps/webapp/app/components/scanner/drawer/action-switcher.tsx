@@ -53,7 +53,7 @@ const ACTION_CONFIGS = [
 export type ActionType = (typeof ACTION_CONFIGS)[number]["id"];
 
 export function ActionSwitcher() {
-  const { custodyEnabled } = useCustomisations(); // customise feature
+  const { custodyEnabled, locationsEnabled } = useCustomisations(); // customise feature
   const [open, setOpen] = useState(false);
   const [action, setAction] = useAtom(scannerActionAtom);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -66,16 +66,17 @@ export function ActionSwitcher() {
   const availableActions = useMemo(
     () =>
       ACTION_CONFIGS.filter(
-        ({ permissionEntity, permissionAction }) =>
+        ({ id, permissionEntity, permissionAction }) =>
           // customise feature: no custody actions when custody is off
           (custodyEnabled || permissionAction !== PermissionAction.custody) &&
+          (locationsEnabled || id !== "Update location") &&
           userHasPermission({
             roles,
             entity: permissionEntity,
             action: permissionAction,
           })
       ).map((config) => config.id),
-    [roles, custodyEnabled]
+    [roles, custodyEnabled, locationsEnabled]
   );
 
   const filteredActions = useMemo(() => {

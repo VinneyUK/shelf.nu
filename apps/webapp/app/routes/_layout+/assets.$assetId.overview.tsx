@@ -769,8 +769,13 @@ const SHOW_SHELF_QR_SECTION = false as boolean;
 const SHOW_LOCATION_BOX = false as boolean;
 
 export default function AssetOverview() {
-  const { remindersEnabled, custodyEnabled, bookingsEnabled } =
-    useCustomisations(); // customise feature
+  const {
+    remindersEnabled,
+    custodyEnabled,
+    bookingsEnabled,
+    kitsEnabled,
+    assetModelsEnabled,
+  } = useCustomisations(); // customise feature
   const {
     asset,
     locale,
@@ -1186,7 +1191,8 @@ export default function AssetOverview() {
                   })()
                 : null}
 
-              {asset?.assetModel ? (
+              {assetModelsEnabled /* customise feature */ &&
+              asset?.assetModel ? (
                 <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
                   <span className="w-1/4 text-[14px] font-medium text-gray-900">
                     Asset Model
@@ -1509,106 +1515,107 @@ export default function AssetOverview() {
 
           {remindersEnabled ? <AssetReminderCards className="my-2" /> : null}
 
-          {(() => {
-            /**
-             * A QUANTITY_TRACKED asset can belong to multiple kits at
-             * distinct slices. Render one row per membership with the
-             * per-kit quantity badge on qty-tracked assets; INDIVIDUAL
-             * assets keep the single-name layout since they're DB-locked
-             * to one kit and have no meaningful "quantity per kit" to
-             * surface.
-             */
-            type KitMembership = {
-              quantity: number;
-              kit: { id: string; name: string } | null;
-            };
-            const memberships = ((asset.assetKits ?? []) as KitMembership[])
-              .filter((ak) => ak.kit?.id && ak.kit.name)
-              .map((ak) => ({
-                kitId: ak.kit!.id,
-                kitName: ak.kit!.name,
-                quantity: ak.quantity ?? 0,
-              }));
-            if (memberships.length === 0) return null;
-            const isQty = isQuantityTracked(asset);
-            const unit = asset.unitOfMeasure || "units";
-            return (
-              <Card className="my-3 py-3 md:border">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-100/50">
-                    <div className="flex size-7 items-center justify-center rounded-full bg-gray-200">
-                      <Icon icon="kit" />
+          {kitsEnabled /* customise feature */ &&
+            (() => {
+              /**
+               * A QUANTITY_TRACKED asset can belong to multiple kits at
+               * distinct slices. Render one row per membership with the
+               * per-kit quantity badge on qty-tracked assets; INDIVIDUAL
+               * assets keep the single-name layout since they're DB-locked
+               * to one kit and have no meaningful "quantity per kit" to
+               * surface.
+               */
+              type KitMembership = {
+                quantity: number;
+                kit: { id: string; name: string } | null;
+              };
+              const memberships = ((asset.assetKits ?? []) as KitMembership[])
+                .filter((ak) => ak.kit?.id && ak.kit.name)
+                .map((ak) => ({
+                  kitId: ak.kit!.id,
+                  kitName: ak.kit!.name,
+                  quantity: ak.quantity ?? 0,
+                }));
+              if (memberships.length === 0) return null;
+              const isQty = isQuantityTracked(asset);
+              const unit = asset.unitOfMeasure || "units";
+              return (
+                <Card className="my-3 py-3 md:border">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-100/50">
+                      <div className="flex size-7 items-center justify-center rounded-full bg-gray-200">
+                        <Icon icon="kit" />
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h3 className="mb-1 text-sm font-semibold">
+                        {memberships.length > 1
+                          ? "Included in kits"
+                          : "Included in kit"}
+                      </h3>
+                      <ul className="space-y-1">
+                        {memberships.map((m) => (
+                          <li
+                            key={m.kitId}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <Button
+                              to={`/kits/${m.kitId}`}
+                              role="link"
+                              variant="link"
+                              className="min-w-0 justify-start truncate text-sm font-normal text-gray-700 underline hover:text-gray-700"
+                              target="_blank"
+                            >
+                              <span className="truncate">{m.kitName}</span>
+                            </Button>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {isQty ? (
+                                <span className="text-xs tabular-nums text-gray-500">
+                                  {m.quantity} {unit}
+                                </span>
+                              ) : null}
+                              {/*
+                               * Move-units affordance for kit allocations.
+                               * QUANTITY_TRACKED-only — INDIVIDUAL assets are
+                               * DB-locked to a single kit so the "move between
+                               * kits" flow is not meaningful for them.
+                               */}
+                              {isQty && canEditAsset ? (
+                                <MoveUnitsDialog
+                                  axis="kit"
+                                  assetId={asset.id}
+                                  assetTitle={asset.title}
+                                  unitOfMeasure={asset.unitOfMeasure}
+                                  fromKit={{
+                                    id: m.kitId,
+                                    name: m.kitName,
+                                    quantity: m.quantity,
+                                  }}
+                                  destinations={moveDestinations.kits.filter(
+                                    (k) => k.id !== m.kitId
+                                  )}
+                                  actionUrl={moveUnitsActionUrl}
+                                  trigger={
+                                    <Button
+                                      type="button"
+                                      variant="link"
+                                      className="text-xs font-normal text-gray-500 underline hover:text-gray-700"
+                                    >
+                                      Move
+                                    </Button>
+                                  }
+                                />
+                              ) : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="mb-1 text-sm font-semibold">
-                      {memberships.length > 1
-                        ? "Included in kits"
-                        : "Included in kit"}
-                    </h3>
-                    <ul className="space-y-1">
-                      {memberships.map((m) => (
-                        <li
-                          key={m.kitId}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <Button
-                            to={`/kits/${m.kitId}`}
-                            role="link"
-                            variant="link"
-                            className="min-w-0 justify-start truncate text-sm font-normal text-gray-700 underline hover:text-gray-700"
-                            target="_blank"
-                          >
-                            <span className="truncate">{m.kitName}</span>
-                          </Button>
-                          <div className="flex shrink-0 items-center gap-2">
-                            {isQty ? (
-                              <span className="text-xs tabular-nums text-gray-500">
-                                {m.quantity} {unit}
-                              </span>
-                            ) : null}
-                            {/*
-                             * Move-units affordance for kit allocations.
-                             * QUANTITY_TRACKED-only — INDIVIDUAL assets are
-                             * DB-locked to a single kit so the "move between
-                             * kits" flow is not meaningful for them.
-                             */}
-                            {isQty && canEditAsset ? (
-                              <MoveUnitsDialog
-                                axis="kit"
-                                assetId={asset.id}
-                                assetTitle={asset.title}
-                                unitOfMeasure={asset.unitOfMeasure}
-                                fromKit={{
-                                  id: m.kitId,
-                                  name: m.kitName,
-                                  quantity: m.quantity,
-                                }}
-                                destinations={moveDestinations.kits.filter(
-                                  (k) => k.id !== m.kitId
-                                )}
-                                actionUrl={moveUnitsActionUrl}
-                                trigger={
-                                  <Button
-                                    type="button"
-                                    variant="link"
-                                    className="text-xs font-normal text-gray-500 underline hover:text-gray-700"
-                                  >
-                                    Move
-                                  </Button>
-                                }
-                              />
-                            ) : null}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </Card>
-            );
-          })()}
+                </Card>
+              );
+            })()}
 
           {SHOW_LOCATION_BOX &&
             (() => {

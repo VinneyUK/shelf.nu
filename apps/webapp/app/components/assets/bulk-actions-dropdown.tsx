@@ -94,7 +94,16 @@ function ConditionalDropdown() {
   const allSelected = isSelectingAllItems(selectedAssets);
 
   const { roles, isSelfService } = useUserRoleHelper();
-  const { auditsEnabled, labelsEnabled, custodyEnabled } = useCustomisations(); // customise feature
+  const {
+    auditsEnabled,
+    labelsEnabled,
+    custodyEnabled,
+    locationsEnabled,
+    kitsEnabled,
+    assetModelsEnabled,
+    bookingsEnabled,
+    qrDownloadsEnabled,
+  } = useCustomisations(); // customise feature
   const printSelectedLabels = usePrintSelectedLabels(); // labels feature
   // sold feature
   const soldSelection = useSelectedAssets();
@@ -271,24 +280,26 @@ function ConditionalDropdown() {
           ref={dropdownRef}
         >
           <div className="order fixed bottom-0 left-0 w-screen rounded-b-none rounded-t-[4px] bg-white p-0 text-right md:static md:w-[180px] md:rounded-t-[4px]">
-            <DropdownMenuItem
-              onClick={() => {
-                closeMenu();
-                setIsBulkDownloadQrOpen(true);
-              }}
-              className="border-b py-1 lg:p-0"
-            >
-              <Button
-                type="button"
-                variant="link"
-                className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
-                width="full"
+            {qrDownloadsEnabled ? ( // customise feature
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMenu();
+                  setIsBulkDownloadQrOpen(true);
+                }}
+                className="border-b py-1 lg:p-0"
               >
-                <span className="flex items-center gap-2">
-                  <Icon icon="download" /> Download QR Codes
-                </span>
-              </Button>
-            </DropdownMenuItem>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                  width="full"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon icon="download" /> Download QR Codes
+                  </span>
+                </Button>
+              </DropdownMenuItem>
+            ) : null}
             {labelsEnabled ? ( // labels feature
               <DropdownMenuItem
                 onClick={() => {
@@ -462,11 +473,13 @@ function ConditionalDropdown() {
                 />
               </DropdownMenuItem>
               <DropdownMenuItem className="border-t py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  type="location"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {locationsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    type="location"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className="py-1 lg:p-0">
                 <BulkUpdateDialogTrigger
@@ -476,59 +489,71 @@ function ConditionalDropdown() {
                 />
               </DropdownMenuItem>
               <DropdownMenuItem className="py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  type="asset-model"
-                  label="Update asset model"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {assetModelsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    type="asset-model"
+                    label="Update asset model"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className="py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  type="asset-model-remove"
-                  label="Remove from asset model"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {assetModelsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    type="asset-model-remove"
+                    label="Remove from asset model"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className="border-t py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  label="Add to kit"
-                  type="add-to-kit"
-                  onClick={closeMenu}
-                  disabled={
-                    someAssetCheckedOut
-                      ? {
-                          reason:
-                            "Some of the selected kits are checked out. Please finish your booking first, before adding them in kit.",
-                        }
-                      : isLoading
-                  }
-                />
+                {kitsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    label="Add to kit"
+                    type="add-to-kit"
+                    onClick={closeMenu}
+                    disabled={
+                      someAssetCheckedOut
+                        ? {
+                            reason:
+                              "Some of the selected kits are checked out. Please finish your booking first, before adding them in kit.",
+                          }
+                        : isLoading
+                    }
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className=" py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  label="Remove from kit"
-                  type="remove-from-kit"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {kitsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    label="Remove from kit"
+                    type="remove-from-kit"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className="border-t py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  label="Mark as available"
-                  type="available"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {bookingsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    label="Mark as available"
+                    type="available"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem className="border-b py-1 lg:p-0">
-                <BulkUpdateDialogTrigger
-                  label="Mark as unavailable"
-                  type="unavailable"
-                  onClick={closeMenu}
-                  disabled={isLoading}
-                />
+                {bookingsEnabled ? ( // customise feature
+                  <BulkUpdateDialogTrigger
+                    label="Mark as unavailable"
+                    type="unavailable"
+                    onClick={closeMenu}
+                    disabled={isLoading}
+                  />
+                ) : null}
               </DropdownMenuItem>
 
               <DropdownMenuItem className="py-1 lg:p-0">

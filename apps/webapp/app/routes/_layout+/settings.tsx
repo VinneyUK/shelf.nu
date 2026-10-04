@@ -58,7 +58,7 @@ export const shouldRevalidate = () => false;
 
 export default function SettingsPage() {
   const { _isPersonalOrg } = useLoaderData<typeof loader>();
-  const { bookingsEnabled } = useCustomisations(); // customise feature
+  const { bookingsEnabled, assetModelsEnabled } = useCustomisations(); // customise feature
   let items = [
     { to: "general", content: "General" },
     ...(!_isPersonalOrg && bookingsEnabled
@@ -66,7 +66,9 @@ export default function SettingsPage() {
       : []),
     ...(!_isPersonalOrg ? [{ to: "emails", content: "Emails" }] : []),
     { to: "custom-fields", content: "Custom fields" },
-    { to: "asset-models", content: "Asset models" },
+    ...(assetModelsEnabled
+      ? [{ to: "asset-models", content: "Asset models" }]
+      : []), // customise feature
     { to: "team", content: "Team" },
     { to: "customise", content: "Customise" }, // customise feature
     { to: "email-receipts", content: "Email receipts" }, // email receipts feature

@@ -2692,6 +2692,11 @@ model WorkspaceCustomisation {
   labelsEnabled    Boolean  @default(true)
   /// Custody (assigning assets to people)
   custodyEnabled   Boolean  @default(true)
+  /// Locations, kits and asset models; Shelf's own QR code downloads
+  locationsEnabled   Boolean @default(true)
+  kitsEnabled        Boolean @default(true)
+  assetModelsEnabled Boolean @default(true)
+  qrDownloadsEnabled Boolean @default(true)
   updatedAt        DateTime @updatedAt
 }
 

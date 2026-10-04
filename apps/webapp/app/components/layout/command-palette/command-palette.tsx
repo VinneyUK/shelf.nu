@@ -517,6 +517,9 @@ export function CommandPalette() {
     (layoutData?.canUseBookings ?? false) &&
     (layoutData?.customisations?.bookingsEnabled ?? true);
   const auditsSwitchedOff = layoutData?.customisations?.auditsEnabled === false;
+  const kitsSwitchedOff = layoutData?.customisations?.kitsEnabled === false;
+  const locationsSwitchedOff =
+    layoutData?.customisations?.locationsEnabled === false;
   const isPersonalWorkspace = isPersonalOrg(layoutData?.currentOrganization);
   const { isBaseOrSelfService } = useUserRoleHelper();
 
@@ -575,9 +578,11 @@ export function CommandPalette() {
       NAVIGATION_COMMANDS.filter(
         (nav) =>
           !(auditsSwitchedOff && nav.href === "/audits") && // customise feature
+          !(kitsSwitchedOff && nav.href.startsWith("/kits")) &&
+          !(locationsSwitchedOff && nav.href.startsWith("/locations")) &&
           (nav.isVisible ? nav.isVisible(commandContext) : true)
       ),
-    [commandContext, auditsSwitchedOff]
+    [commandContext, auditsSwitchedOff, kitsSwitchedOff, locationsSwitchedOff]
   );
 
   const navigationResults = useMemo(() => {

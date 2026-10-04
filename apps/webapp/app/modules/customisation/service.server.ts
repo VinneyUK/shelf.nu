@@ -37,6 +37,13 @@ export async function getWorkspaceCustomisations(
     labelsEnabled: row?.labelsEnabled ?? DEFAULT_CUSTOMISATIONS.labelsEnabled,
     custodyEnabled:
       row?.custodyEnabled ?? DEFAULT_CUSTOMISATIONS.custodyEnabled,
+    locationsEnabled:
+      row?.locationsEnabled ?? DEFAULT_CUSTOMISATIONS.locationsEnabled,
+    kitsEnabled: row?.kitsEnabled ?? DEFAULT_CUSTOMISATIONS.kitsEnabled,
+    assetModelsEnabled:
+      row?.assetModelsEnabled ?? DEFAULT_CUSTOMISATIONS.assetModelsEnabled,
+    qrDownloadsEnabled:
+      row?.qrDownloadsEnabled ?? DEFAULT_CUSTOMISATIONS.qrDownloadsEnabled,
   };
 }
 
@@ -85,6 +92,10 @@ export async function saveCustomisePageSettings(
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
         custodyEnabled: settings.custodyEnabled,
+        locationsEnabled: settings.locationsEnabled,
+        kitsEnabled: settings.kitsEnabled,
+        assetModelsEnabled: settings.assetModelsEnabled,
+        qrDownloadsEnabled: settings.qrDownloadsEnabled,
       },
       update: {
         bookingsEnabled: settings.bookingsEnabled,
@@ -93,6 +104,10 @@ export async function saveCustomisePageSettings(
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
         custodyEnabled: settings.custodyEnabled,
+        locationsEnabled: settings.locationsEnabled,
+        kitsEnabled: settings.kitsEnabled,
+        assetModelsEnabled: settings.assetModelsEnabled,
+        qrDownloadsEnabled: settings.qrDownloadsEnabled,
       },
     }),
     db.organization.update({

@@ -26,6 +26,7 @@ import { FormSoldRow } from "~/components/sold/form-sold-row"; // sold feature
 import { useAutoFocus } from "~/hooks/use-auto-focus";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { getPrimaryKit, isQuantityTracked } from "~/modules/asset/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import type {
   AssetEditLoaderData,
   loader,
@@ -272,6 +273,7 @@ export const AssetForm = ({
   referer,
   bulkMode = false,
 }: Props) => {
+  const { locationsEnabled, assetModelsEnabled } = useCustomisations(); // customise feature
   const navigation = useNavigation();
   const { canUseBarcodes } = useBarcodePermissions();
   // Workspace's current code-display preference — used by PreferredBarcodeSelector
@@ -725,7 +727,13 @@ export const AssetForm = ({
             valuation) flow from it — so it sits as the very first row
             above Batch. Single mode keeps the historical layout (model
             sits between Description and Category lower in the form). */}
-        <When truthy={bulkMode}>{assetModelFormRow}</When>
+        <When truthy={bulkMode}>
+          {
+            assetModelsEnabled
+              ? assetModelFormRow
+              : null /* customise feature */
+          }
+        </When>
 
         <When truthy={bulkMode}>
           <FormRow
@@ -1132,7 +1140,13 @@ export const AssetForm = ({
             form instead; see the matching `<When truthy={bulkMode}>` block
             above the Batch row. Always hidden for QUANTITY_TRACKED — models
             are an INDIVIDUAL-only concept (enforced server-side too). */}
-        <When truthy={!bulkMode}>{assetModelFormRow}</When>
+        <When truthy={!bulkMode}>
+          {
+            assetModelsEnabled
+              ? assetModelFormRow
+              : null /* customise feature */
+          }
+        </When>
 
         <FormRow
           rowLabel="Category"
@@ -1215,42 +1229,60 @@ export const AssetForm = ({
           />
         </FormRow>
 
-        <FormRow
-          rowLabel="Location"
-          subHeading={
-            <p>
-              A location is a place where an item is supposed to be located.
-              This is different than the last scanned location{" "}
-              <Button
-                to="/locations/new"
-                className="text-gray-600 underline"
-                target="_blank"
-                variant="link-gray"
+        {locationsEnabled ? ( // customise feature
+          <FormRow
+            rowLabel="Location"
+            subHeading={
+              <p>
+                A location is a place where an item is supposed to be located.
+                This is different than the last scanned location{" "}
+                <Button
+                  to="/locations/new"
+                  className="text-gray-600 underline"
+                  target="_blank"
+                  variant="link-gray"
+                >
+                  Create locations
+                </Button>
+              </p>
+            }
+            className="border-b-0 py-[10px]"
+          >
+            <input
+              type="hidden"
+              name="currentLocationId"
+              value={locationId || ""}
+            />
+            {isKitAsset ? (
+              <DisabledReasonHoverCard
+                triggerClassName="disabled w-full cursor-not-allowed"
+                reason={
+                  <>
+                    This asset's location is managed by its parent kit{" "}
+                    <strong>"{kitMembership?.name}"</strong>. Update the kit's
+                    location instead.
+                  </>
+                }
               >
-                Create locations
-              </Button>
-            </p>
-          }
-          className="border-b-0 py-[10px]"
-        >
-          <input
-            type="hidden"
-            name="currentLocationId"
-            value={locationId || ""}
-          />
-          {isKitAsset ? (
-            <DisabledReasonHoverCard
-              triggerClassName="disabled w-full cursor-not-allowed"
-              reason={
-                <>
-                  This asset's location is managed by its parent kit{" "}
-                  <strong>"{kitMembership?.name}"</strong>. Update the kit's
-                  location instead.
-                </>
-              }
-            >
+                <DynamicSelect
+                  disabled={locationDisabled}
+                  selectionMode="set"
+                  fieldName="newLocationId"
+                  triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
+                  defaultValue={locationId || undefined}
+                  model={{ name: "location", queryKey: "name" }}
+                  contentLabel="Locations"
+                  label="Location"
+                  hideLabel
+                  initialDataKey="locations"
+                  countKey="totalLocations"
+                  closeOnSelect
+                  allowClear
+                />
+              </DisabledReasonHoverCard>
+            ) : (
               <DynamicSelect
-                disabled={locationDisabled}
+                disabled={disabled}
                 selectionMode="set"
                 fieldName="newLocationId"
                 triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
@@ -1263,55 +1295,39 @@ export const AssetForm = ({
                 countKey="totalLocations"
                 closeOnSelect
                 allowClear
+                extraContent={({ onItemCreated, closePopover }) => (
+                  <InlineEntityCreationDialog
+                    type="location"
+                    title="Create new location"
+                    buttonLabel="Create new location"
+                    onCreated={(created) => {
+                      if (created?.type !== "location") return;
+                      const location = created.entity;
+                      onItemCreated({
+                        id: location.id,
+                        name: location.name,
+                        metadata: { ...location },
+                      });
+                      closePopover();
+                    }}
+                  />
+                )}
+                renderItem={({ name, metadata }) => (
+                  <div className="flex items-center gap-2">
+                    {metadata?.thumbnailUrl ? (
+                      <ImageWithPreview
+                        thumbnailUrl={metadata.thumbnailUrl}
+                        alt={metadata.name}
+                        className="size-6 rounded-[2px]"
+                      />
+                    ) : null}
+                    <div>{name}</div>
+                  </div>
+                )}
               />
-            </DisabledReasonHoverCard>
-          ) : (
-            <DynamicSelect
-              disabled={disabled}
-              selectionMode="set"
-              fieldName="newLocationId"
-              triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
-              defaultValue={locationId || undefined}
-              model={{ name: "location", queryKey: "name" }}
-              contentLabel="Locations"
-              label="Location"
-              hideLabel
-              initialDataKey="locations"
-              countKey="totalLocations"
-              closeOnSelect
-              allowClear
-              extraContent={({ onItemCreated, closePopover }) => (
-                <InlineEntityCreationDialog
-                  type="location"
-                  title="Create new location"
-                  buttonLabel="Create new location"
-                  onCreated={(created) => {
-                    if (created?.type !== "location") return;
-                    const location = created.entity;
-                    onItemCreated({
-                      id: location.id,
-                      name: location.name,
-                      metadata: { ...location },
-                    });
-                    closePopover();
-                  }}
-                />
-              )}
-              renderItem={({ name, metadata }) => (
-                <div className="flex items-center gap-2">
-                  {metadata?.thumbnailUrl ? (
-                    <ImageWithPreview
-                      thumbnailUrl={metadata.thumbnailUrl}
-                      alt={metadata.name}
-                      className="size-6 rounded-[2px]"
-                    />
-                  ) : null}
-                  <div>{name}</div>
-                </div>
-              )}
-            />
-          )}
-        </FormRow>
+            )}
+          </FormRow>
+        ) : null}
 
         <FormRow
           rowLabel={"Value"}

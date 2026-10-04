@@ -154,6 +154,9 @@ export async function getAssetIndexSettings({
         bookingsEnabled: true,
         remindersEnabled: true,
         custodyEnabled: true,
+        locationsEnabled: true,
+        kitsEnabled: true,
+        assetModelsEnabled: true,
       },
     });
     return customisation

@@ -89,9 +89,9 @@ describe("redirectForSwitchedOffPage", () => {
 describe("cleanHiddenMenuItems", () => {
   it("keeps known keys once and drops anything else", () => {
     expect(
-      cleanHiddenMenuItems(["kits", "kits", "nonsense", 3, "tags"])
-    ).toEqual(["kits", "tags"]);
-    expect(cleanHiddenMenuItems("kits")).toEqual([]);
+      cleanHiddenMenuItems(["tags", "tags", "nonsense", 3, "team"])
+    ).toEqual(["tags", "team"]);
+    expect(cleanHiddenMenuItems("tags")).toEqual([]);
     expect(cleanHiddenMenuItems(undefined)).toEqual([]);
   });
 });
@@ -183,10 +183,14 @@ describe("applyCustomisationsToMenu", () => {
   it("hides chosen items, and a heading left with nothing under it", () => {
     const out = applyCustomisationsToMenu(
       menu(),
-      off({ hiddenMenuItems: ["team", "scanner", "updates", "kits"] })
+      off({
+        hiddenMenuItems: ["team", "scanner", "updates", "tags"],
+        kitsEnabled: false,
+      })
     );
     expect(titles(out.topMenuItems)).not.toContain("Team");
     expect(titles(out.topMenuItems)).not.toContain("Kits");
+    expect(titles(out.topMenuItems)).not.toContain("Tags");
     expect(titles(out.topMenuItems)).toContain("Organization"); // still has Workspace settings
     expect(out.bottomMenuItems).toEqual([]);
   });

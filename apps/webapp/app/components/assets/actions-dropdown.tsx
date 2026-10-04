@@ -76,7 +76,7 @@ const ConditionalActionsDropdown = () => {
 
   const { roles, isSelfService, isAdministratorOrOwner } = useUserRoleHelper();
 
-  const { remindersEnabled, labelsEnabled, custodyEnabled } =
+  const { remindersEnabled, labelsEnabled, custodyEnabled, locationsEnabled } =
     useCustomisations(); // customise feature
   const printFetcher = useFetcher(); // labels feature
   const labelledAt = useLabelledAt(asset.id); // labels feature
@@ -267,11 +267,14 @@ const ConditionalActionsDropdown = () => {
               </When>
 
               <When
-                truthy={userHasPermission({
-                  roles,
-                  entity: PermissionEntity.asset,
-                  action: PermissionAction.update,
-                })}
+                truthy={
+                  locationsEnabled /* customise feature */ &&
+                  userHasPermission({
+                    roles,
+                    entity: PermissionEntity.asset,
+                    action: PermissionAction.update,
+                  })
+                }
               >
                 <div
                   className="px-0 py-1 md:p-0"

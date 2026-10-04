@@ -19,6 +19,11 @@ export type Customisations = {
   labelsEnabled: boolean;
   /** Custody: assigning assets to people */
   custodyEnabled: boolean;
+  locationsEnabled: boolean;
+  kitsEnabled: boolean;
+  assetModelsEnabled: boolean;
+  /** Shelf's own QR code downloads (sheets and per-asset) */
+  qrDownloadsEnabled: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -30,6 +35,10 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   imagePreviewOnHover: true,
   labelsEnabled: true,
   custodyEnabled: true,
+  locationsEnabled: true,
+  kitsEnabled: true,
+  assetModelsEnabled: true,
+  qrDownloadsEnabled: true,
 };
 
 type MenuMatch = { to?: string; title?: string };
@@ -44,10 +53,8 @@ export const HIDEABLE_MENU_ITEMS: {
   match: MenuMatch;
 }[] = [
   { key: "home", label: "Home", match: { to: "/home" } },
-  { key: "kits", label: "Kits", match: { to: "/kits" } },
   { key: "categories", label: "Categories", match: { to: "/categories" } },
   { key: "tags", label: "Tags", match: { to: "/tags" } },
-  { key: "locations", label: "Locations", match: { to: "/locations" } },
   { key: "reports", label: "Reports", match: { to: "/reports" } },
   { key: "team", label: "Team", match: { title: "Team" } },
   {
@@ -84,6 +91,9 @@ export function hiddenMenuMatches(c: Customisations): MenuMatch[] {
   if (!c.auditsEnabled) matches.push({ to: "/audits" });
   if (!c.remindersEnabled) matches.push({ to: "/reminders" });
   if (!c.labelsEnabled) matches.push({ to: "/labels" });
+  if (!c.locationsEnabled) matches.push({ to: "/locations" });
+  if (!c.kitsEnabled) matches.push({ to: "/kits" });
+  if (!c.assetModelsEnabled) matches.push({ to: "/settings/asset-models" });
   return matches;
 }
 
@@ -110,6 +120,12 @@ const REMINDER_PAGES = [
 ];
 const AUDIT_PAGES = [/^\/audits(\/|$)/];
 const LABEL_PAGES = [/^\/labels(\/|$)/];
+const LOCATION_PAGES = [
+  /^\/locations(\/|$)/,
+  /^\/assets\/[^/]+\/overview\/update-location(\/|$)/,
+];
+const KIT_PAGES = [/^\/kits(\/|$)/];
+const ASSET_MODEL_PAGES = [/^\/settings\/asset-models(\/|$)/];
 const CUSTODY_PAGES = [
   /^\/assets\/[^/]+\/overview\/(assign|release)-custody(\/|$)/,
   /^\/kits\/[^/]+\/assets\/(assign|release)-custody(\/|$)/,
@@ -136,7 +152,11 @@ export function redirectForSwitchedOffPage(
     (!c.remindersEnabled && REMINDER_PAGES.some((re) => re.test(pathname))) ||
     (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname))) ||
     (!c.labelsEnabled && LABEL_PAGES.some((re) => re.test(pathname))) ||
-    (!c.custodyEnabled && CUSTODY_PAGES.some((re) => re.test(pathname)));
+    (!c.custodyEnabled && CUSTODY_PAGES.some((re) => re.test(pathname))) ||
+    (!c.locationsEnabled && LOCATION_PAGES.some((re) => re.test(pathname))) ||
+    (!c.kitsEnabled && KIT_PAGES.some((re) => re.test(pathname))) ||
+    (!c.assetModelsEnabled &&
+      ASSET_MODEL_PAGES.some((re) => re.test(pathname)));
   if (!blocked) return null;
   return c.hiddenMenuItems.includes("home") ? "/assets" : "/home";
 }
@@ -158,7 +178,12 @@ const REPORT_CATEGORY: Record<string, string> = {
 
 type FeatureFlags = Pick<
   Customisations,
-  "bookingsEnabled" | "remindersEnabled" | "custodyEnabled"
+  | "bookingsEnabled"
+  | "remindersEnabled"
+  | "custodyEnabled"
+  | "locationsEnabled"
+  | "kitsEnabled"
+  | "assetModelsEnabled"
 >;
 
 /** Assets list columns that only mean something with a feature switched on. */
@@ -167,6 +192,9 @@ const FEATURE_COLUMNS: Record<string, (c: FeatureFlags) => boolean> = {
   upcomingBookings: (c) => c.bookingsEnabled,
   upcomingReminder: (c) => c.remindersEnabled,
   custody: (c) => c.custodyEnabled,
+  location: (c) => c.locationsEnabled,
+  kit: (c) => c.kitsEnabled,
+  assetModel: (c) => c.assetModelsEnabled,
 };
 
 /**

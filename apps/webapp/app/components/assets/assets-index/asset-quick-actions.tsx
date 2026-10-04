@@ -4,6 +4,7 @@ import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import type { AssetsFromViewItem } from "~/modules/asset/types";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   PermissionAction,
   PermissionEntity,
@@ -28,6 +29,7 @@ export default function AssetQuickActions({
   asset,
 }: AssetQuickActionsProps) {
   const { roles } = useUserRoleHelper();
+  const { qrDownloadsEnabled } = useCustomisations(); // customise feature
 
   return (
     <div className={tw("flex items-center gap-2", className)} style={style}>
@@ -50,27 +52,29 @@ export default function AssetQuickActions({
         </Button>
       </When>
 
-      <CodePreviewDialog
-        item={{
-          id: asset.id,
-          title: asset.title,
-          qrId: asset.qrId,
-          type: "asset",
-          sequentialId: asset.sequentialId,
-        }}
-        trigger={
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className={"p-2"}
-            aria-label="Show asset label"
-            tooltip="Show asset label"
-          >
-            <QrCodeIcon className="size-4" />
-          </Button>
-        }
-      />
+      {qrDownloadsEnabled ? ( // customise feature
+        <CodePreviewDialog
+          item={{
+            id: asset.id,
+            title: asset.title,
+            qrId: asset.qrId,
+            type: "asset",
+            sequentialId: asset.sequentialId,
+          }}
+          trigger={
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className={"p-2"}
+              aria-label="Show asset label"
+              tooltip="Show asset label"
+            >
+              <QrCodeIcon className="size-4" />
+            </Button>
+          }
+        />
+      ) : null}
 
       <When
         truthy={userHasPermission({

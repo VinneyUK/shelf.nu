@@ -131,3 +131,37 @@ describe("reports", () => {
     }
   });
 });
+
+describe("locations, kits and asset models", () => {
+  it("drop their columns", () => {
+    expect(names({ ...on, locationsEnabled: false })).not.toContain("location");
+    expect(names({ ...on, locationsEnabled: false })).toContain("custody");
+    expect(
+      columnsWithoutSwitchedOff(
+        [{ name: "kit" }, { name: "assetModel" }, { name: "name" }],
+        { ...on, kitsEnabled: false, assetModelsEnabled: false }
+      ).map((c) => c.name)
+    ).toEqual(["name"]);
+  });
+  it("block their pages", () => {
+    const off = {
+      ...on,
+      locationsEnabled: false,
+      kitsEnabled: false,
+      assetModelsEnabled: false,
+    };
+    for (const path of [
+      "/locations",
+      "/locations/l1",
+      "/kits",
+      "/kits/k1/overview",
+      "/settings/asset-models",
+      "/settings/asset-models/new",
+      "/assets/a1/overview/update-location",
+    ]) {
+      expect(redirectForSwitchedOffPage(path, off), path).toBe("/home");
+      expect(redirectForSwitchedOffPage(path, on), path).toBeNull();
+    }
+    expect(redirectForSwitchedOffPage("/settings/general", off)).toBeNull();
+  });
+});
