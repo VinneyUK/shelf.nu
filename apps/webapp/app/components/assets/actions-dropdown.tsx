@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -14,6 +14,10 @@ import {
 import { useFetcher, useLoaderData } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { ChevronRight } from "~/components/icons/library";
+import {
+  labelledLookup,
+  useLabelledAt,
+} from "~/components/labels/labelled-badge"; // labels feature
 import {
   MarkSoldDialog,
   useMarkNotSold,
@@ -42,6 +46,9 @@ import Icon from "../icons/icon";
 import { Button } from "../shared/button";
 import { MobileDropdownStyles } from "../shared/mobile-dropdown-styles";
 import When from "../when/when";
+
+/** Fork (VinneyUK/shelf.nu): the GPS coordinates entry is switched off. */
+const SHOW_GPS_COORDINATES = false as boolean;
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
 const ConditionalActionsDropdown = () => {
@@ -72,6 +79,12 @@ const ConditionalActionsDropdown = () => {
   const { remindersEnabled, labelsEnabled, custodyEnabled } =
     useCustomisations(); // customise feature
   const printFetcher = useFetcher(); // labels feature
+  const labelledAt = useLabelledAt(asset.id); // labels feature
+  useEffect(() => {
+    // the Labelled badge and label card follow a print or removal
+    if (printFetcher.state === "idle" && printFetcher.data)
+      void labelledLookup.refresh();
+  }, [printFetcher.state, printFetcher.data]);
   // sold feature
   const sale = useSale(asset.id);
   const markNotSold = useMarkNotSold();
@@ -308,12 +321,15 @@ const ConditionalActionsDropdown = () => {
                   </Button>
                 </div>
 
-                <div className={tw("border-b px-0 py-1 md:p-0")}>
-                  <UpdateGpsCoordinatesForm
-                    // Closes the dropdown when the button is clicked
-                    callback={handleMenuClose}
-                  />
-                </div>
+                {/* fork: the GPS coordinates entry is not shown */}
+                {SHOW_GPS_COORDINATES ? (
+                  <div className={tw("border-b px-0 py-1 md:p-0")}>
+                    <UpdateGpsCoordinatesForm
+                      // Closes the dropdown when the button is clicked
+                      callback={handleMenuClose}
+                    />
+                  </div>
+                ) : null}
                 <div className="border-b px-0 py-1 md:p-0">
                   <Button
                     type="button"
@@ -377,6 +393,29 @@ const ConditionalActionsDropdown = () => {
                       <span className="flex items-center gap-2">
                         <PrinterIcon className="size-5" />
                         Print label
+                      </span>
+                    </Button>
+                  </div>
+                </When>
+                <When truthy={labelsEnabled && Boolean(labelledAt)}>
+                  <div className="border-b px-0 py-1 md:p-0">
+                    <Button
+                      type="button"
+                      role="button"
+                      variant="link"
+                      className="justify-start px-4 py-3 text-gray-700 hover:bg-slate-100 hover:text-gray-700"
+                      width="full"
+                      onClick={() => {
+                        handleMenuClose();
+                        void printFetcher.submit(
+                          { "assetIds[0]": asset.id, intent: "remove" },
+                          { method: "post", action: "/api/labels/print" }
+                        );
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <PrinterIcon className="size-5" />
+                        Remove label
                       </span>
                     </Button>
                   </div>

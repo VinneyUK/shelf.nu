@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "~/components/shared/modal";
 import { isFormProcessing } from "~/utils/form";
-import { SOLD_URL } from "./use-sale";
+import { salesLookup, SOLD_URL } from "./use-sale";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -41,7 +41,10 @@ export function MarkSoldDialog({
   const busy = isFormProcessing(fetcher.state);
 
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.success) onOpenChange(false);
+    if (fetcher.state === "idle" && fetcher.data?.success) {
+      void salesLookup.refresh();
+      onOpenChange(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
 
@@ -117,7 +120,11 @@ export function MarkSoldDialog({
 
 /** Marks assets as not sold again, straight away. */
 export function useMarkNotSold() {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<{ success?: boolean }>();
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.success)
+      void salesLookup.refresh();
+  }, [fetcher.state, fetcher.data]);
   return (assetIds: string[], currentSearchParams?: string) => {
     const form: Record<string, string> = { intent: "unmark" };
     if (currentSearchParams !== undefined) {

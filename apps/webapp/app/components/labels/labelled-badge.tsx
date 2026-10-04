@@ -2,27 +2,16 @@
  * "Labelled" badge: this asset has had a label printed.
  * Part of the labels feature; not in upstream Shelf.
  */
-import { useEffect } from "react";
-import { useFetcher } from "react-router";
 import { Badge } from "~/components/shared/badge";
+import { createSharedLookup } from "~/utils/shared-lookup";
 
-const LABELLED_URL = "/api/labels/labelled";
-const FETCHER_KEY = "labelled-assets";
-let lastRequested = 0;
+export const labelledLookup = createSharedLookup<{
+  labelled?: Record<string, string>;
+}>("/api/labels/labelled");
 
 /** When each asset was last labelled, shared by every badge on the page. */
 export function useLabelledAt(assetId: string): string | null {
-  const fetcher = useFetcher<{ labelled?: Record<string, string> }>({
-    key: FETCHER_KEY,
-  });
-  useEffect(() => {
-    if (fetcher.state === "idle" && Date.now() - lastRequested > 3000) {
-      lastRequested = Date.now();
-      void fetcher.load(LABELLED_URL);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return fetcher.data?.labelled?.[assetId] ?? null;
+  return labelledLookup.useData()?.labelled?.[assetId] ?? null;
 }
 
 /**

@@ -21,6 +21,8 @@ import { z } from "zod";
 import { updateDynamicTitleAtom } from "~/atoms/dynamic-title-atom";
 import { fileErrorAtom, assetImageValidateFileAtom } from "~/atoms/file";
 import { FormAttachments } from "~/components/asset-attachment/form-attachments"; // attachments feature
+import { FormLabelRow } from "~/components/labels/form-label-row"; // labels feature
+import { FormSoldRow } from "~/components/sold/form-sold-row"; // sold feature
 import { useAutoFocus } from "~/hooks/use-auto-focus";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { getPrimaryKit, isQuantityTracked } from "~/modules/asset/utils";
@@ -959,6 +961,9 @@ export const AssetForm = ({
             </div>
             <p className="mt-1 text-sm text-gray-600"></p>
           </FormRow>
+
+          {/* labels feature: the printed label, next to the Asset ID */}
+          {id && !bulkMode ? <FormLabelRow assetId={id} /> : null}
         </When>
 
         <FormRow rowLabel={"Main image"} className="pt-[10px]">
@@ -1336,6 +1341,9 @@ export const AssetForm = ({
             </span>
           </div>
         </FormRow>
+
+        {/* sold feature: sold, date and price, saved with the form */}
+        {id && !bulkMode ? <FormSoldRow assetId={id} /> : null}
 
         {/* Bulk mode hides the barcode + preferred-barcode UI entirely:
             assigning the same alternative barcode value to N assets is

@@ -2737,6 +2737,8 @@ model LabelPrintJob {
   createdAt      DateTime  @default(now())
   startedAt      DateTime?
   printedAt      DateTime?
+  /// Set when the label was removed from the asset ("Remove label"); the print stays in the history
+  labelRemovedAt DateTime?
 
   @@index([organizationId, status, createdAt])
   @@index([assetId, status])

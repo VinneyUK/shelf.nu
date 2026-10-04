@@ -25,6 +25,7 @@ import { claimStagedAttachments } from "~/modules/asset-attachment/service.serve
 import { getAssetModels } from "~/modules/asset-model/service.server";
 
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
+import { applySoldFromForm } from "~/modules/sold/service.server"; // sold feature
 import { buildTagsSet } from "~/modules/tag/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { extractBarcodesFromFormData } from "~/utils/barcode-form-data.server";
@@ -290,6 +291,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
     // attachments feature: files added in the form before saving
     await claimStagedAttachments({ formData, assetId: id, organizationId });
+    // sold feature: the form's Sold row
+    await applySoldFromForm({ formData, organizationId, assetId: id, userId });
 
     sendNotification({
       title: "Asset updated",

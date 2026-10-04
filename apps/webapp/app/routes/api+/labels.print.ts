@@ -8,7 +8,7 @@ import { z } from "zod";
 import { resolveAssetIdsForBulkOperation } from "~/modules/asset/bulk-operations-helper.server";
 import { CurrentSearchParamsSchema } from "~/modules/asset/utils.server";
 import { getAssetIndexSettings } from "~/modules/asset-index-settings/service.server";
-import { queueLabels } from "~/modules/labels/service.server";
+import { queueLabels, removeLabels } from "~/modules/labels/service.server";
 import { sendNotification } from "~/utils/emitter/send-notification.server";
 import { makeShelfError, ShelfError } from "~/utils/error";
 import { assertIsPost, error, parseData, payload } from "~/utils/http.server";
@@ -23,6 +23,8 @@ const PrintSchema = z
   .object({
     assetIds: z.array(z.string()).min(1, "Choose at least one asset."),
     source: z.enum(["asset", "bulk", "labels-page"]).default("asset"),
+    /** "remove" takes the Labelled status off instead of printing */
+    intent: z.enum(["print", "remove"]).default("print"),
   })
   .and(CurrentSearchParamsSchema);
 
@@ -38,7 +40,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
       entity: PermissionEntity.asset,
       action: PermissionAction.update,
     });
-    const { assetIds, source, currentSearchParams } = parseData(
+    const { assetIds, source, currentSearchParams, intent } = parseData(
       formData,
       PrintSchema
     );
@@ -62,6 +64,25 @@ export async function action({ context, request }: ActionFunctionArgs) {
         // SELF_SERVICE do not hold, so the custodian filter needs no narrowing.
         allowedTeamMemberIds: "all",
       });
+    }
+
+    if (intent === "remove") {
+      const removed = await removeLabels({
+        organizationId,
+        assetIds: ids,
+        userId,
+      });
+      sendNotification({
+        title: "Label removed",
+        message: removed
+          ? `${removed} asset${
+              removed === 1 ? " is" : "s are"
+            } no longer marked as labelled.`
+          : "Those assets weren't marked as labelled.",
+        icon: { name: "success", variant: "success" },
+        senderId: userId,
+      });
+      return payload({ success: true, removed });
     }
 
     const result = await queueLabels({

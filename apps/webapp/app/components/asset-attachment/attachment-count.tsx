@@ -6,7 +6,7 @@
  * Every row shares one request (fetcher key below), refreshed whenever the
  * list is shown.
  */
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { PaperclipIcon } from "lucide-react";
 import { Link, useFetcher } from "react-router";
 import {
@@ -17,24 +17,14 @@ import {
 import { Td } from "~/components/table";
 import { attachmentTypeLabel } from "~/modules/asset-attachment/constants";
 import { formatBytes } from "~/utils/format-bytes";
+import { createSharedLookup } from "~/utils/shared-lookup";
 
-const COUNTS_URL = "/api/asset-attachments/counts";
-const FETCHER_KEY = "asset-attachment-counts";
-let lastRequested = 0;
+export const attachmentCountsLookup = createSharedLookup<{
+  counts?: Record<string, number>;
+}>("/api/asset-attachments/counts");
 
 function useAttachmentCount(assetId: string): number {
-  const fetcher = useFetcher<{ counts?: Record<string, number> }>({
-    key: FETCHER_KEY,
-  });
-  useEffect(() => {
-    // The first row to mount asks; the rest share the answer
-    if (fetcher.state === "idle" && Date.now() - lastRequested > 3000) {
-      lastRequested = Date.now();
-      void fetcher.load(COUNTS_URL);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return fetcher.data?.counts?.[assetId] ?? 0;
+  return attachmentCountsLookup.useData()?.counts?.[assetId] ?? 0;
 }
 
 type ListedAttachment = {

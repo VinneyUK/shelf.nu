@@ -10,6 +10,7 @@
  * before the next try.
  */
 import { db } from "~/database/db.server";
+import { addAssetActivity } from "~/modules/activity/service.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { SERVER_URL } from "~/utils/env";
 import { ShelfError } from "~/utils/error";
@@ -289,7 +290,12 @@ export async function retryLabelJobsNow(organizationId: string) {
 export async function getLabelledAssets(organizationId: string) {
   const rows = await db.labelPrintJob.groupBy({
     by: ["assetId"],
-    where: { organizationId, status: "printed", assetId: { not: null } },
+    where: {
+      organizationId,
+      status: "printed",
+      assetId: { not: null },
+      labelRemovedAt: null,
+    },
     _max: { printedAt: true },
   });
   const labelled: Record<string, string> = {};
@@ -299,6 +305,60 @@ export async function getLabelledAssets(organizationId: string) {
     }
   }
   return labelled;
+}
+
+/** "Remove label": the asset is no longer Labelled; its prints stay in the history. */
+export async function removeLabels({
+  organizationId,
+  assetIds,
+  userId = null,
+}: {
+  organizationId: string;
+  assetIds: string[];
+  userId?: string | null;
+}) {
+  const { count } = await db.labelPrintJob.updateMany({
+    where: {
+      organizationId,
+      assetId: { in: assetIds },
+      status: "printed",
+      labelRemovedAt: null,
+    },
+    data: { labelRemovedAt: new Date() },
+  });
+  if (count > 0) {
+    await addAssetActivity({
+      organizationId,
+      assetIds,
+      userId,
+      action: "removed the **label** (no longer marked as labelled).",
+    });
+  }
+  return count;
+}
+
+/** The asset's current label, for the card on the asset overview; null if not labelled. */
+export async function getPrintedLabel({
+  organizationId,
+  assetId,
+}: {
+  organizationId: string;
+  assetId: string;
+}) {
+  const job = await db.labelPrintJob.findFirst({
+    where: { organizationId, assetId, status: "printed", labelRemovedAt: null },
+    orderBy: { printedAt: "desc" },
+    select: { sequentialId: true, title: true, qrId: true, printedAt: true },
+  });
+  if (!job) return null;
+  const s = await getSettingsWithToken(organizationId);
+  return {
+    sequentialId: job.sequentialId,
+    title: job.title,
+    qrUrl: qrUrlFor(job.qrId),
+    printedAt: job.printedAt,
+    settings: { labelWidth: s.labelWidth, leftMargin: s.leftMargin },
+  };
 }
 
 /** A test print of a sample label, straight away, bypassing the queue. */
@@ -330,10 +390,13 @@ export async function printTestLabel(organizationId: string, preview: boolean) {
 type ClaimedJob = {
   id: string;
   organizationId: string;
+  assetId: string | null;
   sequentialId: string;
   title: string;
   qrId: string;
   attempts: number;
+  source: string;
+  requestedById: string | null;
 };
 
 /** Takes the next job that's due, marking it printing in the same statement. */
@@ -347,7 +410,7 @@ async function claimNextJob(): Promise<ClaimedJob | null> {
       FOR UPDATE SKIP LOCKED
       LIMIT 1
     )
-    RETURNING id, "organizationId", "sequentialId", title, "qrId", attempts`;
+    RETURNING id, "organizationId", "assetId", "sequentialId", title, "qrId", attempts, source, "requestedById"`;
   return rows[0] ?? null;
 }
 
@@ -376,6 +439,16 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
       where: { id: job.id, organizationId: job.organizationId },
       data: { status: "printed", printedAt: new Date(), lastError: null },
     });
+    if (job.assetId) {
+      await addAssetActivity({
+        organizationId: job.organizationId,
+        assetIds: [job.assetId],
+        userId: job.requestedById,
+        action: `printed a **label**${
+          job.source === "tag" ? " (queued by tag)" : ""
+        }.`,
+      });
+    }
     return true;
   } catch (cause) {
     const attempts = job.attempts + 1;

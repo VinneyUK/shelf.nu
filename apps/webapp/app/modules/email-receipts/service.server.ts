@@ -12,6 +12,7 @@ import { ImapFlow } from "imapflow";
 import { simpleParser, type ParsedMail } from "mailparser";
 import { db } from "~/database/db.server";
 import { getSupabaseAdmin } from "~/integrations/supabase/client";
+import { addAssetActivity } from "~/modules/activity/service.server";
 import { ATTACHMENTS_BUCKET } from "~/modules/asset-attachment/constants";
 import { storeAttachmentBytes } from "~/modules/asset-attachment/service.server";
 import { ShelfError } from "~/utils/error";
@@ -465,10 +466,22 @@ export async function assignEmailReceipt(
     },
   });
   if (count === 0) return null;
+  const files = await db.assetAttachment.findMany({
+    where: { organizationId, emailReceiptId: receiptId },
+    select: { fileName: true },
+  });
   await db.assetAttachment.updateMany({
     where: { organizationId, emailReceiptId: receiptId },
     data: { assetId: asset.id, emailReceiptId: null },
   });
+  for (const file of files) {
+    await addAssetActivity({
+      organizationId,
+      assetIds: [asset.id],
+      userId: null,
+      action: `attached **${file.fileName}** from an emailed receipt.`,
+    });
+  }
   return asset.sequentialId;
 }
 

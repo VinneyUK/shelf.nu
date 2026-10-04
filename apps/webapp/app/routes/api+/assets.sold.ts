@@ -102,8 +102,9 @@ export async function action({ context, request }: ActionFunctionArgs) {
             assetIds: ids,
             soldOn: input.soldOn,
             price: input.price,
+            userId,
           })
-        : await markAssetsNotSold({ organizationId, assetIds: ids });
+        : await markAssetsNotSold({ organizationId, assetIds: ids, userId });
 
     const plural = count === 1 ? "" : "s";
     sendNotification({

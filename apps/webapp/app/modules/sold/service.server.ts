@@ -7,6 +7,9 @@
  * the status wherever the sold feature wraps the status badge.
  */
 import { db } from "~/database/db.server";
+import { addAssetActivity } from "~/modules/activity/service.server";
+import { formatCurrency } from "~/utils/currency";
+import { SOLD_FIELDS } from "./constants";
 
 /** Records (or updates) the sale of each asset in the workspace. */
 export async function markAssetsSold({
@@ -14,11 +17,13 @@ export async function markAssetsSold({
   assetIds,
   soldOn,
   price,
+  userId = null,
 }: {
   organizationId: string;
   assetIds: string[];
   soldOn: Date;
   price: number | null;
+  userId?: string | null;
 }) {
   const assets = await db.asset.findMany({
     where: { id: { in: [...new Set(assetIds)] }, organizationId },
@@ -33,6 +38,29 @@ export async function markAssetsSold({
       })
     )
   );
+  const organization = await db.organization.findFirst({
+    where: { id: organizationId },
+    select: { currency: true },
+  });
+  const when = soldOn.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const forPrice =
+    price !== null && organization
+      ? ` for ${formatCurrency({
+          value: price,
+          currency: organization.currency,
+          locale: "en-GB",
+        })}`
+      : "";
+  await addAssetActivity({
+    organizationId,
+    assetIds: assets.map((a) => a.id),
+    userId,
+    action: `marked this asset as **sold** (${when}${forPrice}).`,
+  });
   return assets.length;
 }
 
@@ -40,12 +68,24 @@ export async function markAssetsSold({
 export async function markAssetsNotSold({
   organizationId,
   assetIds,
+  userId = null,
 }: {
   organizationId: string;
   assetIds: string[];
+  userId?: string | null;
 }) {
+  const sold = await db.assetSale.findMany({
+    where: { assetId: { in: assetIds }, organizationId },
+    select: { assetId: true },
+  });
   const { count } = await db.assetSale.deleteMany({
     where: { assetId: { in: assetIds }, organizationId },
+  });
+  await addAssetActivity({
+    organizationId,
+    assetIds: sold.map((s) => s.assetId),
+    userId,
+    action: "marked this asset as **not sold**.",
   });
   return count;
 }
@@ -115,4 +155,52 @@ export async function getSoldReport({
       withoutPrice: rows.filter((r) => r.price === null).length,
     },
   };
+}
+
+/**
+ * Applies the edit form's Sold row. Nothing happens unless the row was in
+ * the form; unmarking only when the asset was sold, so activity isn't noisy.
+ */
+export async function applySoldFromForm({
+  formData,
+  organizationId,
+  assetId,
+  userId,
+}: {
+  formData: FormData;
+  organizationId: string;
+  assetId: string;
+  userId: string;
+}) {
+  const sold = formData.get(SOLD_FIELDS.sold);
+  if (sold !== "true" && sold !== "false") return;
+
+  const current = await db.assetSale.findFirst({
+    where: { assetId, organizationId },
+    select: { soldOn: true, price: true },
+  });
+  if (sold === "false") {
+    if (current)
+      await markAssetsNotSold({ organizationId, assetIds: [assetId], userId });
+    return;
+  }
+  const soldOnRaw = String(formData.get(SOLD_FIELDS.soldOn) ?? "");
+  const soldOn = /^\d{4}-\d{2}-\d{2}$/.test(soldOnRaw)
+    ? new Date(`${soldOnRaw}T00:00:00.000Z`)
+    : current?.soldOn ?? new Date();
+  const priceRaw = String(formData.get(SOLD_FIELDS.price) ?? "").trim();
+  const price = priceRaw === "" ? null : Math.max(0, Number(priceRaw) || 0);
+  const unchanged =
+    current &&
+    current.soldOn.toISOString().slice(0, 10) ===
+      soldOn.toISOString().slice(0, 10) &&
+    current.price === price;
+  if (unchanged) return;
+  await markAssetsSold({
+    organizationId,
+    assetIds: [assetId],
+    soldOn,
+    price,
+    userId,
+  });
 }

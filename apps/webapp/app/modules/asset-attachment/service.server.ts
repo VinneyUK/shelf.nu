@@ -13,6 +13,7 @@ import {
 } from "@remix-run/form-data-parser";
 import { db } from "~/database/db.server";
 import { getSupabaseAdmin } from "~/integrations/supabase/client";
+import { addAssetActivity } from "~/modules/activity/service.server";
 import type { ErrorLabel } from "~/utils/error";
 import { ShelfError, isLikeShelfError } from "~/utils/error";
 import { id as createId } from "~/utils/id/id.server";
@@ -250,6 +251,16 @@ export async function storeAttachmentBytes({
     await bucket.remove([storagePath]);
     throw cause;
   }
+  if (assetId) {
+    await addAssetActivity({
+      organizationId,
+      assetIds: [assetId],
+      userId,
+      action: userId
+        ? `added the attachment **${fileName}**.`
+        : `attached **${fileName}** from an emailed receipt.`,
+    });
+  }
   return {
     id: attachmentId,
     fileName,
@@ -412,10 +423,26 @@ export async function claimStagedAttachments({
     .getAll(STAGED_ATTACHMENTS_FIELD)
     .filter((v): v is string => typeof v === "string" && v.length > 0);
   if (ids.length === 0) return 0;
-  const { count } = await db.assetAttachment.updateMany({
+  const staged = await db.assetAttachment.findMany({
     where: { id: { in: ids }, organizationId, assetId: null },
+    select: { id: true, fileName: true, uploadedById: true },
+  });
+  const { count } = await db.assetAttachment.updateMany({
+    where: {
+      id: { in: staged.map((s) => s.id) },
+      organizationId,
+      assetId: null,
+    },
     data: { assetId },
   });
+  for (const file of staged) {
+    await addAssetActivity({
+      organizationId,
+      assetIds: [assetId],
+      userId: file.uploadedById,
+      action: `added the attachment **${file.fileName}**.`,
+    });
+  }
   return count;
 }
 

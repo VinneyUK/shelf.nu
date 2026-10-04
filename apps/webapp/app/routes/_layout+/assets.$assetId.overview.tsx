@@ -25,6 +25,7 @@ import DynamicSelect from "~/components/dynamic-select/dynamic-select";
 import Input from "~/components/forms/input";
 import { Switch } from "~/components/forms/switch";
 import Icon from "~/components/icons/icon";
+import { PrintedLabelCard } from "~/components/labels/printed-label-card"; // labels feature
 import ContextualModal from "~/components/layout/contextual-modal";
 import type { HeaderData } from "~/components/layout/header/types";
 import { LocationBadge } from "~/components/location/location-badge";
@@ -46,6 +47,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/shared/tooltip";
+import { SoldValueNote } from "~/components/sold/sold-value-note"; // sold feature
 import When from "~/components/when/when";
 import { db } from "~/database/db.server";
 import { useDateFormatter } from "~/hooks/use-date-formatter";
@@ -757,6 +759,15 @@ async function handleMoveUnitsIntent({
 }
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
+/**
+ * Fork (VinneyUK/shelf.nu): parts of the overview that are switched off. Set
+ * to true to bring one back. The asset ID stands in for the Shelf QR ID; the
+ * printed label stands in for Shelf's QR section; placements aren't shown.
+ */
+const SHOW_SHELF_QR_ID = false as boolean;
+const SHOW_SHELF_QR_SECTION = false as boolean;
+const SHOW_LOCATION_BOX = false as boolean;
+
 export default function AssetOverview() {
   const { remindersEnabled, custodyEnabled, bookingsEnabled } =
     useCustomisations(); // customise feature
@@ -858,7 +869,7 @@ export default function AssetOverview() {
                   </div>
                 </li>
               ) : null}
-              {asset?.qrCodes?.[0] ? (
+              {SHOW_SHELF_QR_ID && asset?.qrCodes?.[0] ? (
                 <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
                   <span className="w-1/4 text-[14px] font-medium text-gray-900">
                     Shelf QR ID
@@ -1108,6 +1119,12 @@ export default function AssetOverview() {
                           currency: asset.organization.currency,
                         })
                       : "No value"}
+                    {/* sold feature: what it actually went for */}
+                    <SoldValueNote
+                      assetId={asset.id}
+                      currency={asset.organization.currency}
+                      locale={locale}
+                    />
                   </div>
                 )}
                 renderEditor={() => (
@@ -1593,172 +1610,175 @@ export default function AssetOverview() {
             );
           })()}
 
-          {(() => {
-            /**
-             * "Placed at locations" sidebar card — mirrors the
-             * "Included in kits" card above. A QUANTITY_TRACKED asset
-             * can sit at multiple locations at distinct per-location
-             * slices; an INDIVIDUAL asset sits at exactly one. Render
-             * one row per placement with the per-location quantity
-             * badge for qty-tracked rows; the per-location qty is
-             * irrelevant for INDIVIDUAL (always 1, no signal). Hide
-             * the card entirely when there are zero placements so the
-             * sidebar doesn't grow an empty section for unplaced
-             * assets. The detailed multi-placement editor opens from
-             * the "Edit placements" button on this card.
-             */
-            type Placement = {
-              quantity: number;
-              location: {
-                id: string;
-                name: string;
-                parentId: string | null;
-                _count?: { children?: number };
-              } | null;
-              assetKitId: string | null;
-              assetKit: {
-                id: string;
-                kit: { id: string; name: string };
-              } | null;
-            };
-            const placements = ((asset.assetLocations ?? []) as Placement[])
-              .filter((al) => al.location?.id && al.location?.name)
-              .map((al) => ({
-                locationId: al.location!.id,
-                locationName: al.location!.name,
-                parentId: al.location!.parentId,
-                childCount: al.location!._count?.children ?? 0,
-                quantity: al.quantity ?? 0,
-                // Kit-driven rows render a "via {kit}" badge and are
-                // NOT editable from the manage-placements dialog. The
-                // kit info comes from the nested AssetKit → Kit
-                // relation pulled by `getAssetOverviewFields`.
-                viaKit: al.assetKit?.kit ?? null,
-              }));
-            if (placements.length === 0) return null;
-            const isQty = isQuantityTracked(asset);
-            const unit = asset.unitOfMeasure || "units";
-            return (
-              <Card className="my-3 py-3 md:border">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-100/50">
-                    <div className="flex size-7 items-center justify-center rounded-full bg-gray-200">
-                      <Icon icon="location" />
+          {SHOW_LOCATION_BOX &&
+            (() => {
+              /**
+               * "Placed at locations" sidebar card — mirrors the
+               * "Included in kits" card above. A QUANTITY_TRACKED asset
+               * can sit at multiple locations at distinct per-location
+               * slices; an INDIVIDUAL asset sits at exactly one. Render
+               * one row per placement with the per-location quantity
+               * badge for qty-tracked rows; the per-location qty is
+               * irrelevant for INDIVIDUAL (always 1, no signal). Hide
+               * the card entirely when there are zero placements so the
+               * sidebar doesn't grow an empty section for unplaced
+               * assets. The detailed multi-placement editor opens from
+               * the "Edit placements" button on this card.
+               */
+              type Placement = {
+                quantity: number;
+                location: {
+                  id: string;
+                  name: string;
+                  parentId: string | null;
+                  _count?: { children?: number };
+                } | null;
+                assetKitId: string | null;
+                assetKit: {
+                  id: string;
+                  kit: { id: string; name: string };
+                } | null;
+              };
+              const placements = ((asset.assetLocations ?? []) as Placement[])
+                .filter((al) => al.location?.id && al.location?.name)
+                .map((al) => ({
+                  locationId: al.location!.id,
+                  locationName: al.location!.name,
+                  parentId: al.location!.parentId,
+                  childCount: al.location!._count?.children ?? 0,
+                  quantity: al.quantity ?? 0,
+                  // Kit-driven rows render a "via {kit}" badge and are
+                  // NOT editable from the manage-placements dialog. The
+                  // kit info comes from the nested AssetKit → Kit
+                  // relation pulled by `getAssetOverviewFields`.
+                  viaKit: al.assetKit?.kit ?? null,
+                }));
+              if (placements.length === 0) return null;
+              const isQty = isQuantityTracked(asset);
+              const unit = asset.unitOfMeasure || "units";
+              return (
+                <Card className="my-3 py-3 md:border">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-100/50">
+                      <div className="flex size-7 items-center justify-center rounded-full bg-gray-200">
+                        <Icon icon="location" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold">
-                        {placements.length > 1
-                          ? "Placed at locations"
-                          : "Placed at location"}
-                      </h3>
-                      {isQty && canEditAsset ? (
-                        <Button
-                          to="manage-placements"
-                          variant="link"
-                          className="shrink-0 text-xs font-normal text-gray-500 underline hover:text-gray-700"
-                        >
-                          Edit placements
-                        </Button>
-                      ) : null}
-                    </div>
-                    <ul className="space-y-1">
-                      {placements.map((p) => (
-                        <li
-                          key={`${p.locationId}-${p.viaKit?.id ?? "manual"}`}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Button
-                              to={`/locations/${p.locationId}`}
-                              role="link"
-                              variant="link"
-                              className="min-w-0 justify-start truncate text-sm font-normal text-gray-700 underline hover:text-gray-700"
-                              target="_blank"
-                            >
-                              <span className="truncate">{p.locationName}</span>
-                            </Button>
-                            {p.viaKit ? (
-                              <TooltipProvider delayDuration={150}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      to={`/kits/${p.viaKit.id}`}
-                                      role="link"
-                                      variant="link"
-                                      target="_blank"
-                                      className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">
+                          {placements.length > 1
+                            ? "Placed at locations"
+                            : "Placed at location"}
+                        </h3>
+                        {isQty && canEditAsset ? (
+                          <Button
+                            to="manage-placements"
+                            variant="link"
+                            className="shrink-0 text-xs font-normal text-gray-500 underline hover:text-gray-700"
+                          >
+                            Edit placements
+                          </Button>
+                        ) : null}
+                      </div>
+                      <ul className="space-y-1">
+                        {placements.map((p) => (
+                          <li
+                            key={`${p.locationId}-${p.viaKit?.id ?? "manual"}`}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Button
+                                to={`/locations/${p.locationId}`}
+                                role="link"
+                                variant="link"
+                                className="min-w-0 justify-start truncate text-sm font-normal text-gray-700 underline hover:text-gray-700"
+                                target="_blank"
+                              >
+                                <span className="truncate">
+                                  {p.locationName}
+                                </span>
+                              </Button>
+                              {p.viaKit ? (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        to={`/kits/${p.viaKit.id}`}
+                                        role="link"
+                                        variant="link"
+                                        target="_blank"
+                                        className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
+                                      >
+                                        via kit
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="top"
+                                      className="max-w-xs"
                                     >
-                                      via kit
+                                      <p className="text-xs font-semibold text-gray-700">
+                                        {p.viaKit.name}
+                                      </p>
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        These units are at this location because
+                                        the asset is in this kit. Change the
+                                        kit&apos;s location to move them.
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : null}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {isQty ? (
+                                <span className="text-xs tabular-nums text-gray-500">
+                                  {p.quantity} {unit}
+                                </span>
+                              ) : null}
+                              {/*
+                               * Move-units affordance — manual rows only. Kit-driven
+                               * rows (`viaKit`) must be moved via the `kit` axis
+                               * because their quantity is derived from `AssetKit`,
+                               * not editable directly. Gated on edit permission +
+                               * QUANTITY_TRACKED so INDIVIDUAL assets don't see it.
+                               */}
+                              {isQty && canEditAsset && !p.viaKit ? (
+                                <MoveUnitsDialog
+                                  axis="location"
+                                  assetId={asset.id}
+                                  assetTitle={asset.title}
+                                  unitOfMeasure={asset.unitOfMeasure}
+                                  fromLocation={{
+                                    id: p.locationId,
+                                    name: p.locationName,
+                                    quantity: p.quantity,
+                                  }}
+                                  destinations={moveDestinations.locations.filter(
+                                    (l) => l.id !== p.locationId
+                                  )}
+                                  actionUrl={moveUnitsActionUrl}
+                                  trigger={
+                                    <Button
+                                      type="button"
+                                      variant="link"
+                                      className="text-xs font-normal text-gray-500 underline hover:text-gray-700"
+                                    >
+                                      Move
                                     </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent
-                                    side="top"
-                                    className="max-w-xs"
-                                  >
-                                    <p className="text-xs font-semibold text-gray-700">
-                                      {p.viaKit.name}
-                                    </p>
-                                    <p className="mt-1 text-xs text-gray-500">
-                                      These units are at this location because
-                                      the asset is in this kit. Change the
-                                      kit&apos;s location to move them.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : null}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            {isQty ? (
-                              <span className="text-xs tabular-nums text-gray-500">
-                                {p.quantity} {unit}
-                              </span>
-                            ) : null}
-                            {/*
-                             * Move-units affordance — manual rows only. Kit-driven
-                             * rows (`viaKit`) must be moved via the `kit` axis
-                             * because their quantity is derived from `AssetKit`,
-                             * not editable directly. Gated on edit permission +
-                             * QUANTITY_TRACKED so INDIVIDUAL assets don't see it.
-                             */}
-                            {isQty && canEditAsset && !p.viaKit ? (
-                              <MoveUnitsDialog
-                                axis="location"
-                                assetId={asset.id}
-                                assetTitle={asset.title}
-                                unitOfMeasure={asset.unitOfMeasure}
-                                fromLocation={{
-                                  id: p.locationId,
-                                  name: p.locationName,
-                                  quantity: p.quantity,
-                                }}
-                                destinations={moveDestinations.locations.filter(
-                                  (l) => l.id !== p.locationId
-                                )}
-                                actionUrl={moveUnitsActionUrl}
-                                trigger={
-                                  <Button
-                                    type="button"
-                                    variant="link"
-                                    className="text-xs font-normal text-gray-500 underline hover:text-gray-700"
-                                  >
-                                    Move
-                                  </Button>
-                                }
-                              />
-                            ) : null}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                                  }
+                                />
+                              ) : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })()}
+                </Card>
+              );
+            })()}
 
           {custodyEnabled /* customise feature */ &&
           !isQuantityTracked(asset) ? (
@@ -1852,7 +1872,9 @@ export default function AssetOverview() {
             />
           ) : null}
 
-          {asset && (
+          {/* labels feature: the printed label, when there is one, in place of Shelf's QR section */}
+          {asset ? <PrintedLabelCard assetId={asset.id} /> : null}
+          {SHOW_SHELF_QR_SECTION && asset && (
             <CodePreview
               qrObj={qrObj}
               barcodes={
