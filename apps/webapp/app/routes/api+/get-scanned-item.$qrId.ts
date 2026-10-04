@@ -333,7 +333,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
     if (!qr.assetId && !qr.kitId) {
       throw new ShelfError({
         cause: null,
-        message: "QR code is not linked to any asset or kit",
+        message: "QR code is not linked to any asset or box",
         additionalData: { qrId, shouldSendNotification: false },
         shouldBeCaptured: false,
         label: "QR",
@@ -344,7 +344,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
       payload({
         qr: {
           ...qr,
-          type: qr.asset ? "asset" : qr.kit ? "kit" : undefined,
+          type: qr.asset ? "asset" : qr.kit ? "box" : undefined,
           asset: qr.asset
             ? await serializeScannedAsset({
                 asset: qr.asset,

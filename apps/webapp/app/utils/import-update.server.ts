@@ -99,7 +99,7 @@ const NO_IDENTIFIER_COLUMN_MESSAGE =
  */
 const NO_UPDATABLE_COLUMNS_MESSAGE =
   "We matched your identifier column, but none of the other columns in " +
-  "this file can be updated here (e.g. Title, Category, Location, Tags, " +
+  "this file can be updated here (e.g. Title, Category, Place, Tags, " +
   "Valuation, or your custom fields). This usually means the file isn't " +
   'shaped for updates. Export "Import-ready" from the Asset Index and ' +
   "re-import that file to update these assets.";
@@ -914,7 +914,7 @@ export async function applyBulkUpdatesFromImport({
             if (!locationId) {
               throw new ShelfError({
                 cause: null,
-                message: `Location "${locationChange.newValue}" could not be resolved`,
+                message: `Place "${locationChange.newValue}" could not be resolved`,
                 label: "Assets",
                 shouldBeCaptured: false,
               });
@@ -940,7 +940,7 @@ export async function applyBulkUpdatesFromImport({
             throw cause; // Re-throw non-kit errors
           }
           const msg = (cause as ShelfError).message;
-          locationKitError = `Location change skipped: ${msg}`;
+          locationKitError = `Place change skipped: ${msg}`;
         }
       }
 

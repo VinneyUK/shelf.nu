@@ -91,7 +91,7 @@ export const StartAuditSchema = BaseAuditSchema.extend({
   },
   {
     message:
-      "Provide assetIds, context parameters (contextType + contextId), a location selection (contextType=location + locationIds), or a kit selection (contextType=kit + kitIds).",
+      "Provide assetIds, context parameters (contextType + contextId), a place selection (contextType=place + locationIds), or a box selection (contextType=box + kitIds).",
   }
 );
 

@@ -27,7 +27,7 @@ export default function KitSelector({
   className,
   kits,
   name,
-  placeholder = "Select a kit",
+  placeholder = "Select a box",
   isLoading = false,
   error,
 }: KitSelectorProps) {
@@ -148,7 +148,7 @@ export default function KitSelector({
               <SearchIcon className="ml-4 size-4 text-gray-500" />
               <input
                 ref={searchInputRef}
-                placeholder="Search kits..."
+                placeholder="Search boxes..."
                 className="border-0 px-4 py-2 pl-2 text-[14px] focus:border-0 focus:ring-0"
                 value={searchQuery}
                 onChange={(event) => {
@@ -190,12 +190,13 @@ export default function KitSelector({
               })}
               {filteredKits.length === 0 && !isLoading && (
                 <div className="px-4 py-3 text-sm text-gray-500">
-                  {searchQuery ? "No kits found" : "No kits available"}
+                  {searchQuery ? "No boxes found" : "No boxes available"}
                 </div>
               )}
               {isLoading && (
                 <div className="px-4 py-3 text-sm text-gray-500">
-                  Loading kits...
+                  
+                  Loading boxes...
                 </div>
               )}
             </div>

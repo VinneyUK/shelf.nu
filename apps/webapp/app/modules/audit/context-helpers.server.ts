@@ -287,7 +287,7 @@ export async function resolveAssetIdsForLocationSelection({
     throw new ShelfError({
       cause: null,
       message:
-        "None of the selected locations contain assets. Add assets before starting an audit.",
+        "None of the selected places contain assets. Add assets before starting an audit.",
       status: 400,
       label: "Audit",
       shouldBeCaptured: false,
@@ -375,7 +375,7 @@ export async function resolveAssetIdsForKitSelection({
     throw new ShelfError({
       cause: null,
       message:
-        "None of the selected kits contain assets. Add assets before starting an audit.",
+        "None of the selected boxes contain assets. Add assets before starting an audit.",
       status: 400,
       label: "Audit",
       shouldBeCaptured: false,

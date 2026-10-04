@@ -287,7 +287,7 @@ export async function safeFetch(
         if (!location) {
           throw new ShelfError({
             cause: null,
-            message: `Redirect (${response.status}) without a Location header`,
+            message: `Redirect (${response.status}) without a Place header`,
             additionalData: { url, from: target.href },
             label,
             shouldBeCaptured: false,

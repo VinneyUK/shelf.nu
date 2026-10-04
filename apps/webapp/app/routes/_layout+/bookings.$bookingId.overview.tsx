@@ -1212,10 +1212,10 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         // hard refresh (SearchForm reads `search` from loader data).
         search,
         // Asset search label + tooltip listing searchable fields
-        searchFieldLabel: "Search assets & kits",
+        searchFieldLabel: "Search assets & boxes",
         searchFieldTooltip: {
           title: "Search booking items",
-          text: "Search the assets and kits in this booking. Separate keywords with a comma (,) to search with OR. Supported fields:\n- Name\n- Asset ID (SAM-id, assets only)\n- Category\n- Tags (assets only)\n- Location\n- QR code value\n- Barcode value",
+          text: "Search the assets and boxes in this booking. Separate keywords with a comma (,) to search with OR. Supported fields:\n- Name\n- Asset ID (SAM-id, assets only)\n- Category\n- Tags (assets only)\n- Place\n- QR code value\n- Barcode value",
         },
         ...notifyData,
       }),
@@ -1998,14 +1998,14 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           organizationId,
           userId,
           changes: [
-            "A kit was removed from the booking. View booking activity for full details",
+            "A box was removed from the booking. View booking activity for full details",
           ],
           hints: getClientHint(request),
         });
 
         sendNotification({
-          title: "Kit removed",
-          message: "Your kit has been removed from the booking",
+          title: "Box removed",
+          message: "Your box has been removed from the booking",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });

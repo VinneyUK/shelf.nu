@@ -25,8 +25,8 @@ export default function BulkAssignCustodyDialog() {
     <BulkUpdateDialogContent
       ref={zo.ref}
       type="assign-custody"
-      title={`${isSelfService ? "Take" : "Assign"} custody of kit`}
-      description={`These kits are currently available. You're about to assign custody to ${
+      title={`${isSelfService ? "Take" : "Assign"} custody of box`}
+      description={`These boxes are currently available. You're about to assign custody to ${
         isSelfService ? "yourself" : "one of your team members"
       }.`}
       arrayFieldId="kitIds"

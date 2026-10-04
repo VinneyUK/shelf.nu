@@ -346,7 +346,7 @@ describe("assets.$assetId.overview.assign-custody action", () => {
     expect(createNoteMock).not.toHaveBeenCalled();
   });
 
-  it("refuses to assign over custody that a kit put on the asset", async () => {
+  it("refuses to assign over custody that a box put on the asset", async () => {
     // why this is a route test and not a service one: the guard lives in the
     // action, and the hole it closes is reachable ONLY by posting here. The
     // page hides itself when the asset already has custody, but the action is

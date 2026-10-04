@@ -113,7 +113,7 @@ describe("ManagePlacementsForm — over-placed state", () => {
             locationId: "loc-2",
             locationName: "Erbil Store",
             quantity: 50,
-            kit: { id: "kit-1", name: "Field Kit" },
+            kit: { id: "kit-1", name: "Field Box" },
           },
         ]}
       />

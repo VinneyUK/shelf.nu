@@ -41,7 +41,7 @@ describe("calculateUnitCheckinProgress", () => {
     expect(result.countMode).toBe("units");
   });
 
-  it("counts a kit with no checked-in assets as 0 of 1", () => {
+  it("counts a box with no checked-in assets as 0 of 1", () => {
     const assets = [kitted("a1", "kit1"), kitted("a2", "kit1")];
 
     const result = calculateUnitCheckinProgress(assets, []);
@@ -53,7 +53,7 @@ describe("calculateUnitCheckinProgress", () => {
     expect(result.hasPartialCheckins).toBe(false);
   });
 
-  it("does not count a partially checked-in kit as checked in", () => {
+  it("does not count a partially checked-in box as checked in", () => {
     const assets = [
       kitted("a1", "kit1"),
       kitted("a2", "kit1"),
@@ -72,7 +72,7 @@ describe("calculateUnitCheckinProgress", () => {
     expect(result.hasPartialCheckins).toBe(true);
   });
 
-  it("counts a fully checked-in kit as 1 of 1", () => {
+  it("counts a fully checked-in box as 1 of 1", () => {
     const assets = [kitted("a1", "kit1"), kitted("a2", "kit1")];
 
     const result = calculateUnitCheckinProgress(assets, ["a1", "a2"]);
@@ -84,7 +84,7 @@ describe("calculateUnitCheckinProgress", () => {
     expect(result.hasPartialCheckins).toBe(true);
   });
 
-  it("handles mixed standalone + multiple kits with partial states", () => {
+  it("handles mixed standalone + multiple boxes with partial states", () => {
     const assets = [
       // 2 standalone assets (a1 checked in, a2 not)
       standalone("a1"),
@@ -309,7 +309,7 @@ describe("calculateBookingLifecycleProgress (asset mode)", () => {
 });
 
 describe("calculateBookingLifecycleProgress (unit mode)", () => {
-  it("a kit is a unit; bucket only when ALL its assets share a state", () => {
+  it("a box is a unit; bucket only when ALL its assets share a state", () => {
     const assets = [
       A("k1", AssetStatus.CHECKED_OUT, "K"),
       A("k2", AssetStatus.CHECKED_OUT, "K"),
@@ -330,7 +330,7 @@ describe("calculateBookingLifecycleProgress (unit mode)", () => {
     expect(p.countMode).toBe("units");
   });
 
-  it("a kit whose every asset is returned counts as returned, not booked", () => {
+  it("a box whose every asset is returned counts as returned, not booked", () => {
     const assets = [
       A("k1", AssetStatus.AVAILABLE, "K"),
       A("k2", AssetStatus.AVAILABLE, "K"),
@@ -347,7 +347,7 @@ describe("calculateBookingLifecycleProgress (unit mode)", () => {
     expect(p.checkedOutCount).toBe(0);
   });
 
-  it("a kit mixing returned + checked out counts as booked", () => {
+  it("a box mixing returned + checked out counts as booked", () => {
     const assets = [
       A("k1", AssetStatus.AVAILABLE, "K"),
       A("k2", AssetStatus.CHECKED_OUT, "K"),
@@ -364,7 +364,7 @@ describe("calculateBookingLifecycleProgress (unit mode)", () => {
     expect(p.checkedOutCount).toBe(0);
   });
 
-  it("COMPLETE: a kit with only SOME assets ever checked out is Booked, not Returned", () => {
+  it("COMPLETE: a box with only SOME assets ever checked out is Booked, not Returned", () => {
     // Progressive checkout: kit K had k1 checked out but k2 never was. As a unit
     // a kit only "returned" when ALL its assets were checked out (unanimity) —
     // matching the kit-row ReturnedBadge gate. So this kit lands in Booked.
@@ -385,7 +385,7 @@ describe("calculateBookingLifecycleProgress (unit mode)", () => {
     expect(p.checkedOutCount).toBe(0);
   });
 
-  it("COMPLETE: a kit with EVERY asset checked out is Returned", () => {
+  it("COMPLETE: a box with EVERY asset checked out is Returned", () => {
     const assets = [
       A("k1", AssetStatus.AVAILABLE, "K"),
       A("k2", AssetStatus.AVAILABLE, "K"),
@@ -736,7 +736,7 @@ describe("calculateBookingLifecycleProgress (quantity-tracked)", () => {
     expect(p.hasPartialCheckouts).toBe(true);
   });
 
-  it("unit mode with a QT kit member — Partial member promotes the kit to Partial", () => {
+  it("unit mode with a QT box member — Partial member promotes the box to Partial", () => {
     // K1 contains a Partial QT slice → whole kit-unit becomes Partial regardless
     // of its INDIVIDUAL member. Standalone INDIVIDUAL → Booked.
     const p = calculateBookingLifecycleProgress({
@@ -768,7 +768,7 @@ describe("calculateBookingLifecycleProgress (quantity-tracked)", () => {
     expect(p.countMode).toBe("units");
   });
 
-  it("unit mode: kit with a quick-checked-out QT member + checked-out individuals → kit Fully out", () => {
+  it("unit mode: box with a quick-checked-out QT member + checked-out individuals → box Fully out", () => {
     // Reproduces the booking-overview bug: a kit whose QT member was quick
     // checked out (status CHECKED_OUT, checkedOutQuantity 0) alongside fully
     // checked-out INDIVIDUAL members must collapse to ONE Fully-out unit. Before
@@ -808,7 +808,7 @@ describe("calculateBookingLifecycleProgress (quantity-tracked)", () => {
     expect(p.returnedCount).toBe(0);
   });
 
-  it("unit mode with an INDIVIDUAL-only kit — kit-as-1-unit collapse still applies (regression guard)", () => {
+  it("unit mode with an INDIVIDUAL-only box — kit-as-1-unit collapse still applies (regression guard)", () => {
     const p = calculateBookingLifecycleProgress({
       bookingAssets: [
         {

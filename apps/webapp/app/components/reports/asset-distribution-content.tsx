@@ -83,7 +83,7 @@ export function AssetDistributionContent({
                 Total Assets
               </span>
               <span className="text-xs text-gray-500">
-                Across {totalCategories} categories, {totalLocations} locations
+                Across {totalCategories} categories, {totalLocations}  places
               </span>
             </div>
           </div>
@@ -117,9 +117,9 @@ export function AssetDistributionContent({
             onItemClick={handleCategoryClick}
           />
           <DistributionDonut
-            title="By Location"
+            title="By Place"
             data={distributionBreakdown.byLocation}
-            emptyMessage="No locations defined"
+            emptyMessage="No places defined"
             maxLegendItems={5}
             onItemClick={handleLocationClick}
           />

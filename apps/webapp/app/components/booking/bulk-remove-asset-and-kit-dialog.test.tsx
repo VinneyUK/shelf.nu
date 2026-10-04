@@ -112,7 +112,7 @@ function kitDrivenRow(id: string, bookingAssetId: string, kitId: string) {
 
 /** A kit row. Kits have no pivot row of their own, hence no bookingAssetId. */
 function kitRow(id: string) {
-  return { id, name: `Kit ${id}`, _count: { assets: 2 } };
+  return { id, name: `Box ${id}`, _count: { assets: 2 } };
 }
 
 /**
@@ -157,7 +157,7 @@ describe("BulkRemoveAssetAndKitDialog payload", () => {
     expect(payload.standaloneAssetIds).toEqual(["asset-loose"]);
   });
 
-  it("keeps an asset that was ticked standalone AND sits in a ticked kit", () => {
+  it("keeps an asset that was ticked standalone AND sits in a ticked box", () => {
     // The case that motivated the field: one asset, two booking rows. The
     // server can't infer this from kit membership — both rows must be named.
     const payload = submitPayloadFor([
@@ -178,7 +178,7 @@ describe("BulkRemoveAssetAndKitDialog payload", () => {
     ]);
   });
 
-  it("claims nothing as standalone when only a kit is ticked", () => {
+  it("claims nothing as standalone when only a box is ticked", () => {
     const payload = submitPayloadFor([
       kitRow("kit-1"),
       kitDrivenRow("asset-member", "ba-2", "kit-1"),
@@ -188,7 +188,7 @@ describe("BulkRemoveAssetAndKitDialog payload", () => {
     expect(payload.standaloneAssetIds).toEqual([]);
   });
 
-  it("names every standalone row when no kit is involved", () => {
+  it("names every standalone row when no box is involved", () => {
     const payload = submitPayloadFor([
       standaloneRow("asset-1", "ba-1"),
       standaloneRow("asset-2", "ba-2"),

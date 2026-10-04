@@ -66,12 +66,12 @@ const ASSET = {
   category: { name: "Support" },
   assetLocations: [{ location: { name: "Studio" } }],
   assetKits: [
-    { id: "ak-1", kit: { id: "kit-1", name: "Camera kit", location: null } },
+    { id: "ak-1", kit: { id: "kit-1", name: "Camera box", location: null } },
   ],
   assetModel: null,
 };
 
-const KIT = { id: "kit-1", name: "Camera kit", location: null };
+const KIT = { id: "kit-1", name: "Camera box", location: null };
 
 /**
  * The same asset booked twice: once standalone, once through its kit. Two

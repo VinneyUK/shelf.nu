@@ -157,7 +157,7 @@ describe("assertAssetKitsBelongToOrg", () => {
     });
   });
 
-  it("returns the owning kit id per AssetKit so callers never trust a client-supplied one", async () => {
+  it("returns the owning box id per AssetKit so callers never trust a client-supplied one", async () => {
     // `BookingAsset.sourceKitId`'s FK accepts any org's Kit, so the booking
     // write paths must derive it from THIS map — the same org-scoped query
     // that validated `assetKitId` — rather than from the request payload.
@@ -231,7 +231,7 @@ describe("assertKitsBelongToOrg", () => {
     expect(tx.kit.findMany).not.toHaveBeenCalled();
   });
 
-  it("resolves when every kit belongs to the org and scopes the query by organizationId", async () => {
+  it("resolves when every box belongs to the org and scopes the query by organizationId", async () => {
     const tx = txWith({
       kit: {
         findMany: vitest.fn().mockResolvedValue([{ id: "k1" }, { id: "k2" }]),
@@ -276,7 +276,7 @@ describe("assertKitsBelongToOrg", () => {
 
     expect(err).toBeInstanceOf(ShelfError);
     expect(err.status).toBe(400);
-    expect(err.title).toBe("Invalid kits");
+    expect(err.title).toBe("Invalid boxes");
   });
 });
 
@@ -289,7 +289,7 @@ describe("assertLocationsBelongToOrg", () => {
     expect(tx.location.findMany).not.toHaveBeenCalled();
   });
 
-  it("resolves when every location belongs to the org and scopes the query by organizationId", async () => {
+  it("resolves when every place belongs to the org and scopes the query by organizationId", async () => {
     const tx = txWith({
       location: {
         findMany: vitest.fn().mockResolvedValue([{ id: "l1" }, { id: "l2" }]),
@@ -340,7 +340,7 @@ describe("assertLocationsBelongToOrg", () => {
 
     expect(err).toBeInstanceOf(ShelfError);
     expect(err.status).toBe(400);
-    expect(err.title).toBe("Invalid locations");
+    expect(err.title).toBe("Invalid places");
   });
 });
 
@@ -551,10 +551,10 @@ describe("single-entity guards reject foreign/missing with 400", () => {
     ).catch((e) => e);
     expect(err).toBeInstanceOf(ShelfError);
     expect(err.status).toBe(400);
-    expect(err.title).toBe("Invalid location");
+    expect(err.title).toBe("Invalid place");
   });
 
-  it("assertLocationBelongsToOrg resolves when the location is in the org", async () => {
+  it("assertLocationBelongsToOrg resolves when the place is in the org", async () => {
     const tx = txWith({
       location: { findFirst: vitest.fn().mockResolvedValue({ id: "l-1" }) },
     });

@@ -30,7 +30,7 @@ vitest.mock("~/modules/audit/service.server", () => ({
 const base = { name: "Quarterly audit" };
 
 describe("StartAuditSchema", () => {
-  it("accepts a location multi-selection (contextType=location + locationIds)", () => {
+  it("accepts a place multi-selection (contextType=place + locationIds)", () => {
     const result = StartAuditSchema.safeParse({
       ...base,
       contextType: "location",
@@ -48,7 +48,7 @@ describe("StartAuditSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a kit multi-selection (contextType=kit + kitIds)", () => {
+  it("accepts a box multi-selection (contextType=box + kitIds)", () => {
     const result = StartAuditSchema.safeParse({
       ...base,
       contextType: "kit",
@@ -80,7 +80,7 @@ describe("StartAuditSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects contextType=location with neither contextId nor locationIds", () => {
+  it("rejects contextType=place with neither contextId nor locationIds", () => {
     const result = StartAuditSchema.safeParse({
       ...base,
       contextType: "location",
@@ -88,14 +88,14 @@ describe("StartAuditSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects locationIds supplied without contextType=location", () => {
+  it("rejects locationIds supplied without contextType=place", () => {
     // why: locationIds only counts when contextType is explicitly "location",
     // so a stray array without the discriminator must not pass validation.
     const result = StartAuditSchema.safeParse({ ...base, locationIds: ["l1"] });
     expect(result.success).toBe(false);
   });
 
-  it("rejects contextType=kit with neither contextId nor kitIds", () => {
+  it("rejects contextType=box with neither contextId nor kitIds", () => {
     const result = StartAuditSchema.safeParse({
       ...base,
       contextType: "kit",
@@ -103,7 +103,7 @@ describe("StartAuditSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects kitIds supplied without contextType=kit", () => {
+  it("rejects kitIds supplied without contextType=box", () => {
     // why: kitIds only counts when contextType is explicitly "kit", so a stray
     // array without the discriminator must not pass validation.
     const result = StartAuditSchema.safeParse({ ...base, kitIds: ["k1"] });

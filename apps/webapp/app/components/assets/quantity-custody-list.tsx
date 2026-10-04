@@ -320,17 +320,19 @@ function KitCustodyBadge({
 }) {
   const tooltipBody = kit ? (
     <span className="block">
-      Held via kit{" "}
+      
+      Held via box{" "}
       <Link
         to={`/kits/${kit.id}`}
         className="font-medium text-primary-600 underline"
       >
         {kit.name}
       </Link>
-      . Release the kit's custody to clear this allocation.
+      
+      . Release the box's custody to clear this allocation.
     </span>
   ) : (
-    "Held via a kit's custody. Release the kit's custody to clear this allocation."
+    "Held via a box's custody. Release the box's custody to clear this allocation."
   );
 
   return (
@@ -338,7 +340,8 @@ function KitCustodyBadge({
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="cursor-help rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-            Via kit
+            
+            Via box
           </span>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-xs text-xs">

@@ -803,7 +803,7 @@ export function BookingAssetsSidebar({
             ) : (
               <>
                 <div className="border border-b-0 bg-white px-4 pb-3 pt-4 text-left font-normal text-gray-600 md:mx-0 md:px-6">
-                  <h5 className="text-left capitalize">Assets & kits</h5>
+                  <h5 className="text-left capitalize">Assets & boxes</h5>
                   <p>
                     {/* Same helper the booking overview uses. This drawer groups
                     kits into one row exactly as the overview does, so a bare
@@ -859,7 +859,7 @@ export function BookingAssetsSidebar({
                                         className="text-gray-900 hover:text-gray-700"
                                         target="_blank"
                                         onlyNewTabIconOnHover={true}
-                                        aria-label="Go to kit"
+                                        aria-label="Go to box"
                                       >
                                         <div className="max-w-[200px] truncate sm:max-w-[250px] md:max-w-[350px] lg:max-w-[450px]">
                                           {kit.name}
@@ -885,7 +885,7 @@ export function BookingAssetsSidebar({
                                       onClick={() => toggleKitExpansion(kit.id)}
                                       variant="link"
                                       className="text-center font-bold text-gray-600 hover:text-gray-900"
-                                      aria-label="Toggle kit expand"
+                                      aria-label="Toggle box expand"
                                     >
                                       <ChevronDownIcon
                                         className={tw(

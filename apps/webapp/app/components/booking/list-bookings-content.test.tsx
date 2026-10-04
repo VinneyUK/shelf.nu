@@ -73,7 +73,7 @@ type BookingItem = ComponentProps<typeof ListBookingsContent>["item"];
 function buildItem(overrides: Partial<BookingItem> = {}): BookingItem {
   return {
     id: "booking-1",
-    name: "Camera kit booking",
+    name: "Camera box booking",
     status: "RESERVED",
     description: null,
     from: new Date("2026-08-01T09:00:00Z"),

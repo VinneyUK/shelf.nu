@@ -44,7 +44,13 @@ export type InlineField =
   | { field: "tags"; value: string[] }
   | { field: "location"; value: string | null }
   | { field: "box"; value: string | null }
-  | { field: "status"; value: "AVAILABLE" | "SOLD" | "OTHER" }
+  | {
+      field: "status";
+      value: "AVAILABLE" | "SOLD" | "OTHER";
+      /** when already sold: the sale, to prefill the box */
+      soldOn?: string;
+      price?: number | null;
+    }
   | { field: "soldPrice"; value: number | null };
 
 /** One module-wide cache of the pick-lists, loaded on first use. */
@@ -181,18 +187,22 @@ function Editor({
       return current.value === "SOLD" ? "SOLD" : "AVAILABLE";
     return current.value === null ? "" : String(current.value);
   });
-  const [soldOn, setSoldOn] = useState(new Date().toISOString().slice(0, 10));
-  const [price, setPrice] = useState("");
+  const [soldOn, setSoldOn] = useState(() =>
+    current.field === "status" && current.soldOn
+      ? current.soldOn.slice(0, 10)
+      : new Date().toISOString().slice(0, 10)
+  );
+  const [price, setPrice] = useState(() =>
+    current.field === "status" && current.price != null
+      ? String(current.price)
+      : ""
+  );
   const first = useRef<HTMLElement | null>(null);
   useEffect(() => first.current?.focus(), []);
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
-    if (
-      current.field === "status" &&
-      text === "SOLD" &&
-      current.value !== "SOLD"
-    ) {
+    if (current.field === "status" && text === "SOLD") {
       onSave({ value: "SOLD", soldOn, price });
     } else {
       onSave({ value: text });
@@ -275,7 +285,7 @@ function Editor({
         current.field === "category"
           ? "Uncategorized"
           : current.field === "location"
-          ? "No location"
+          ? "No place"
           : "Not in a box";
       return (
         <form onSubmit={submit}>
@@ -343,7 +353,7 @@ function Editor({
             <option value="AVAILABLE">Available</option>
             <option value="SOLD">Sold</option>
           </select>
-          {text === "SOLD" && current.value !== "SOLD" ? (
+          {text === "SOLD" ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <label className="text-sm text-gray-600">
                 Date sold

@@ -36,7 +36,7 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 
 /** Browser tab title for the modal. */
-export const meta = () => [{ title: appendToMetaTitle("Update kit location") }];
+export const meta = () => [{ title: appendToMetaTitle("Update box place") }];
 
 const ParamsSchema = z.object({ kitId: z.string() });
 
@@ -119,8 +119,8 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     });
 
     sendNotification({
-      title: "Location updated",
-      message: "Your kit's location has been updated successfully",
+      title: "Place updated",
+      message: "Your box's place has been updated successfully",
       icon: { name: "success", variant: "success" },
       senderId: userId,
     });
@@ -152,20 +152,22 @@ export default function UpdateKitLocation() {
           <MapPinIcon />
         </div>
         <div className="mb-5">
-          <h4>Update location</h4>
+          <h4>Update place</h4>
           <p>
-            Adjust the location of{" "}
+            
+            Adjust the place of{" "}
             <span className="font-medium">{kit.name}</span>.
           </p>
           {kit._count.assetKits > 0 && (
             <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> This will also update the location of all{" "}
+                <strong>Note:</strong>  This will also update the place of all{" "}
                 <span className="font-medium">
                   {kit._count.assetKits} asset
                   {kit._count.assetKits > 1 ? "s" : ""}
                 </span>{" "}
-                within this kit.
+                
+                within this box.
               </p>
             </div>
           )}

@@ -647,7 +647,7 @@ describe("getLocationUpdateNoteContent", () => {
   const officeB = { id: "loc-b", name: "Office B" };
 
   describe("INDIVIDUAL phrasing (unchanged)", () => {
-    it("renders the original 'set the location' phrasing without a count", () => {
+    it("renders the original 'set the place' phrasing without a count", () => {
       const result = getLocationUpdateNoteContent({
         ...userArgs,
         currentLocation: null,
@@ -655,12 +655,12 @@ describe("getLocationUpdateNoteContent", () => {
         type: AssetType.INDIVIDUAL,
       });
 
-      expect(result).toContain("set the location to");
+      expect(result).toContain("set the place to");
       expect(result).toContain("Office A");
       expect(result).not.toMatch(/\d+\s+units?/);
     });
 
-    it("renders the original 'updated the location from … to …' phrasing", () => {
+    it("renders the original 'updated the place from … to …' phrasing", () => {
       const result = getLocationUpdateNoteContent({
         ...userArgs,
         currentLocation: officeA,
@@ -668,13 +668,13 @@ describe("getLocationUpdateNoteContent", () => {
         type: AssetType.INDIVIDUAL,
       });
 
-      expect(result).toContain("updated the location from");
+      expect(result).toContain("updated the place from");
       expect(result).toContain("Office A");
       expect(result).toContain("Office B");
       expect(result).not.toMatch(/\d+\s+units?/);
     });
 
-    it("renders the original 'removed the asset from location' phrasing", () => {
+    it("renders the original 'removed the asset from place' phrasing", () => {
       const result = getLocationUpdateNoteContent({
         ...userArgs,
         currentLocation: officeA,
@@ -683,7 +683,7 @@ describe("getLocationUpdateNoteContent", () => {
         type: AssetType.INDIVIDUAL,
       });
 
-      expect(result).toContain("removed the asset from location");
+      expect(result).toContain("removed the asset from place");
       expect(result).toContain("Office A");
       expect(result).not.toMatch(/\d+\s+units?/);
     });
@@ -695,13 +695,13 @@ describe("getLocationUpdateNoteContent", () => {
         newLocation: officeA,
       });
 
-      expect(result).toContain("set the location to");
+      expect(result).toContain("set the place to");
       expect(result).not.toMatch(/\d+\s+units?/);
     });
   });
 
   describe("QUANTITY_TRACKED phrasing (units)", () => {
-    it("renders 'placed N units at L' when setting a first location", () => {
+    it("renders 'placed N units at L' when setting a first place", () => {
       const result = getLocationUpdateNoteContent({
         ...userArgs,
         currentLocation: null,
@@ -712,10 +712,10 @@ describe("getLocationUpdateNoteContent", () => {
 
       expect(result).toContain("placed 50 units at");
       expect(result).toContain("Office A");
-      expect(result).not.toContain("set the location");
+      expect(result).not.toContain("set the place");
     });
 
-    it("renders 'moved N units from A to B' when changing locations", () => {
+    it("renders 'moved N units from A to B' when changing places", () => {
       const result = getLocationUpdateNoteContent({
         ...userArgs,
         currentLocation: officeA,
@@ -727,7 +727,7 @@ describe("getLocationUpdateNoteContent", () => {
       expect(result).toContain("moved 50 units from");
       expect(result).toContain("Office A");
       expect(result).toContain("Office B");
-      expect(result).not.toContain("updated the location");
+      expect(result).not.toContain("updated the place");
     });
 
     it("renders 'removed N units from L' when unplacing", () => {
@@ -742,7 +742,7 @@ describe("getLocationUpdateNoteContent", () => {
 
       expect(result).toContain("removed 50 units from");
       expect(result).toContain("Office A");
-      expect(result).not.toContain("removed the asset from location");
+      expect(result).not.toContain("removed the asset from place");
     });
 
     it("uses the asset's unitOfMeasure label when supplied", () => {
@@ -768,7 +768,7 @@ describe("getLocationUpdateNoteContent", () => {
       });
 
       // formatUnitCount returns null for null qty → original phrasing
-      expect(result).toContain("set the location to");
+      expect(result).toContain("set the place to");
       expect(result).not.toMatch(/\d+\s+units?/);
     });
   });
@@ -791,9 +791,9 @@ describe("getKitLocationUpdateNoteContent", () => {
       type: AssetType.INDIVIDUAL,
     });
 
-    expect(result).toContain("set the location to");
+    expect(result).toContain("set the place to");
     expect(result).toContain("Office A");
-    expect(result.endsWith("via parent kit assignment.")).toBe(true);
+    expect(result.endsWith("via parent box assignment.")).toBe(true);
     expect(result).not.toMatch(/\d+\s+units?/);
   });
 
@@ -806,11 +806,11 @@ describe("getKitLocationUpdateNoteContent", () => {
       type: AssetType.INDIVIDUAL,
     });
 
-    expect(result).toContain("removed the asset from location");
-    expect(result.endsWith("via parent kit removal.")).toBe(true);
+    expect(result).toContain("removed the asset from place");
+    expect(result.endsWith("via parent box removal.")).toBe(true);
   });
 
-  it("renders 'placed N units at L … via parent kit assignment.' for qty-tracked", () => {
+  it("renders 'placed N units at L … via parent box assignment.' for qty-tracked", () => {
     const result = getKitLocationUpdateNoteContent({
       ...userArgs,
       currentLocation: null,
@@ -822,10 +822,10 @@ describe("getKitLocationUpdateNoteContent", () => {
 
     expect(result).toContain("placed 50 units at");
     expect(result).toContain("Office A");
-    expect(result.endsWith("via parent kit assignment.")).toBe(true);
+    expect(result.endsWith("via parent box assignment.")).toBe(true);
   });
 
-  it("renders 'removed N units from L … via parent kit removal.' for qty-tracked", () => {
+  it("renders 'removed N units from L … via parent box removal.' for qty-tracked", () => {
     const result = getKitLocationUpdateNoteContent({
       ...userArgs,
       currentLocation: officeA,
@@ -837,7 +837,7 @@ describe("getKitLocationUpdateNoteContent", () => {
 
     expect(result).toContain("removed 50 units from");
     expect(result).toContain("Office A");
-    expect(result.endsWith("via parent kit removal.")).toBe(true);
+    expect(result.endsWith("via parent box removal.")).toBe(true);
   });
 });
 
@@ -850,7 +850,7 @@ describe("getInitialPlacementNoteContent", () => {
     displayName: null as string | null,
   };
 
-  it("returns null when the asset was created without a location", () => {
+  it("returns null when the asset was created without a place", () => {
     // Both routes branch on this, so a wrong answer here means either a missing
     // placement note or a note about a location the asset does not have.
     expect(
@@ -863,7 +863,7 @@ describe("getInitialPlacementNoteContent", () => {
     ).toBeNull();
   });
 
-  it("returns null when the pivot row carries no location", () => {
+  it("returns null when the pivot row carries no place", () => {
     expect(
       getInitialPlacementNoteContent({
         user,
@@ -874,7 +874,7 @@ describe("getInitialPlacementNoteContent", () => {
     ).toBeNull();
   });
 
-  it("names the primary location for an INDIVIDUAL asset, without a count", () => {
+  it("names the primary place for an INDIVIDUAL asset, without a count", () => {
     const result = getInitialPlacementNoteContent({
       user,
       type: AssetType.INDIVIDUAL,
@@ -884,7 +884,7 @@ describe("getInitialPlacementNoteContent", () => {
       ],
     });
 
-    expect(result).toContain("set the location to");
+    expect(result).toContain("set the place to");
     expect(result).toContain("Office A");
   });
 

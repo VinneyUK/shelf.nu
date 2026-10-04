@@ -75,21 +75,21 @@ function makeLocation(
 }
 
 describe("LocationColumn", () => {
-  it("renders the empty placeholder when locations is an empty array", () => {
+  it("renders the empty placeholder when places is an empty array", () => {
     renderCell([]);
 
     expect(screen.getByLabelText("No data")).toBeInTheDocument();
     expect(screen.queryByTestId("location-more-chip")).not.toBeInTheDocument();
   });
 
-  it("renders a single location badge with no +N chip", () => {
+  it("renders a single place badge with no +N chip", () => {
     renderCell([makeLocation("loc-1", "Office")]);
 
     expect(screen.getByTestId("location-badge")).toHaveTextContent("Office");
     expect(screen.queryByTestId("location-more-chip")).not.toBeInTheDocument();
   });
 
-  it("renders the primary location plus a +N chip for multiple locations", () => {
+  it("renders the primary place plus a +N chip for multiple places", () => {
     renderCell([
       makeLocation("loc-1", "Office"),
       makeLocation("loc-2", "Warehouse"),
@@ -102,10 +102,10 @@ describe("LocationColumn", () => {
     // Chip indicates 2 additional locations.
     const chip = screen.getByTestId("location-more-chip");
     expect(chip).toHaveTextContent(/^\+2$/);
-    expect(chip).toHaveAttribute("aria-label", "+2 more locations");
+    expect(chip).toHaveAttribute("aria-label", "+2 more places");
   });
 
-  it("lists every location name in the tooltip on hover", async () => {
+  it("lists every place name in the tooltip on hover", async () => {
     const user = userEvent.setup();
 
     renderCell([

@@ -452,7 +452,7 @@ async function validateKitCustodyConflicts({
           asset: asset.title,
           custodian: asset.custodian!,
           kit: asset.kit!,
-          issue: `Kit has assets with multiple custodians: ${custodiansArray.join(
+          issue: `Box has assets with multiple custodians: ${custodiansArray.join(
             ", "
           )}`,
         });
@@ -469,7 +469,7 @@ async function validateKitCustodyConflicts({
           asset: asset.title,
           custodian: asset.custodian!,
           kit: asset.kit!,
-          issue: `Kit exists without custody but has ${
+          issue: `Box exists without custody but has ${
             existingKit.assets.length
           } existing asset${existingKit.assets.length === 1 ? "" : "s"}`,
         });
@@ -478,7 +478,7 @@ async function validateKitCustodyConflicts({
           asset: asset.title,
           custodian: asset.custodian!,
           kit: asset.kit!,
-          issue: `Kit already has a custodian (${existingKit.custody.custodian.name}). Importing custody for kits that already have a custodian is not allowed`,
+          issue: `Box already has a custodian (${existingKit.custody.custodian.name}). Importing custody for boxes that already have a custodian is not allowed`,
         });
       }
     }
@@ -487,7 +487,7 @@ async function validateKitCustodyConflicts({
   if (conflicts.length > 0) {
     throw new ShelfError({
       cause: null,
-      message: `We found custody conflicts with existing kits. Assets with custody cannot be imported into existing kits that are not in custody.`,
+      message: `We found custody conflicts with existing boxes. Assets with custody cannot be imported into existing boxes that are not in custody.`,
       additionalData: {
         kitCustodyConflicts: conflicts,
       },
@@ -1998,7 +1998,7 @@ export async function updateAsset({
       if (parentKit) {
         throw new ShelfError({
           cause: null,
-          message: `This asset's location is managed by its parent kit "${parentKit.name}". Please update the kit's location instead.`,
+          message: `This asset's place is managed by its parent box "${parentKit.name}". Please update the box's place instead.`,
           additionalData: {
             assetId: id,
             kitId: parentKit.id,
@@ -2192,9 +2192,9 @@ export async function updateAsset({
       if (!orgLocation) {
         throw new ShelfError({
           cause: null,
-          title: "Location not found",
+          title: "Place not found",
           message:
-            "The selected location does not exist or you don't have access to it.",
+            "The selected place does not exist or you don't have access to it.",
           additionalData: { newLocationId, organizationId },
           label,
           status: 404,
@@ -2533,7 +2533,7 @@ export async function updateAsset({
                 title: "Quantity exceeds available pool",
                 message: `Cannot place ${resultingManualSum} ${
                   locked.unitOfMeasure || "units"
-                } at this location — "${
+                } at this place — "${
                   locked.title
                 }" will only have ${effectiveTotal} in total.`,
                 additionalData: {
@@ -3387,7 +3387,7 @@ export async function replaceAssetPlacements({
       if (!p.locationId || typeof p.locationId !== "string") {
         throw new ShelfError({
           cause: null,
-          message: "Each placement must reference a location.",
+          message: "Each placement must reference a place.",
           status: 400,
           label: "Assets",
           additionalData: { assetId, placements },
@@ -3408,7 +3408,7 @@ export async function replaceAssetPlacements({
         throw new ShelfError({
           cause: null,
           message:
-            "Duplicate location in the submitted placements — each location can appear at most once per asset.",
+            "Duplicate place in the submitted placements — each place can appear at most once per asset.",
           status: 400,
           label: "Assets",
           additionalData: { assetId, placements },
@@ -3424,7 +3424,7 @@ export async function replaceAssetPlacements({
         throw new ShelfError({
           cause: null,
           message:
-            "INDIVIDUAL assets can only be placed at one location. Remove the extra rows or change the asset type.",
+            "INDIVIDUAL assets can only be placed at one place. Remove the extra rows or change the asset type.",
           status: 400,
           label: "Assets",
           additionalData: { assetId },
@@ -3477,7 +3477,7 @@ export async function replaceAssetPlacements({
       if (orgLocations.length !== placements.length) {
         throw new ShelfError({
           cause: null,
-          message: "One or more locations don't belong to your organization.",
+          message: "One or more places don't belong to your organization.",
           status: 403,
           label: "Assets",
           additionalData: { assetId, organizationId },
@@ -4912,7 +4912,7 @@ export async function createAssetsFromContentImport({
       if (kitKey && !kitId) {
         throw new ShelfError({
           cause: null,
-          message: `Kit "${kitKey}" could not be resolved for asset "${asset.title}". Please verify the kit column values in your CSV.`,
+          message: `Box "${kitKey}" could not be resolved for asset "${asset.title}". Please verify the box column values in your CSV.`,
           additionalData: {
             assetKey: asset.key,
             assetTitle: asset.title,
@@ -6722,7 +6722,7 @@ export async function bulkUpdateAssetLocation({
       throw new ShelfError({
         cause: null,
         message:
-          "All selected assets are quantity-tracked. Quantity-tracked assets must have their placements managed individually with a per-location quantity.",
+          "All selected assets are quantity-tracked. Quantity-tracked assets must have their placements managed individually with a per-place quantity.",
         additionalData: {
           userId,
           organizationId,
@@ -6748,7 +6748,7 @@ export async function bulkUpdateAssetLocation({
       ).join(", ");
       throw new ShelfError({
         cause: null,
-        message: `Cannot update location for assets that belong to kits: ${kitNames}. Update the kit locations instead.`,
+        message: `Cannot update place for assets that belong to boxes: ${kitNames}. Update the box places instead.`,
         additionalData: {
           assetIds: assetsInKits.map((asset) => asset.id),
           kitNames,
@@ -6945,7 +6945,7 @@ export async function bulkUpdateAssetLocation({
       cause,
       message: isShelfError
         ? cause.message
-        : "Something went wrong while bulk updating location.",
+        : "Something went wrong while bulk updating place.",
       additionalData: { userId, assetIds, newLocationId },
       label,
     });
@@ -7735,7 +7735,7 @@ export async function relinkAssetQrCode({
       cause: null,
       title: "QR already linked.",
       message:
-        "You cannot link to this code because its already linked to another kit. Delete the other kit to free up the code and try again.",
+        "You cannot link to this code because its already linked to another box. Delete the other box to free up the code and try again.",
       label: "QR",
       status: 403,
       shouldBeCaptured: false,
@@ -9060,7 +9060,7 @@ export async function moveAssetLocationUnits(
       if (!source) {
         throw new ShelfError({
           cause: null,
-          message: "Asset is not placed at the source location.",
+          message: "Asset is not placed at the source place.",
           label,
           status: 400,
           additionalData: { assetId, fromLocationId },
@@ -9322,7 +9322,7 @@ export async function moveAssetLocationUnits(
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while moving asset units between locations. Please try again or contact support.",
+        "Something went wrong while moving asset units between places. Please try again or contact support.",
       additionalData: {
         assetId,
         organizationId,

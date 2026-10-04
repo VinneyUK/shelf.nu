@@ -21,7 +21,7 @@ describe("getLocationTotalValuation", () => {
     queryRawMock.mockReset();
   });
 
-  it("returns the QT-aware total (SUM(value × quantity)) for the location", async () => {
+  it("returns the QT-aware total (SUM(value × quantity)) for the place", async () => {
     // Postgres returns `double precision` for SUM(float * int) — arrives as
     // a JS number now that the implementation no longer casts to ::bigint
     // (the cast truncated fractional valuations).

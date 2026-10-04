@@ -58,7 +58,7 @@ const mockContext = {
 const mockKits = [
   {
     id: "kit-1",
-    name: "Photography Kit",
+    name: "Photography Box",
     image: "kit-image-1.jpg",
     imageExpiration: "2024-12-31T23:59:59Z",
     assetKits: [
@@ -92,7 +92,7 @@ const mockKits = [
   },
   {
     id: "kit-2",
-    name: "Video Production Kit",
+    name: "Video Production Box",
     image: "kit-image-2.jpg",
     imageExpiration: "2024-12-31T23:59:59Z",
     assetKits: [
@@ -146,7 +146,7 @@ describe("/api/kits", () => {
   });
 
   describe("loader", () => {
-    it("should return kits for valid IDs", async () => {
+    it("should return boxes for valid IDs", async () => {
       const mockRequest = new Request(
         "http://localhost:3000/api/kits?ids=kit-1,kit-2"
       );
@@ -313,7 +313,7 @@ describe("/api/kits", () => {
       });
     });
 
-    it("should handle single kit ID", async () => {
+    it("should handle single box ID", async () => {
       const mockRequest = new Request(
         "http://localhost:3000/api/kits?ids=kit-1"
       );
@@ -496,7 +496,7 @@ describe("/api/kits", () => {
       });
     });
 
-    it("should return kits ordered by name", async () => {
+    it("should return boxes ordered by name", async () => {
       const mockRequest = new Request(
         "http://localhost:3000/api/kits?ids=kit-1,kit-2"
       );

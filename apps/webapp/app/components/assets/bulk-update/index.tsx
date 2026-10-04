@@ -64,7 +64,8 @@ export const ImportUpdateContent = () => {
               <div>
                 <h5 className="font-semibold">What you can update</h5>
                 <p className="text-[14px] text-gray-600">
-                  Name, Description, Category, Location, Tags, Value, Available
+                  
+                  Name, Description, Category, Place, Tags, Value, Available
                   to book, <b>Asset model</b>, and your custom fields (Text,
                   Boolean, Date, Option, Number, Currency).
                 </p>
@@ -94,7 +95,7 @@ export const ImportUpdateContent = () => {
                   you need them.
                 </p>
                 <p className="mt-1 text-[14px] text-gray-600">
-                  <b>Not supported yet:</b> Status, Kit, and Custody can't be
+                  <b>Not supported yet:</b>  Status, Box, and Custody can't be
                   bulk-updated via CSV — they have their own dedicated workflows
                   elsewhere in Shelf. Tracking method is fixed once an asset is
                   created. These columns will be safely skipped if present in
@@ -137,8 +138,8 @@ export const ImportUpdateContent = () => {
               <div>
                 <h5 className="font-semibold">How assets are matched</h5>
                 <p className="text-[14px] text-gray-600">
-                  By <b>Asset ID</b> or <b>ID</b> — keep these columns as they
-                  are. Categories, locations, tags, and asset models that don't
+                  By <b>Asset ID</b> or <b>ID</b>  — keep these columns as they
+                  are. Categories, places, tags, and asset models that don't
                   exist yet will be created for you.
                 </p>
               </div>

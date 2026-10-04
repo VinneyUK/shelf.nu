@@ -38,7 +38,7 @@ function AvgDurationHeader() {
         iconClassName="size-3.5"
         content={
           <p>
-            <strong>Average booking duration</strong> — How long this kit is
+            <strong>Average booking duration</strong>  — How long this box is
             typically kept per booking. Calculated as total days booked ÷ number
             of bookings.
           </p>
@@ -74,7 +74,7 @@ const TOP_BOOKED_KITS_COLUMNS: ColumnDef<TopBookedKitRow>[] = [
         to={`/kits/${row.original.kitId}/bookings`}
         onClick={(e) => e.stopPropagation()}
         className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-200"
-        title="View all bookings for this kit"
+        title="View all bookings for this box"
       >
         {row.original.bookingCount}
       </Link>
@@ -204,7 +204,7 @@ export function TopBookedKitsContent({
                 Total Bookings
               </span>
               <span className="text-xs text-gray-500">
-                {uniqueKitsBooked} kits booked
+                {uniqueKitsBooked}  boxes booked
               </span>
             </div>
           </div>
@@ -212,7 +212,7 @@ export function TopBookedKitsContent({
           {/* Supporting stats */}
           <div className="flex gap-6 border-t border-gray-100 pt-3 md:border-l md:border-t-0 md:pl-6 md:pt-0">
             <div className="flex flex-col">
-              <span className="text-xs text-gray-500">Avg per Kit</span>
+              <span className="text-xs text-gray-500">Avg per Box</span>
               <span className="text-lg font-medium text-gray-900">
                 {avgBookingsPerKit.toFixed(1)}
               </span>
@@ -259,17 +259,19 @@ export function TopBookedKitsContent({
             <span className="font-medium text-gray-600">
               Understanding this report:
             </span>{" "}
-            Shows which kits are booked most frequently during{" "}
+            
+            Shows which boxes are booked most frequently during{" "}
             <span className="font-medium">
               {(timeframeLabel || "the selected period").toLowerCase()}
             </span>
-            . A kit counts once per booking it appears in (kits are booked as a
+            
+            . A box counts once per booking it appears in (boxes are booked as a
             whole unit). <span className="italic">Total Days</span> = cumulative
-            booking days. <span className="italic">Avg Duration</span> = typical
-            booking length per checkout. Category and location reflect each
-            kit&apos;s current settings. Counts confirmed bookings in the period
+            booking days. <span className="italic">Avg Duration</span>  = typical
+            booking length per checkout. Category and place reflect each
+            box&apos;s current settings. Counts confirmed bookings in the period
             (reserved through completed, plus archived) and excludes drafts and
-            cancellations, so this can differ from a kit&apos;s all-time
+            cancellations, so this can differ from a box&apos;s all-time
             bookings list.
           </p>
         </div>
@@ -279,7 +281,7 @@ export function TopBookedKitsContent({
           and scrolls internally when row count exceeds the visible area. */}
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
         <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 md:px-6">
-          <h3 className="text-sm font-semibold text-gray-900">Top Kits</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Top Boxes</h3>
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
             {totalRows}
           </span>
@@ -292,7 +294,7 @@ export function TopBookedKitsContent({
             <ReportEmptyState
               reason="no_data"
               title="No booking data"
-              description="No kits have been booked within the selected timeframe."
+              description="No boxes have been booked within the selected timeframe."
             />
           }
         />

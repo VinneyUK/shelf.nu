@@ -180,7 +180,7 @@ export default function WorkspacePage() {
               <Th className="whitespace-nowrap">Owner</Th>
               <Th>Type</Th>
               <Th>Assets</Th>
-              <Th>Locations</Th>
+              <Th>Places</Th>
               <Th className="whitespace-nowrap">Team members</Th>
               <Th>Actions</Th>
             </ListHeader>

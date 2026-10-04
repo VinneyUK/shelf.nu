@@ -89,7 +89,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return data(
         {
           error: {
-            message: `This asset's location is managed by its parent kit "${parentKit.name}". Please update the kit's location instead.`,
+            message: `This asset's place is managed by its parent box "${parentKit.name}". Please update the box's place instead.`,
           },
         },
         { status: 400 }
@@ -104,7 +104,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (!location) {
       return data(
-        { error: { message: "Location not found" } },
+        { error: { message: "Place not found" } },
         { status: 404 }
       );
     }
@@ -353,11 +353,11 @@ export async function action({ request }: ActionFunctionArgs) {
       );
       noteContent = unitCount
         ? `${actor} moved ${unitCount} from ${currentLocationLink} to ${newLocationLink} via mobile app.`
-        : `${actor} updated the location from ${currentLocationLink} to ${newLocationLink} via mobile app.`;
+        : `${actor} updated the place from ${currentLocationLink} to ${newLocationLink} via mobile app.`;
     } else {
       noteContent = unitCount
         ? `${actor} placed ${unitCount} at ${newLocationLink} via mobile app.`
-        : `${actor} set the location to ${newLocationLink} via mobile app.`;
+        : `${actor} set the place to ${newLocationLink} via mobile app.`;
     }
 
     await createNote({

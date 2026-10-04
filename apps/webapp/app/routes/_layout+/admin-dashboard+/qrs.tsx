@@ -139,7 +139,7 @@ export default function Area51() {
             <>
               <Th>QR id</Th>
               <Th>Asset</Th>
-              <Th>Kit</Th>
+              <Th>Box</Th>
               <Th>Organization ID</Th>
               <Th>User ID</Th>
               <Th>

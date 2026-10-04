@@ -71,10 +71,10 @@ function createKit(
   } as unknown as KitForBooking;
 }
 
-describe("getKitAvailabilityStatus — kit-driven conflict signal (QT-only kit)", () => {
+describe("getKitAvailabilityStatus — kit-driven conflict signal (QT-only box)", () => {
   const CURRENT_BOOKING_ID = "current-booking";
 
-  it("flags the kit when another RESERVED booking holds one of its kit-driven slices", () => {
+  it("flags the box when another RESERVED booking holds one of its kit-driven slices", () => {
     const kit = createKit([
       createMembership({
         membershipId: "ak-1",
@@ -94,7 +94,7 @@ describe("getKitAvailabilityStatus — kit-driven conflict signal (QT-only kit)"
     expect(result.someAssetHasUnavailableBooking).toBe(true);
   });
 
-  it("does not flag the kit once another ONGOING booking has returned all its kit slices", () => {
+  it("does not flag the box once another ONGOING booking has returned all its box slices", () => {
     const kit = createKit([
       createMembership({
         membershipId: "ak-1",
@@ -114,7 +114,7 @@ describe("getKitAvailabilityStatus — kit-driven conflict signal (QT-only kit)"
     expect(result.someAssetHasUnavailableBooking).toBe(false);
   });
 
-  it("does not flag the kit for a standalone row of the same asset on another booking", () => {
+  it("does not flag the box for a standalone row of the same asset on another booking", () => {
     const kit = createKit([
       createMembership({
         membershipId: "ak-1",
@@ -147,7 +147,7 @@ describe("getKitAvailabilityStatus — kit-driven conflict signal (QT-only kit)"
     expect(result.someAssetHasUnavailableBooking).toBe(false);
   });
 
-  it("does not flag the kit for its own booking's slice", () => {
+  it("does not flag the box for its own booking's slice", () => {
     const kit = createKit([
       createMembership({
         membershipId: "ak-1",

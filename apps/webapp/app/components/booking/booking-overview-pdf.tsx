@@ -359,13 +359,15 @@ export const BookingPDFPreview = ({
                 Qty
               </th>
               <th className="w-24 border-b border-r border-gray-300 p-2.5 text-left text-xs font-medium">
-                Kit
+                
+                Box
               </th>
               <th className="w-24 border-b border-r border-gray-300 p-2.5 text-left text-xs font-medium">
                 Category
               </th>
               <th className="w-24 border-b border-r border-gray-300 p-2.5 text-left text-xs font-medium">
-                Location
+                
+                Place
               </th>
               {/* Sized so the CODE gets ~120px, the same room the audit
                   receipt gives it at 140px. The two numbers differ because this
@@ -430,7 +432,8 @@ export const BookingPDFPreview = ({
                         rows too and may never have gone out. */}
                     <When truthy={!!asset.isRemovedFromKit}>
                       <span className="mt-1 block text-xs text-gray-500">
-                        Removed from kit — kept as a record of what was booked
+                        
+                        Removed from box — kept as a record of what was booked
                       </span>
                     </When>
                   </td>

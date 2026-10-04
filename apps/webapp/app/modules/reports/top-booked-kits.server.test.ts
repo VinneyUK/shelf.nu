@@ -139,7 +139,7 @@ describe("topBookedKitsReport", () => {
     vi.useRealTimers();
   });
 
-  it("counts a kit once per booking even when multiple of its slices are present", async () => {
+  it("counts a box once per booking even when multiple of its slices are present", async () => {
     // A single booking containing three kit-driven slices for kit-1.
     vi.mocked(db.booking.findMany).mockResolvedValue([
       booking("2026-04-10T00:00:00Z", "2026-04-12T00:00:00Z", [
@@ -149,7 +149,7 @@ describe("topBookedKitsReport", () => {
       ]),
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
+      kitMeta("kit-1", "Camera Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -177,7 +177,7 @@ describe("topBookedKitsReport", () => {
       booking("2026-03-15T00:00:00Z", "2026-05-15T00:00:00Z", ["kit-1"]),
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
+      kitMeta("kit-1", "Camera Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -195,7 +195,7 @@ describe("topBookedKitsReport", () => {
       booking("2026-04-20T00:00:00Z", "2026-04-23T00:00:00Z", ["kit-1"]), // 3 days
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
+      kitMeta("kit-1", "Camera Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -208,7 +208,7 @@ describe("topBookedKitsReport", () => {
     expect(result.rows[0].totalDaysBooked).toBe(5);
   });
 
-  it("ranks kits by booking volume and exposes the #1 as topBookedKit", async () => {
+  it("ranks boxes by booking volume and exposes the #1 as topBookedKit", async () => {
     vi.mocked(db.booking.findMany).mockResolvedValue([
       booking("2026-04-05T00:00:00Z", "2026-04-06T00:00:00Z", ["kit-1"]),
       booking("2026-04-10T00:00:00Z", "2026-04-11T00:00:00Z", [
@@ -217,8 +217,8 @@ describe("topBookedKitsReport", () => {
       ]),
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
-      kitMeta("kit-2", "Lighting Kit"),
+      kitMeta("kit-1", "Camera Box"),
+      kitMeta("kit-2", "Lighting Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -242,8 +242,8 @@ describe("topBookedKitsReport", () => {
       ]),
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
-      kitMeta("kit-2", "Lighting Kit"),
+      kitMeta("kit-1", "Camera Box"),
+      kitMeta("kit-2", "Lighting Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -306,7 +306,7 @@ describe("topBookedKitsReport", () => {
       ]),
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
+      kitMeta("kit-1", "Camera Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -331,7 +331,7 @@ describe("topBookedKitsReport", () => {
       { id: "ak-legacy", kitId: "kit-1" },
     ] as any);
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      kitMeta("kit-1", "Camera Kit"),
+      kitMeta("kit-1", "Camera Box"),
     ] as any);
 
     const result = await topBookedKitsReport({
@@ -350,7 +350,7 @@ describe("topBookedKitsReport", () => {
     });
   });
 
-  it("skips slices whose kit can no longer be resolved", async () => {
+  it("skips slices whose box can no longer be resolved", async () => {
     // A legacy slice whose membership row vanished between the two queries
     // resolves to no kit and is dropped rather than miscounted.
     vi.mocked(db.booking.findMany).mockResolvedValue([

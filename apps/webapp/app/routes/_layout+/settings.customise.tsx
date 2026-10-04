@@ -112,19 +112,19 @@ const FEATURES = [
     name: "custodyEnabled",
     title: "Custody",
     description:
-      "Assigning assets to people. Switching this off hides custody on assets and kits, in bulk actions, the scanner and Home; existing custody is kept.",
+      "Assigning assets to people. Switching this off hides custody on assets and boxes, in bulk actions, the scanner and Home; existing custody is kept.",
   },
   {
     name: "locationsEnabled",
-    title: "Locations",
+    title: "Places",
     description:
-      "Where assets are kept. Switching this off hides the Locations page, the location column, filter and bulk action, and location on assets.",
+      "Where assets are kept. Switching this off hides the Places page, the place column, filter and bulk action, and place on assets.",
   },
   {
     name: "kitsEnabled",
-    title: "Kits",
+    title: "Boxes",
     description:
-      "Grouping assets into kits. Switching this off hides the Kits page, the kit column, filter and bulk actions, and kits on assets.",
+      "Grouping assets into boxes. Switching this off hides the Boxes page, the box column, filter and bulk actions, and boxes on assets.",
   },
   {
     name: "assetModelsEnabled",

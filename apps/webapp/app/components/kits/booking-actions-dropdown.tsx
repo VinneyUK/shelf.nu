@@ -19,14 +19,14 @@ export default function BookingActionsDropdown() {
   const disabled = noAssets
     ? {
         reason:
-          "Kit has no assets. Please add some assets to be able to book this kit.",
+          "Box has no assets. Please add some assets to be able to book this box.",
       }
     : false;
 
   const disabledTrigger = someAssetIsNotAvailable
     ? {
         reason:
-          "Some assets in this kit have been marked as unavailable for bookings.",
+          "Some assets in this box have been marked as unavailable for bookings.",
       }
     : false;
 

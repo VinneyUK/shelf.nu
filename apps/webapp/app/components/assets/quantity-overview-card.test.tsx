@@ -150,7 +150,7 @@ describe("QuantityOverviewCard", () => {
     expect(screen.getByText("10")).toBeInTheDocument();
   });
 
-  it("shows the leftover stock as Unplaced when locations hold less than the total", () => {
+  it("shows the leftover stock as Unplaced when places hold less than the total", () => {
     render(
       <QuantityOverviewCard
         {...baseProps}
@@ -220,7 +220,7 @@ describe("QuantityOverviewCard", () => {
     );
 
     const trigger = screen.getByRole("button", {
-      name: /Locations claim 10 pcs more/,
+      name: /Places claim 10 pcs more/,
     });
     expect(trigger).toBeInTheDocument();
     expect(trigger).not.toHaveAttribute("tabindex", "-1");
@@ -239,7 +239,7 @@ describe("QuantityOverviewCard", () => {
 
     expect(
       screen.getByText(
-        textContaining("Locations claim 10 pcs more", "Manage placements")
+        textContaining("Places claim 10 pcs more", "Manage placements")
       )
     ).toBeInTheDocument();
   });

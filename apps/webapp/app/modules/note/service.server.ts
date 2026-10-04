@@ -454,7 +454,7 @@ export async function createBulkKitChangeNotes({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while creating bulk kit change notes",
+      message: "Something went wrong while creating bulk box change notes",
       additionalData: {
         userId,
         newlyAddedAssetsIds: newlyAddedAssets.map((a) => a.id),
@@ -515,7 +515,7 @@ export async function createKitChangeNote({
         { id: newKit.id, name: newKit.name.trim() },
         "updated"
       );
-      message = `${userLink} changed kit  from ${currentKitLink} to ${newKitLink}.`;
+      message = `${userLink} changed box  from ${currentKitLink} to ${newKitLink}.`;
     }
 
     /** User is adding asset to a kit for first time */
@@ -544,7 +544,7 @@ export async function createKitChangeNote({
           ? `${userLink} removed ${count} from ${currentKitLink}.`
           : `${userLink} removed asset from ${currentKitLink}.`;
       } else {
-        message = `${userLink} removed asset from a kit.`;
+        message = `${userLink} removed asset from a box.`;
       }
     }
 
@@ -563,7 +563,7 @@ export async function createKitChangeNote({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while creating a kit change note. Please try again or contact support",
+        "Something went wrong while creating a box change note. Please try again or contact support",
       additionalData: { userId, assetId },
       label,
     });
@@ -638,8 +638,8 @@ export async function createKitMoveNote({
     // back to the countless wording to match the rest of the kit-note family.
     const count = formatUnitCount({ type, unitOfMeasure }, quantity);
     const message = count
-      ? `${userLink} moved ${count} from kit ${fromKitLink} to kit ${toKitLink}.`
-      : `${userLink} moved asset from kit ${fromKitLink} to kit ${toKitLink}.`;
+      ? `${userLink} moved ${count} from box ${fromKitLink} to box ${toKitLink}.`
+      : `${userLink} moved asset from box ${fromKitLink} to box ${toKitLink}.`;
 
     await createNote({
       content: message,
@@ -652,7 +652,7 @@ export async function createKitMoveNote({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while creating a kit move note. Please try again or contact support",
+        "Something went wrong while creating a box move note. Please try again or contact support",
       additionalData: {
         userId,
         assetId,

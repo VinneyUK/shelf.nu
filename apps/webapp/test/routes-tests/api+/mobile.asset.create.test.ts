@@ -270,7 +270,7 @@ describe("POST /api/mobile/asset/create", () => {
       );
     });
 
-    it("names the location when the asset was placed", async () => {
+    it("names the place when the asset was placed", async () => {
       vi.mocked(createAsset).mockResolvedValue(
         createdAsset({
           assetLocations: [assetLocationRow("loc-1", " Warehouse A ")],
@@ -287,7 +287,7 @@ describe("POST /api/mobile/asset/create", () => {
       expect(createNote).toHaveBeenLastCalledWith(
         expect.objectContaining({
           content:
-            '{% link to="/settings/team/users/user-1" text="Carlos Virreira" /%} set the location to {% link to="/locations/loc-1" text="Warehouse A" /%}.',
+            '{% link to="/settings/team/users/user-1" text="Carlos Virreira" /%} set the place to {% link to="/locations/loc-1" text="Warehouse A" /%}.',
           assetId: "asset-1",
         })
       );
@@ -315,7 +315,7 @@ describe("POST /api/mobile/asset/create", () => {
       expect(Logger.error).toHaveBeenCalledTimes(1);
     });
 
-    it("still writes the creation note when the location note fails", async () => {
+    it("still writes the creation note when the place note fails", async () => {
       // Notes go out one at a time and are swallowed individually, so the note
       // that matters most can't be lost to the one that matters least.
       vi.mocked(createAsset).mockResolvedValue(
@@ -436,7 +436,7 @@ describe("POST /api/mobile/asset/create", () => {
         'A{{% link to="javascript:alert(1)" text="x" /%}',
       ],
     ])(
-      "cannot inject a Markdoc tag via a location name that %s",
+      "cannot inject a Markdoc tag via a place name that %s",
       async (_label, evilName) => {
         vi.mocked(createAsset).mockResolvedValue(
           createdAsset({
@@ -492,7 +492,7 @@ describe("POST /api/mobile/asset/create", () => {
       }
     });
 
-    it("writes only the creation note when the asset has no location", async () => {
+    it("writes only the creation note when the asset has no place", async () => {
       vi.mocked(createAsset).mockResolvedValue(createdAsset());
 
       await action(

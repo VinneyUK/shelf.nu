@@ -86,15 +86,17 @@ export function ScanDetails({
                   content={
                     <>
                       <h6 className="mb-1 text-sm font-semibold text-gray-700">
-                        Source of location data
+                        
+                        Source of place data
                       </h6>
                       <p className="text-xs font-medium text-gray-500">
-                        The location data can be generated in 2 different ways:
+                        
+                        The place data can be generated in 2 different ways:
                       </p>
                       <ul className="text-xs font-medium text-gray-500 ">
                         <li>
-                          <strong>1. Manually updated:</strong> User manually
-                          updated the location data.
+                          <strong>1. Manually updated:</strong>  User manually
+                          updated the place data.
                         </li>
                         <li>
                           <strong>2. QR code scan:</strong> User scanned the QR
@@ -124,7 +126,7 @@ export function ScanDetails({
       ) : (
         <MapPlaceholder
           title="Waiting for first QR code scan"
-          description="Scan your asset’s QR code with a phone, grant location permissions. Wait a few seconds and see the first scan location on a map!"
+          description="Scan your asset’s QR code with a phone, grant place permissions. Wait a few seconds and see the first scan place on a map!"
         />
       )}
     </div>

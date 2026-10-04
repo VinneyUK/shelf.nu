@@ -32,7 +32,7 @@ import {
 } from "~/utils/permissions/permission.data";
 import { requirePermission } from "~/utils/roles.server";
 
-export const meta = () => [{ title: appendToMetaTitle("Update location") }];
+export const meta = () => [{ title: appendToMetaTitle("Update place") }];
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
   const authSession = context.getSession();
@@ -153,8 +153,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     });
 
     sendNotification({
-      title: "Location updated",
-      message: "Your asset's location has been updated successfully",
+      title: "Place updated",
+      message: "Your asset's place has been updated successfully",
       icon: { name: "success", variant: "success" },
       senderId: authSession.userId,
     });
@@ -207,8 +207,8 @@ export default function Custody() {
             <LocationMarkerIcon />
           </div>
           <div className="mb-5">
-            <h4>Update location</h4>
-            <p>Adjust the location of this asset.</p>
+            <h4>Update place</h4>
+            <p>Adjust the place of this asset.</p>
           </div>
           <div className=" relative z-50 mb-8">
             <LocationSelect
@@ -223,7 +223,8 @@ export default function Custody() {
                 htmlFor="newLocationQuantity"
                 className="mb-1 block text-sm font-medium text-gray-700"
               >
-                Quantity to place at this location
+                
+                Quantity to place at this place
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -251,9 +252,10 @@ export default function Custody() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                Units not placed at any location stay in the unplaced pool. Use
-                the location&apos;s manage-assets picker to spread across
-                multiple locations.
+                
+                Units not placed at any place stay in the unplaced pool. Use
+                the place&apos;s manage-assets picker to spread across
+                multiple places.
               </p>
             </div>
           ) : null}
@@ -261,9 +263,9 @@ export default function Custody() {
           {showMultiPlacementWarning ? (
             <div className="mb-6 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800">
               <strong>Multi-placement notice:</strong> This asset is currently
-              placed at {placementCount} locations. Saving will replace all
-              placements with a single placement at the selected location. Use
-              the location&apos;s manage-assets picker if you want to keep
+              placed at {placementCount}  places. Saving will replace all
+              placements with a single placement at the selected place. Use
+              the place&apos;s manage-assets picker if you want to keep
               multiple placements.
             </div>
           ) : null}

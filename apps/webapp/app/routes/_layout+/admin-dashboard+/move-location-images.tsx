@@ -19,7 +19,7 @@ import { id } from "~/utils/id/id.server";
 import { requireAdmin } from "~/utils/roles.server";
 
 export const MigrationFormSchema = z.object({
-  count: z.coerce.number().min(1).max(150, "Maximum 150 locations at a time"),
+  count: z.coerce.number().min(1).max(150, "Maximum 150 places at a time"),
   shouldFix: z
     .string()
     .optional()
@@ -27,7 +27,7 @@ export const MigrationFormSchema = z.object({
 });
 
 export const meta = () => [
-  { title: appendToMetaTitle("Move location images") },
+  { title: appendToMetaTitle("Move place images") },
 ];
 export async function loader({ context }: LoaderFunctionArgs) {
   const { userId } = context.getSession();
@@ -340,7 +340,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
         fixed: 0,
         skipped: 0,
         resultsByType: {},
-        errors: ["No locations with images found to process."],
+        errors: ["No places with images found to process."],
       });
     }
 
@@ -370,7 +370,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
         if (shouldFix && validation.canFix) {
           // Try to fix the image
           console.log(
-            `Attempting to fix location ${location.id}: ${validation.reason}`
+            `Attempting to fix place ${location.id}: ${validation.reason}`
           );
 
           const fixResult = await fixImageFormat(
@@ -383,18 +383,18 @@ export async function action({ context, request }: ActionFunctionArgs) {
             processedContentType = fixResult.fixedContentType!;
             wasFixed = true;
 
-            const fixMsg = `Fixed location ${location.id}: ${validation.reason} → ${processedContentType}`;
+            const fixMsg = `Fixed place ${location.id}: ${validation.reason} → ${processedContentType}`;
             console.log(fixMsg);
             fixedLocationIds.push(location.id);
           } else {
-            const fixFailMsg = `Skipping location ${location.id}: ${validation.reason} (fix failed: ${fixResult.error})`;
+            const fixFailMsg = `Skipping place ${location.id}: ${validation.reason} (fix failed: ${fixResult.error})`;
             console.error(fixFailMsg);
             errorLog.push(fixFailMsg);
             skippedLocationIds.push(location.id);
             continue;
           }
         } else {
-          const skipMsg = `Skipping location ${location.id}: ${validation.reason}`;
+          const skipMsg = `Skipping place ${location.id}: ${validation.reason}`;
           console.error(skipMsg);
           errorLog.push(skipMsg);
           skippedLocationIds.push(location.id);
@@ -413,7 +413,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
         /** Uploading the image */
         console.log(
-          `Uploading image for location ${location.id}, size: ${
+          `Uploading image for place ${location.id}, size: ${
             processedBlob.length
           } bytes${wasFixed ? " (fixed)" : ""}`
         );
@@ -427,7 +427,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
         if (error) {
           console.error(
-            `Failed to upload image for location ${location.id}:`,
+            `Failed to upload image for place ${location.id}:`,
             error
           );
           errorLog.push(`Upload failed for ${location.id}: ${error.message}`);
@@ -464,7 +464,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
         if (thumbnailError) {
           console.error(
-            `Failed to upload thumbnail for location ${location.id}:`,
+            `Failed to upload thumbnail for place ${location.id}:`,
             thumbnailError
           );
           errorLog.push(
@@ -492,12 +492,12 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
         movedLocationIds.push(location.id);
         console.log(
-          `Successfully processed location ${location.id}${
+          `Successfully processed place ${location.id}${
             wasFixed ? " (fixed)" : ""
           }`
         );
       } catch (err) {
-        const errorMsg = `Error processing location ${location.id}: ${err}`;
+        const errorMsg = `Error processing place ${location.id}: ${err}`;
         console.error(errorMsg);
         errorLog.push(errorMsg);
         skippedLocationIds.push(location.id);
@@ -517,7 +517,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
       );
     }
 
-    const successMsg = `${movedLocationIds.length} location images processed successfully`;
+    const successMsg = `${movedLocationIds.length} place images processed successfully`;
     const fixedMsg =
       shouldFix && fixedLocationIds.length > 0
         ? `, ${fixedLocationIds.length} images fixed`
@@ -528,7 +528,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
         : "";
 
     sendNotification({
-      title: "Location images migration completed",
+      title: "Place images migration completed",
       message: successMsg + fixedMsg + warningMsg,
       icon: { name: "success", variant: "success" },
       senderId: userId,
@@ -568,16 +568,17 @@ export default function MoveLocationImages() {
 
   return (
     <div className="rounded-md border bg-white p-4">
-      <h2 className="mb-1">Move location images</h2>
+      <h2 className="mb-1">Move place images</h2>
       <p className="mb-4">
-        Move the location images from the database to Supabase Storage and
-        update the image URLs for each location accordingly.
+        
+        Move the place images from the database to Supabase Storage and
+        update the image URLs for each place accordingly.
       </p>
-      <p>Total locations with images: {numberOfLocationWithImages}</p>
+      <p>Total places with images: {numberOfLocationWithImages}</p>
 
       <Form method="POST" className="mt-4" ref={zo.ref}>
         <Input
-          label={"Number of locations to move:"}
+          label={"Number of places to move:"}
           type="number"
           name="count"
           value={count}
@@ -607,7 +608,7 @@ export default function MoveLocationImages() {
             type="submit"
             disabled={numberOfLocationWithImages === 0 || disabled}
           >
-            Move {count} location images {shouldFix && "(with fixing)"}
+            Move {count}  place images {shouldFix && "(with fixing)"}
           </Button>
         </div>
       </Form>

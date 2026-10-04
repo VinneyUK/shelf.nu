@@ -111,7 +111,7 @@ describe("POST /api/mobile/bulk-update-location", () => {
     });
   });
 
-  it("should bulk update location successfully", async () => {
+  it("should bulk update place successfully", async () => {
     const request = createBulkUpdateLocationRequest({
       assetIds: ["asset-1", "asset-2"],
       locationId: "location-1",

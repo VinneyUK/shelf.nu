@@ -627,8 +627,8 @@ function generateTopBookedAssetsCsv(rows: TopBookedAssetRow[]): string {
 function generateTopBookedKitsCsv(rows: TopBookedKitRow[]): string {
   const headers = [
     "Rank",
-    "Kit ID",
-    "Kit Name",
+    "Box ID",
+    "Box Name",
     "Category",
     "Location",
     "Booking Count",
@@ -776,7 +776,7 @@ function formatActivityType(type: string): string {
     CUSTODY_RELEASED: "Custody released",
     BOOKING_CHECKED_OUT: "Checked out",
     BOOKING_CHECKED_IN: "Checked in",
-    LOCATION_CHANGED: "Location changed",
+    LOCATION_CHANGED: "Place changed",
     CATEGORY_CHANGED: "Category changed",
   };
   return labels[type] || type;

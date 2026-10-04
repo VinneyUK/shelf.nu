@@ -102,23 +102,23 @@ describe("shapeBookingAssets", () => {
     expect(items.map((i) => i.id)).toEqual(["a2"]);
   });
 
-  it("groups kit assets into a single kit item and attaches the kit from rawKits", () => {
+  it("groups box assets into a single box item and attaches the box from rawKits", () => {
     const rawAssets = [
       asset({
         id: "k1",
         kitId: "kit-1",
         title: "Body",
-        kit: { name: "Cam Kit" },
+        kit: { name: "Cam Box" },
       }),
       asset({
         id: "k2",
         kitId: "kit-1",
         title: "Lens",
-        kit: { name: "Cam Kit" },
+        kit: { name: "Cam Box" },
       }),
       asset({ id: "solo", kitId: null, title: "Tripod" }),
     ];
-    const rawKits = [{ id: "kit-1", name: "Cam Kit" }];
+    const rawKits = [{ id: "kit-1", name: "Cam Box" }];
     const { items, totalKits, assetsCount } = shapeBookingAssets({
       ...baseParams,
       rawAssets,
@@ -126,7 +126,7 @@ describe("shapeBookingAssets", () => {
     });
     const kitItem = items.find((i) => i.type === "kit");
     expect(kitItem?.assets.map((a: any) => a.id).sort()).toEqual(["k1", "k2"]);
-    expect(kitItem?.kit).toEqual({ id: "kit-1", name: "Cam Kit" });
+    expect(kitItem?.kit).toEqual({ id: "kit-1", name: "Cam Box" });
     expect(totalKits).toBe(1);
     expect(assetsCount).toBe(1); // the solo asset
   });
@@ -146,7 +146,7 @@ describe("shapeBookingAssets", () => {
     expect(items.map((i) => i.id)).toEqual(["a2"]);
   });
 
-  it("sinks a kit whose QT member is fully checked out per-slice, even when the member's global status is AVAILABLE", () => {
+  it("sinks a box whose QT member is fully checked out per-slice, even when the member's global status is AVAILABLE", () => {
     // Regression: a QUANTITY_TRACKED asset with a kit slice + a standalone
     // slice (44 booked) never flips its GLOBAL status to CHECKED_OUT when only
     // the kit's 22 are out. The sort must still sink the kit using the row's
@@ -160,13 +160,13 @@ describe("shapeBookingAssets", () => {
         status: "AVAILABLE", // global stays AVAILABLE (multi-slice never flips)
         type: "QUANTITY_TRACKED",
         kitId: "kit-1",
-        kit: { name: "Alpha Kit" },
+        kit: { name: "Alpha Box" },
         bookedQuantity: 22,
         checkedOutQuantity: 22,
         dispositionedQuantity: 0,
       }),
     ];
-    const rawKits = [{ id: "kit-1", name: "Alpha Kit" }];
+    const rawKits = [{ id: "kit-1", name: "Alpha Box" }];
     const { items } = shapeBookingAssets({
       ...baseParams,
       rawAssets,
@@ -203,11 +203,11 @@ describe("shapeBookingAssets", () => {
       asset({
         id: "member-1",
         kitId: "kit-1",
-        kit: { name: "Kit One" },
+        kit: { name: "Box One" },
         bookingAssets: conflictingBookingAssets,
       }),
     ];
-    const rawKits = [{ id: "kit-1", name: "Kit One" }];
+    const rawKits = [{ id: "kit-1", name: "Box One" }];
 
     const { items } = shapeBookingAssets({
       ...baseParams,

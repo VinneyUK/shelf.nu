@@ -235,7 +235,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
 
     mockKitUpdate.mockResolvedValue({
       id: "kit-123",
-      name: "Test Kit",
+      name: "Test Box",
       custody: { id: "kc-1" },
       assetKits: [],
     } as any);
@@ -344,7 +344,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
 
     mockKitUpdate.mockResolvedValue({
       id: "kit-123",
-      name: "Test Kit",
+      name: "Test Box",
       custody: { id: "kc-1" },
       assetKits: [],
     } as any);
@@ -373,7 +373,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
     expect(mockKitUpdate).toHaveBeenCalled();
   });
 
-  it("threads quantity and kitCustodyId onto each per-asset Custody row for mixed asset kits", async () => {
+  it("threads quantity and kitCustodyId onto each per-asset Custody row for mixed asset boxes", async () => {
     requirePermissionMock.mockResolvedValue({
       organizationId: "org-1",
       role: OrganizationRoles.ADMIN,
@@ -396,7 +396,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
     // custody exists, so remaining = full quantity).
     mockKitUpdate.mockResolvedValue({
       id: "kit-123",
-      name: "Mixed Kit",
+      name: "Mixed Box",
       custody: { id: "kc-99" },
       assetKits: [
         { asset: { id: "asset-individual" } },
@@ -468,7 +468,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
     ]);
   });
 
-  it("subtracts already-allocated custody from kit row's quantity (Option B)", async () => {
+  it("subtracts already-allocated custody from box row's quantity (Option B)", async () => {
     requirePermissionMock.mockResolvedValue({
       organizationId: "org-1",
       role: OrganizationRoles.ADMIN,
@@ -485,7 +485,7 @@ describe("kits/$kitId/assets/assign-custody", () => {
     // Kit row should claim 76 for Pens (not 80) and 1 for Drill.
     mockKitUpdate.mockResolvedValue({
       id: "kit-123",
-      name: "Camera Kit",
+      name: "Camera Box",
       custody: { id: "kc-camera" },
       assetKits: [{ asset: { id: "drill" } }, { asset: { id: "pens" } }],
     } as any);

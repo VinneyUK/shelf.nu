@@ -51,14 +51,14 @@ export async function action({ context, request }: ActionFunctionArgs) {
     sendNotification({
       icon: { name: "success", variant: "success" },
       senderId: userId,
-      title: "Bulk assets removed from kits",
+      title: "Bulk assets removed from boxes",
       // What was actually detached. `assetIds` is what was ASKED for: it
       // counts assets that turned out not to be in a kit, and under
       // select-all it is the single `ALL_SELECTED_KEY` sentinel, so it would
       // report "1 assets" however many were removed.
       message: `Successfully removed ${removedFromKitCount} ${
         removedFromKitCount === 1 ? "asset" : "assets"
-      } from kits.`,
+      } from boxes.`,
     });
 
     return data(payload({ success: true }));

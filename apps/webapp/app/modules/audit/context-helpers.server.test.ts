@@ -76,7 +76,7 @@ describe("resolveAssetIdsForLocationSelection", () => {
     });
   });
 
-  it("explicit selection: dedupes duplicate location IDs before the asset query", async () => {
+  it("explicit selection: dedupes duplicate place IDs before the asset query", async () => {
     // guard sees the unique set; resolver must not re-introduce the duplicate
     locationFindMany.mockResolvedValueOnce([{ id: "l1" }, { id: "l2" }]);
     assetFindMany.mockResolvedValueOnce([{ id: "a1" }]);
@@ -96,7 +96,7 @@ describe("resolveAssetIdsForLocationSelection", () => {
     });
   });
 
-  it("rejects a foreign/tampered location ID before reading any assets (IDOR guard)", async () => {
+  it("rejects a foreign/tampered place ID before reading any assets (IDOR guard)", async () => {
     // org-scoped guard returns only one of the two requested → count mismatch
     locationFindMany.mockResolvedValueOnce([{ id: "l1" }]);
 
@@ -111,7 +111,7 @@ describe("resolveAssetIdsForLocationSelection", () => {
     expect(assetFindMany).not.toHaveBeenCalled();
   });
 
-  it("select all: matches assets via a location relation filter honoring the search (single query, no per-ID guard)", async () => {
+  it("select all: matches assets via a place relation filter honoring the search (single query, no per-ID guard)", async () => {
     assetFindMany.mockResolvedValueOnce([{ id: "a1" }]);
 
     const result = await resolveAssetIdsForLocationSelection({
@@ -143,7 +143,7 @@ describe("resolveAssetIdsForLocationSelection", () => {
     expect(locationFindMany).not.toHaveBeenCalled();
   });
 
-  it("throws a clear 400 when none of the selected locations contain assets", async () => {
+  it("throws a clear 400 when none of the selected places contain assets", async () => {
     locationFindMany.mockResolvedValueOnce([{ id: "l1" }, { id: "l2" }]); // guard passes
     assetFindMany.mockResolvedValueOnce([]); // empty union
 
@@ -186,7 +186,7 @@ describe("resolveAssetIdsForKitSelection", () => {
     });
   });
 
-  it("rejects a foreign/tampered kit ID before reading any assets (IDOR guard)", async () => {
+  it("rejects a foreign/tampered box ID before reading any assets (IDOR guard)", async () => {
     // org-scoped guard returns only one of the two requested → count mismatch
     kitFindMany.mockResolvedValueOnce([{ id: "k1" }]);
 
@@ -201,7 +201,7 @@ describe("resolveAssetIdsForKitSelection", () => {
     expect(assetFindMany).not.toHaveBeenCalled();
   });
 
-  it("explicit selection: dedupes duplicate kit IDs before the asset query", async () => {
+  it("explicit selection: dedupes duplicate box IDs before the asset query", async () => {
     // guard sees the unique set; resolver must not re-introduce the duplicate
     kitFindMany.mockResolvedValueOnce([{ id: "k1" }, { id: "k2" }]);
     assetFindMany.mockResolvedValueOnce([{ id: "a1" }]);
@@ -221,7 +221,7 @@ describe("resolveAssetIdsForKitSelection", () => {
     });
   });
 
-  it("select all: matches assets via a kit relation filter honoring the status filter (single query, no per-ID guard)", async () => {
+  it("select all: matches assets via a box relation filter honoring the status filter (single query, no per-ID guard)", async () => {
     assetFindMany.mockResolvedValueOnce([{ id: "a1" }]);
 
     const result = await resolveAssetIdsForKitSelection({
@@ -248,7 +248,7 @@ describe("resolveAssetIdsForKitSelection", () => {
     expect(kitFindMany).not.toHaveBeenCalled();
   });
 
-  it("throws a clear 400 when none of the selected kits contain assets", async () => {
+  it("throws a clear 400 when none of the selected boxes contain assets", async () => {
     kitFindMany.mockResolvedValueOnce([{ id: "k1" }, { id: "k2" }]); // guard passes
     assetFindMany.mockResolvedValueOnce([]); // empty union
 

@@ -67,7 +67,7 @@ const BulkAssignCustodySchema = z
     custodian: createCustodianSchema(),
   })
   .refine((data) => data.assetIds.length > 0 || data.kitIds.length > 0, {
-    message: "At least one asset or kit must be selected",
+    message: "At least one asset or box must be selected",
     path: ["assetIds"], // This will attach the error to the assetIds field
   });
 
@@ -192,11 +192,11 @@ export default function AssignCustodyDrawer({
       count: assetsArePartOfKit.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong> are part
-          of a kit.
+          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong>  are part
+          of a box.
         </>
       ),
-      description: "Note: Scan Kit QR to add the full kit",
+      description: "Note: Scan Box QR to add the full box",
       onResolve: () => removeAssetsFromList(assetsArePartOfKit),
     },
     {
@@ -204,7 +204,7 @@ export default function AssignCustodyDrawer({
       count: qrIdsOfKitsInCustody.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong>{" "}
           already <strong>in custody</strong>.
         </>
       ),
@@ -215,7 +215,7 @@ export default function AssignCustodyDrawer({
       count: qrIdsOfKitsWithAssetsInCustody.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong>{" "}
           already have assets <strong>in custody</strong>.
         </>
       ),
@@ -226,12 +226,12 @@ export default function AssignCustodyDrawer({
       count: qrIdsOfKitsCheckedOut.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong>{" "}
           checked out.
         </>
       ),
       onResolve: () => removeItemsFromList(qrIdsOfKitsCheckedOut),
-      description: "Note: Checked out kits cannot be assigned custody.",
+      description: "Note: Checked out boxes cannot be assigned custody.",
     },
     {
       condition: errors.length > 0,
@@ -601,7 +601,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>
@@ -693,7 +694,7 @@ function SubmissionState({
           <CheckmarkIcon />
         </span>
         <div className="font-mono">
-          {type === "asset" ? "Assets" : "Kits"} are now in custody of{" "}
+          {type === "asset" ? "Assets" : "Boxes"} are now in custody of{" "}
           {custodianName}
         </div>
       </div>

@@ -260,12 +260,12 @@ describe("POST /api/mobile/asset/update-location", () => {
     // INDIVIDUAL keeps the original phrasing — no unit count.
     expect(createNote).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: expect.stringContaining("updated the location from"),
+        content: expect.stringContaining("updated the place from"),
       })
     );
   });
 
-  it("short-circuits when location and quantity are both unchanged", async () => {
+  it("short-circuits when place and quantity are both unchanged", async () => {
     vi.mocked(db.location.findFirst).mockResolvedValue({
       id: "loc-storage",
       name: "Storage",
@@ -285,7 +285,7 @@ describe("POST /api/mobile/asset/update-location", () => {
     expect(db.$transaction).not.toHaveBeenCalled();
   });
 
-  it("re-places at the same location when the quantity differs", async () => {
+  it("re-places at the same place when the quantity differs", async () => {
     tx.asset.findUniqueOrThrow.mockResolvedValue({
       id: "asset-1",
       title: "Cords",
@@ -413,7 +413,7 @@ describe("POST /api/mobile/asset/update-location", () => {
     ).toHaveLength(0);
   });
 
-  it("places the full pool when quantity is omitted at the current location", async () => {
+  it("places the full pool when quantity is omitted at the current place", async () => {
     // 4 of 10 units are placed at Storage and the caller asks for Storage with
     // no quantity, which means the whole pool. Reading the omission as
     // "unchanged" short-circuits and leaves 4 placed.

@@ -398,7 +398,7 @@ describe("relinkAssetQrCode (asset)", () => {
     expect(createNote).not.toHaveBeenCalled();
   });
 
-  it("throws when QR is already linked to a kit", async () => {
+  it("throws when QR is already linked to a box", async () => {
     //@ts-expect-error mock setup
     getQr.mockResolvedValue({
       id: "qr-1",
@@ -2363,7 +2363,7 @@ describe("replaceAssetPlacements", () => {
     ).mockResolvedValue([]);
   });
 
-  it("accepts a manual set that fills the whole total even when the asset is in a kit", async () => {
+  it("accepts a manual set that fills the whole total even when the asset is in a box", async () => {
     // `enforce_asset_location_sum_within_total` sums `assetKitId IS NULL` rows
     // only — `20260602100000_assetlocation_sum_exclude_kit_driven` took the
     // kit-driven rows out precisely so a fully-placed asset could still be
@@ -2509,7 +2509,7 @@ describe("updateAsset stock-lowering guard", () => {
     expect(db.asset.update).toHaveBeenCalled();
   });
 
-  it("refuses a reduction that would strand units already placed at locations", async () => {
+  it("refuses a reduction that would strand units already placed at places", async () => {
     // The reservations guard passes — custody / kits / bookings are clear —
     // and the reduction is still wrong, because 9 units are recorded as
     // sitting somewhere. Nothing else catches this: the location trigger
@@ -2540,7 +2540,7 @@ describe("updateAsset stock-lowering guard", () => {
       } as any)
     ).rejects.toMatchObject({
       status: 400,
-      message: expect.stringContaining("assigned to locations"),
+      message: expect.stringContaining("assigned to places"),
     });
 
     expect(db.asset.update).not.toHaveBeenCalled();
@@ -2697,7 +2697,7 @@ describe("updateAsset stock-lowering guard", () => {
         cause: null,
         message:
           'Cannot reduce "Widget" to 5 boards — 8 boards are committed ' +
-          "(custody, kits, or overlapping bookings). Release or reduce those first.",
+          "(custody, boxes, or overlapping bookings). Release or reduce those first.",
         label: "Assets",
         status: 400,
         shouldBeCaptured: false,
@@ -4624,7 +4624,7 @@ describe("moveAssetLocationUnits", () => {
     );
   });
 
-  it("creates a new destination row when 25/100 are moved to a fresh location", async () => {
+  it("creates a new destination row when 25/100 are moved to a fresh place", async () => {
     // Source row has 100; no existing destination row.
     mockAssetLocationFindFirst
       .mockResolvedValueOnce({ id: "al-src", quantity: 100 })
@@ -4733,7 +4733,7 @@ describe("moveAssetLocationUnits", () => {
     expect(mockAssetLocationCreate).not.toHaveBeenCalled();
   });
 
-  it("rejects when source and destination are the same location", async () => {
+  it("rejects when source and destination are the same place", async () => {
     const err = await moveAssetLocationUnits({
       ...baseArgs,
       toLocationId: baseArgs.fromLocationId,
@@ -4755,7 +4755,7 @@ describe("moveAssetLocationUnits", () => {
     expect((err as ShelfError).message).toContain("positive");
   });
 
-  it("rejects when the asset is not placed at the source location (kit-driven rows are filtered out)", async () => {
+  it("rejects when the asset is not placed at the source place (kit-driven rows are filtered out)", async () => {
     // No manual source row — either the asset isn't placed there at
     // all, or all placement at this location is kit-driven (the
     // service's `assetKitId: null` filter excludes those).
@@ -4766,7 +4766,7 @@ describe("moveAssetLocationUnits", () => {
     expect(err).toBeInstanceOf(ShelfError);
     expect((err as ShelfError).status).toBe(400);
     expect((err as ShelfError).message).toContain(
-      "not placed at the source location"
+      "not placed at the source place"
     );
   });
 
@@ -4801,7 +4801,7 @@ describe("moveAssetLocationUnits", () => {
     expect(mockLock).not.toHaveBeenCalled();
   });
 
-  it("rejects when the destination location is not in the org (assertLocationBelongsToOrg)", async () => {
+  it("rejects when the destination place is not in the org (assertLocationBelongsToOrg)", async () => {
     // Default location.findFirst is overridden to return null for
     // `loc-to`, simulating a cross-org destination ID.
     mockLocationFindFirst.mockImplementation(
@@ -4988,7 +4988,7 @@ describe("placeUnplacedUnits", () => {
     expect((err as ShelfError).message).toContain("positive");
   });
 
-  it("rejects a cross-org destination location with status 400", async () => {
+  it("rejects a cross-org destination place with status 400", async () => {
     // assertLocationBelongsToOrg throws 400 ("Invalid location") for both
     // missing and cross-org IDs — uniform with the other org-scope guards so
     // attackers can't probe ID existence across orgs.
@@ -5122,7 +5122,7 @@ describe("getAssets search via UNION", () => {
 });
 
 describe("buildAssetKitCreateData — AssetKit pivot for create-with-kit", () => {
-  it("builds the AssetKit pivot nested-create and never emits a `kit` relation", () => {
+  it("builds the AssetKit pivot nested-create and never emits a `box` relation", () => {
     // why: `Asset.kit` was replaced by the `assetKits` pivot; a `kit: { connect }`
     // throws `Unknown argument kit` at runtime (the import-crash bug). This guards
     // against that regression.
@@ -5184,27 +5184,27 @@ describe("buildAssetKitCreateData — AssetKit pivot for create-with-kit", () =>
   });
 });
 
-describe("setKitCustodyAfterAssetImport — kit custody + member inheritance", () => {
+describe("setKitCustodyAfterAssetImport — box custody + member inheritance", () => {
   const mockBulkAssignKitCustody = vi.mocked(bulkAssignKitCustody);
 
   beforeEach(() => {
     vitest.clearAllMocks();
   });
 
-  it("assigns each kit to its row custodian via bulkAssignKitCustody, grouped by custodian", async () => {
+  it("assigns each box to its row custodian via bulkAssignKitCustody, grouped by custodian", async () => {
     // why: custody lives on the kit; members inherit through the canonical flow.
     const kits = {
-      "Camera Kit": { id: "kit-1", name: "Camera Kit" },
-      "Audio Kit": { id: "kit-2", name: "Audio Kit" },
+      "Camera Box": { id: "kit-1", name: "Camera Box" },
+      "Audio Box": { id: "kit-2", name: "Audio Box" },
     } as never;
     const teamMembers = {
       Alice: { id: "tm-1", name: "Alice" },
       Bob: { id: "tm-2", name: "Bob" },
     } as never;
     const data = [
-      { title: "A", key: "1", kit: "Camera Kit", custodian: "Alice" },
-      { title: "B", key: "2", kit: "Camera Kit", custodian: "Alice" },
-      { title: "C", key: "3", kit: "Audio Kit", custodian: "Bob" },
+      { title: "A", key: "1", kit: "Camera Box", custodian: "Alice" },
+      { title: "B", key: "2", kit: "Camera Box", custodian: "Alice" },
+      { title: "C", key: "3", kit: "Audio Box", custodian: "Bob" },
       { title: "D", key: "4" }, // no kit / custodian -> ignored
     ] as never;
 
@@ -5235,10 +5235,10 @@ describe("setKitCustodyAfterAssetImport — kit custody + member inheritance", (
     );
   });
 
-  it("does nothing when no row carries both a kit and a custodian", async () => {
+  it("does nothing when no row carries both a box and a custodian", async () => {
     await setKitCustodyAfterAssetImport({
       data: [
-        { title: "A", key: "1", kit: "Camera Kit" },
+        { title: "A", key: "1", kit: "Camera Box" },
         { title: "B", key: "2", custodian: "Alice" },
       ] as never,
       kits: {} as never,
@@ -5464,7 +5464,7 @@ describe("bulk custody paths — kit-derived custody guard", () => {
     );
   });
 
-  it("scopes the release delete to operator rows, never the kit's", async () => {
+  it("scopes the release delete to operator rows, never the box's", async () => {
     // why this is asserted on the WHERE and not on an outcome: the scope is the
     // whole protection. An unscoped delete removes the kit-derived row before
     // the guard below can see it, and by then the evidence is gone — nothing
@@ -5483,7 +5483,7 @@ describe("bulk custody paths — kit-derived custody guard", () => {
     });
   });
 
-  it("refuses the whole release batch when any asset's custody came from a kit", async () => {
+  it("refuses the whole release batch when any asset's custody came from a box", async () => {
     (db.custody.findFirst as ReturnType<typeof vitest.fn>).mockResolvedValue({
       assetId: "asset-2",
     });
@@ -5497,7 +5497,7 @@ describe("bulk custody paths — kit-derived custody guard", () => {
         settings: ASSET_INDEX_SETTINGS,
         allowedTeamMemberIds: "all" as const,
       })
-    ).rejects.toThrow(/release the kit/i);
+    ).rejects.toThrow(/release the box/i);
   });
 
   it("scopes the assign path's stale-custody cleanup to operator rows", async () => {
@@ -5545,7 +5545,7 @@ describe("bulk custody paths — kit-derived custody guard", () => {
   });
 });
 
-describe("bulkUpdateAssetLocation — location activity notes", () => {
+describe("bulkUpdateAssetLocation — place activity notes", () => {
   beforeEach(() => {
     vitest.clearAllMocks();
   });
@@ -5567,7 +5567,7 @@ describe("bulkUpdateAssetLocation — location activity notes", () => {
         assetLocations: [
           {
             locationId: "loc-old",
-            location: { id: "loc-old", name: "Old Location" },
+            location: { id: "loc-old", name: "Old Place" },
           },
         ],
         assetKits: [],
@@ -5580,7 +5580,7 @@ describe("bulkUpdateAssetLocation — location activity notes", () => {
         assetLocations: [
           {
             locationId: "loc-old",
-            location: { id: "loc-old", name: "Old Location" },
+            location: { id: "loc-old", name: "Old Place" },
           },
         ],
         assetKits: [],
@@ -5591,7 +5591,7 @@ describe("bulkUpdateAssetLocation — location activity notes", () => {
     // delegate — without a row the call refuses as a cross-org location.
     (db.location.findFirst as ReturnType<typeof vitest.fn>).mockResolvedValue({
       id: "loc-new",
-      name: "New Location",
+      name: "New Place",
       organizationId: "org-1",
     });
     // why: the placement writes happen inside the transaction, so its body has

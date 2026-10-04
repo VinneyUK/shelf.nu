@@ -28,7 +28,7 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 
 const header = {
-  title: "Untitled kit",
+  title: "Untitled box",
 };
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
@@ -125,8 +125,8 @@ export async function action({ context, request }: LoaderFunctionArgs) {
     });
 
     sendNotification({
-      title: "Kit created",
-      message: "Your kit has been created successfully!",
+      title: "Box created",
+      message: "Your box has been created successfully!",
       icon: { name: "success", variant: "success" },
       senderId: userId,
     });

@@ -84,11 +84,11 @@ describe("GenericItemRow rejectItemType", () => {
     vi.restoreAllMocks();
   });
 
-  it("stores a resolved kit as an error item, not data, when rejectItemType matches", async () => {
+  it("stores a resolved box as an error item, not data, when rejectItemType matches", async () => {
     mockFetch.mockResolvedValueOnce({
       json: () =>
         Promise.resolve({
-          qr: { type: "kit", kit: { id: "kit-1", name: "Kit A" } },
+          qr: { type: "kit", kit: { id: "kit-1", name: "Box A" } },
         }),
     });
 
@@ -96,19 +96,19 @@ describe("GenericItemRow rejectItemType", () => {
     renderRow(store, {
       rejectItemType: "kit",
       rejectItemMessage:
-        "Audits track assets, not kits — scan the kit's individual assets.",
+        "Audits track assets, not boxes — scan the box's individual assets.",
     });
 
     await waitFor(() => {
       expect(store.get(scannedItemsAtom)["qr-1"]).toEqual({
         error:
-          "Audits track assets, not kits — scan the kit's individual assets.",
+          "Audits track assets, not boxes — scan the box's individual assets.",
       });
     });
 
     // Renders through the error/loading path, never the clickable item row.
     expect(screen.getByTestId("loading-row")).toHaveTextContent(
-      "Audits track assets, not kits"
+      "Audits track assets, not boxes"
     );
     expect(screen.queryByText("rendered item")).not.toBeInTheDocument();
   });
@@ -117,7 +117,7 @@ describe("GenericItemRow rejectItemType", () => {
     mockFetch.mockResolvedValueOnce({
       json: () =>
         Promise.resolve({
-          qr: { type: "kit", kit: { id: "kit-1", name: "Kit A" } },
+          qr: { type: "kit", kit: { id: "kit-1", name: "Box A" } },
         }),
     });
 
@@ -131,11 +131,11 @@ describe("GenericItemRow rejectItemType", () => {
     });
   });
 
-  it("still resolves a kit normally when rejectItemType is not set (other drawers support kits)", async () => {
+  it("still resolves a box normally when rejectItemType is not set (other drawers support boxes)", async () => {
     mockFetch.mockResolvedValueOnce({
       json: () =>
         Promise.resolve({
-          qr: { type: "kit", kit: { id: "kit-1", name: "Kit A" } },
+          qr: { type: "kit", kit: { id: "kit-1", name: "Box A" } },
         }),
     });
 
@@ -144,7 +144,7 @@ describe("GenericItemRow rejectItemType", () => {
 
     await waitFor(() => {
       expect(store.get(scannedItemsAtom)["qr-1"]).toEqual({
-        data: { id: "kit-1", name: "Kit A" },
+        data: { id: "kit-1", name: "Box A" },
         type: "kit",
         codeType: undefined,
       });

@@ -101,7 +101,7 @@ const COPY_BY_MODE: Record<PendingItemsListMode, ModeCopy> = {
     pendingQtyTooltipBody:
       "This quantity-tracked asset still has units to reconcile on this booking.",
     pendingKitTooltipBody:
-      "This kit's assets are still outstanding. Scan the kit QR (or check in individual quantity-tracked members below).",
+      "This box's assets are still outstanding. Scan the box QR (or check in individual quantity-tracked members below).",
     keyPrefix: "pending-checkin",
   },
   checkout: {
@@ -114,7 +114,7 @@ const COPY_BY_MODE: Record<PendingItemsListMode, ModeCopy> = {
     pendingQtyTooltipBody:
       "This quantity-tracked asset still has units to check out on this booking.",
     pendingKitTooltipBody:
-      "This kit's assets are still outstanding. Scan the kit QR (or check out individual quantity-tracked members below).",
+      "This box's assets are still outstanding. Scan the box QR (or check out individual quantity-tracked members below).",
     keyPrefix: "pending-checkout",
   },
 };
@@ -222,7 +222,8 @@ function PendingKitGroup({
                   {/* Placeholder for image-less kits — the chevron on
                       the left is still the primary fold affordance. */}
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                    Kit
+                    
+                    Box
                   </span>
                 </div>
               )}
@@ -234,10 +235,10 @@ function PendingKitGroup({
                   </span>
                 </span>
                 <div className="flex flex-wrap items-center gap-1">
-                  <span className={assetTypePillClass}>kit</span>
+                  <span className={assetTypePillClass}>box</span>
                   <AvailabilityBadge
                     badgeText="Pending"
-                    tooltipTitle="Pending kit"
+                    tooltipTitle="Pending box"
                     tooltipContent={copy.pendingKitTooltipBody}
                     className="border-gray-200 bg-gray-50 text-gray-600"
                   />
@@ -404,7 +405,8 @@ function renderPendingIndividualAsset(
               </span>
               {kit ? (
                 <span className="text-xs text-gray-500">
-                  Part of kit: {kit.name}
+                  
+                  Part of box: {kit.name}
                 </span>
               ) : null}
               <div className="flex flex-wrap items-center gap-1">
@@ -470,7 +472,8 @@ function renderPendingQtyAsset(
               </span>
               {kit ? (
                 <span className="text-xs text-gray-500">
-                  Part of kit: {kit.name}
+                  
+                  Part of box: {kit.name}
                 </span>
               ) : null}
               <div className="flex flex-wrap items-center gap-1">

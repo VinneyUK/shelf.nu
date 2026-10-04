@@ -264,7 +264,7 @@ export default function BulkPartialCheckinDialog({
                             kitId: kit.id,
                             image: kit.mainImage,
                             imageExpiration: kit.mainImageExpiration,
-                            alt: `${kit.name} kit image`,
+                            alt: `${kit.name} box image`,
                           }}
                           className="size-5"
                         />

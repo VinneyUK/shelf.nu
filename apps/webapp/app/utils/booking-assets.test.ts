@@ -237,21 +237,21 @@ describe("flattenSelectedBookingItems", () => {
     expect(result[0].status).toBe("CHECKED_OUT");
   });
 
-  it("flattens a kit entry (type 'kit') with name and _count", () => {
+  it("flattens a box entry (type 'box') with name and _count", () => {
     const selected = [
       {
         type: "kit",
         id: "kit-1",
-        kit: { name: "Kit A", _count: { assets: 2 } },
+        kit: { name: "Box A", _count: { assets: 2 } },
       },
     ];
     const [result] = flattenSelectedBookingItems(selected, bookingAssets);
-    expect(result.name).toBe("Kit A");
+    expect(result.name).toBe("Box A");
     expect(result._count).toEqual({ assets: 2 });
   });
 
-  it("returns a traditional kit (name + _count) unchanged", () => {
-    const kit = { id: "kit-1", name: "Kit A", _count: { assets: 2 } };
+  it("returns a traditional box (name + _count) unchanged", () => {
+    const kit = { id: "kit-1", name: "Box A", _count: { assets: 2 } };
     const [result] = flattenSelectedBookingItems([kit], bookingAssets);
     expect(result).toEqual(kit);
   });

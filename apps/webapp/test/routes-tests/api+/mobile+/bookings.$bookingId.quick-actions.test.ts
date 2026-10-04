@@ -76,7 +76,7 @@ const CALLER = "user-1";
 /** A reserved booking the caller holds, so every role may read it. */
 const BOOKING_ROW = {
   id: "booking-1",
-  name: "Volunteer kit pick-up",
+  name: "Volunteer box pick-up",
   description: null,
   status: "RESERVED",
   from: new Date("2026-01-01T00:00:00.000Z"),

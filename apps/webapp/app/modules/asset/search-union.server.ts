@@ -98,7 +98,7 @@ function branchesForTerm(organizationId: string, term: string): Prisma.Sql {
         AND a."organizationId" = ${organizationId}
         AND c."name" ILIKE ${like}
     UNION
-    SELECT al."assetId" FROM public."Location" l
+    SELECT al."assetId" FROM public."Place" l
       JOIN public."AssetLocation" al ON al."locationId" = l."id"
       JOIN public."Asset" a ON a."id" = al."assetId"
       WHERE l."organizationId" = ${organizationId}

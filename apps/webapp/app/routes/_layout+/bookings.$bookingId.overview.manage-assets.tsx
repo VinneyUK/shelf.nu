@@ -565,7 +565,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       searchFieldLabel: "Search assets",
       searchFieldTooltip: {
         title: "Search your asset database",
-        text: "Search assets based on asset name or description, category, tag, location, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
+        text: "Search assets based on asset name or description, category, tag, place, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
       },
       showSidebar: true,
       noScroll: true,
@@ -1518,13 +1518,14 @@ export default function AddAssetsToNewBooking() {
           <TabsTrigger
             className="flex-1 gap-x-2"
             value="kits"
-            aria-label={`Kits tab${
+            aria-label={`Boxes tab${
               bookingKitIds.length > 0
                 ? ` (${bookingKitIds.length} selected)`
                 : ""
             }`}
           >
-            Kits
+            
+            Boxes
             {bookingKitIds.length > 0 ? (
               <GrayBadge className="size-[20px] border border-primary-200 bg-primary-50 text-[10px] leading-[10px] text-primary-700">
                 {bookingKitIds.length}
@@ -1594,12 +1595,13 @@ export default function AddAssetsToNewBooking() {
             <DynamicDropdown
               trigger={
                 <div className="flex h-6 cursor-pointer items-center gap-2">
-                  Locations{" "}
+                  
+                  Places{" "}
                   <ChevronRight className="hidden rotate-90 md:inline" />
                 </div>
               }
               model={{ name: "location", queryKey: "name" }}
-              label="Filter by location"
+              label="Filter by place"
               initialDataKey="locations"
               countKey="totalLocations"
               renderItem={({ metadata }) => (
@@ -1663,7 +1665,7 @@ export default function AddAssetsToNewBooking() {
             <>
               <Th>Category</Th>
               <Th>Tags</Th>
-              <Th>Location</Th>
+              <Th>Place</Th>
             </>
           }
         />

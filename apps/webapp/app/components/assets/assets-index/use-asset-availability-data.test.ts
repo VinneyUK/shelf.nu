@@ -153,7 +153,7 @@ describe("useAssetAvailabilityData", () => {
     expect(result.current.resources).toHaveLength(1);
   });
 
-  it("(a) folds a standalone + kit slice on ONE booking into one event", () => {
+  it("(a) folds a standalone + box slice on ONE booking into one event", () => {
     // Advanced shape: two pivot rows for the same booking id.
     const items = [
       {
@@ -164,7 +164,7 @@ describe("useAssetAvailabilityData", () => {
           makeBooking({
             id: "b1",
             assetKitId: "ak1",
-            kitName: "Camera Kit",
+            kitName: "Camera Box",
             quantity: 3,
           }),
         ],
@@ -182,14 +182,14 @@ describe("useAssetAvailabilityData", () => {
         expect.objectContaining({ assetKitId: null, quantity: 2 }),
         expect.objectContaining({
           assetKitId: "ak1",
-          kitName: "Camera Kit",
+          kitName: "Camera Box",
           quantity: 3,
         }),
       ])
     );
   });
 
-  it("(b) folds 3 slices (standalone + 2 kits) into one event", () => {
+  it("(b) folds 3 slices (standalone + 2 boxes) into one event", () => {
     const items = [
       {
         id: "asset-1",
@@ -199,13 +199,13 @@ describe("useAssetAvailabilityData", () => {
           makeBooking({
             id: "b1",
             assetKitId: "ak1",
-            kitName: "Kit A",
+            kitName: "Box A",
             quantity: 2,
           }),
           makeBooking({
             id: "b1",
             assetKitId: "ak2",
-            kitName: "Kit B",
+            kitName: "Box B",
             quantity: 4,
           }),
         ],
@@ -220,7 +220,7 @@ describe("useAssetAvailabilityData", () => {
     expect(props.bookedTotal).toBe(7);
   });
 
-  it("(c) keeps kit attribution for a single kit-only slice", () => {
+  it("(c) keeps box attribution for a single kit-only slice", () => {
     const items = [
       {
         id: "asset-1",
@@ -229,7 +229,7 @@ describe("useAssetAvailabilityData", () => {
           makeBooking({
             id: "b1",
             assetKitId: "ak1",
-            kitName: "Camera Kit",
+            kitName: "Camera Box",
             quantity: 1,
           }),
         ],
@@ -242,7 +242,7 @@ describe("useAssetAvailabilityData", () => {
     const props = result.current.events[0].extendedProps;
     expect(props.sliceCount).toBe(1);
     expect(props.slices[0].assetKitId).toBe("ak1");
-    expect(props.slices[0].kitName).toBe("Camera Kit");
+    expect(props.slices[0].kitName).toBe("Camera Box");
   });
 
   it("(d) leaves a plain single standalone booking unchanged", () => {
@@ -274,7 +274,7 @@ describe("useAssetAvailabilityData", () => {
           makeSlice(b1, { assetKitId: null, quantity: 2 }),
           makeSlice(b1, {
             assetKitId: "ak1",
-            kitName: "Camera Kit",
+            kitName: "Camera Box",
             quantity: 3,
           }),
         ],
@@ -294,7 +294,7 @@ describe("useAssetAvailabilityData", () => {
         expect.objectContaining({ assetKitId: null, quantity: 2 }),
         expect.objectContaining({
           assetKitId: "ak1",
-          kitName: "Camera Kit",
+          kitName: "Camera Box",
           quantity: 3,
         }),
       ])

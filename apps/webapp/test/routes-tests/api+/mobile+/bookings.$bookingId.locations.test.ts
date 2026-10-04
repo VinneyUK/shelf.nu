@@ -198,7 +198,7 @@ async function assetsOf(bookingAssets: ReturnType<typeof slice>[]) {
 }
 
 describe("GET /api/mobile/bookings/:bookingId — where each asset sits", () => {
-  it("sends a placed asset's primary location as { id, name }", async () => {
+  it("sends a placed asset's primary place as { id, name }", async () => {
     const [asset] = await assetsOf([
       slice({ id: "ba1", assetId: "a1", location: STORE }),
     ]);
@@ -216,7 +216,7 @@ describe("GET /api/mobile/bookings/:bookingId — where each asset sits", () => 
     expect(asset).toHaveProperty("location", null);
   });
 
-  it("sends a kit member's own location, as it does for standalone assets", async () => {
+  it("sends a box member's own place, as it does for standalone assets", async () => {
     const assets = await assetsOf([
       slice({ id: "ba1", assetId: "a1", location: STORE }),
       slice({

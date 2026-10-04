@@ -354,7 +354,7 @@ describe("GET /api/mobile/barcode/:value", () => {
     expect(db.barcode.findMany).not.toHaveBeenCalled();
   });
 
-  it("should return 422 when barcode is not linked to any asset or kit", async () => {
+  it("should return 422 when barcode is not linked to any asset or box", async () => {
     (getBarcodeByValue as any).mockResolvedValue({
       ...mockBarcode,
       assetId: null,
@@ -463,7 +463,7 @@ describe("GET /api/mobile/barcode/:value", () => {
     expect((result as unknown as Response).status).toBe(401);
   });
 
-  it("should return barcode with kit linkage when no asset", async () => {
+  it("should return barcode with box linkage when no asset", async () => {
     (getBarcodeByValue as any).mockResolvedValue({
       ...mockBarcode,
       assetId: null,

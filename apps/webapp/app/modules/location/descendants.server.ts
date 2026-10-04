@@ -18,14 +18,14 @@ export async function getLocationDescendantIds({
         id,
         "parentId",
         "organizationId"
-      FROM "Location"
+      FROM "Place"
       WHERE id = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
         l.id,
         l."parentId",
         l."organizationId"
-      FROM "Location" l
+      FROM "Place" l
       INNER JOIN location_descendants ld ON ld.id = l."parentId"
       WHERE l."organizationId" = ${organizationId}
     )

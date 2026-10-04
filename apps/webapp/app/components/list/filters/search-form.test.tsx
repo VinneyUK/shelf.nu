@@ -27,7 +27,7 @@ const mockLoaderData = vi.hoisted(() => ({
   value: {
     search: null as string | null,
     modelName: { singular: "asset", plural: "assets" },
-    searchFieldLabel: "Search kits",
+    searchFieldLabel: "Search boxes",
   },
 }));
 
@@ -90,7 +90,7 @@ describe("SearchForm debounce", () => {
 
   it("issues ONE navigation for a burst of typing, not one per character", () => {
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     // A nine-character search: one `.data` request per character without the
     // debounce.
@@ -110,15 +110,15 @@ describe("SearchForm debounce", () => {
 
   it("keeps 60+ characters of typing under the rate limiter's per-minute budget", () => {
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     // Four separate searches, ~16 characters each. Undebounced that is 64
     // requests against one bucket, past the limiter's 60 and into a 429.
     for (const term of [
       "alpha equipment 1",
       "beta equipment 22",
-      "gamma kit 333333",
-      "delta kit 4444444",
+      "gamma box 333333",
+      "delta box 4444444",
     ]) {
       for (let i = 1; i <= term.length; i++) {
         fireEvent.change(input, { target: { value: term.slice(0, i) } });
@@ -131,7 +131,7 @@ describe("SearchForm debounce", () => {
 
   it("replaces history entries so Back does not walk through the query letter by letter", () => {
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     fireEvent.change(input, { target: { value: "kit" } });
     advancePastDebounce();
@@ -143,7 +143,7 @@ describe("SearchForm debounce", () => {
 
   it("resets pagination when the search term changes", () => {
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     fireEvent.change(input, { target: { value: "kit" } });
     advancePastDebounce();
@@ -159,7 +159,7 @@ describe("SearchForm debounce", () => {
   it("clears the search term when the field is emptied", () => {
     mockLoaderData.value.search = "kit";
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     fireEvent.change(input, { target: { value: "" } });
     advancePastDebounce();
@@ -175,7 +175,7 @@ describe("SearchForm debounce", () => {
     // why: a debounce that only shows the spinner once the navigation starts
     // leaves the field looking idle while the user types.
     render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     fireEvent.change(input, { target: { value: "b" } });
 
@@ -188,7 +188,7 @@ describe("SearchForm debounce", () => {
   it("does not dispatch a scheduled search after the field unmounts", () => {
     // why: these modals close while a debounce can still be in flight.
     const { unmount } = render(<SearchForm />);
-    const input = screen.getByLabelText("Search kits");
+    const input = screen.getByLabelText("Search boxes");
 
     fireEvent.change(input, { target: { value: "kit" } });
     unmount();

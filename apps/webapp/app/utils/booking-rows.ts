@@ -40,7 +40,7 @@ export function describeBookingRows(items: BookingRow[]): string {
     parts.push(`${assets} ${assets === 1 ? "asset" : "assets"}`);
   }
   if (kits > 0) {
-    parts.push(`${kits} ${kits === 1 ? "kit" : "kits"}`);
+    parts.push(`${kits} ${kits === 1 ? "box" : "boxes"}`);
   }
 
   return parts.join(" and ");

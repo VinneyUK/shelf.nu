@@ -81,9 +81,9 @@ export function AvailabilityLabel({
   if (isPartOfKit && showKitStatus) {
     return (
       <AvailabilityBadge
-        badgeText="Part of kit"
-        tooltipTitle="Asset is part of a kit"
-        tooltipContent="Remove the asset from the kit to add it individually."
+        badgeText="Part of box"
+        tooltipTitle="Asset is part of a box"
+        tooltipContent="Remove the asset from the box to add it individually."
       />
     );
   }
@@ -235,9 +235,9 @@ export function AvailabilityLabel({
   if (isAddedThroughKit) {
     return (
       <AvailabilityBadge
-        badgeText="Added through kit"
-        tooltipTitle="Asset was added through a kit"
-        tooltipContent="Remove the asset from the kit to add it individually."
+        badgeText="Added through box"
+        tooltipTitle="Asset was added through a box"
+        tooltipContent="Remove the asset from the box to add it individually."
       />
     );
   }
@@ -499,8 +499,8 @@ export function KitAvailabilityLabel({ kit }: { kit: KitForBooking }) {
     return (
       <AvailabilityBadge
         badgeText="In custody"
-        tooltipTitle="Kit is in custody"
-        tooltipContent="This kit is in custody or it contains some assets that are in custody."
+        tooltipTitle="Box is in custody"
+        tooltipContent="This box is in custody or it contains some assets that are in custody."
       />
     );
   }
@@ -509,11 +509,11 @@ export function KitAvailabilityLabel({ kit }: { kit: KitForBooking }) {
     return (
       <AvailabilityBadge
         badgeText="Checked out"
-        tooltipTitle="Kit is checked out"
+        tooltipTitle="Box is checked out"
         tooltipContent={
           isCheckedOutInANonConflictingBooking
-            ? "This kit is currently checked out as part of another booking and should be available for your selected date range period"
-            : "This kit is currently checked out and is not available for your selected date range period"
+            ? "This box is currently checked out as part of another booking and should be available for your selected date range period"
+            : "This box is currently checked out and is not available for your selected date range period"
         }
       />
     );
@@ -523,8 +523,8 @@ export function KitAvailabilityLabel({ kit }: { kit: KitForBooking }) {
     return (
       <AvailabilityBadge
         badgeText="No assets"
-        tooltipTitle="No assets in kit"
-        tooltipContent="There are no assets added to this kit yet."
+        tooltipTitle="No assets in box"
+        tooltipContent="There are no assets added to this box yet."
       />
     );
   }
@@ -533,8 +533,8 @@ export function KitAvailabilityLabel({ kit }: { kit: KitForBooking }) {
     return (
       <AvailabilityBadge
         badgeText="Contains non-bookable assets"
-        tooltipTitle="Kit is unavailable for check-out"
-        tooltipContent="Some assets in this kit are marked as non-bookable. You can still add the kit to your booking, but you must remove the non-bookable assets to proceed with check-out."
+        tooltipTitle="Box is unavailable for check-out"
+        tooltipContent="Some assets in this box are marked as non-bookable. You can still add the box to your booking, but you must remove the non-bookable assets to proceed with check-out."
       />
     );
   }
@@ -543,8 +543,8 @@ export function KitAvailabilityLabel({ kit }: { kit: KitForBooking }) {
     return (
       <AvailabilityBadge
         badgeText="Already booked"
-        tooltipTitle="Kit is already part of a booking"
-        tooltipContent="This kit is already added to another booking."
+        tooltipTitle="Box is already part of a booking"
+        tooltipContent="This box is already added to another booking."
       />
     );
   }

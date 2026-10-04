@@ -17,7 +17,7 @@ const apiKitsPayload = {
   kits: [
     {
       id: "kit-1",
-      name: "Camera Kit",
+      name: "Camera Box",
       image: null,
       imageExpiration: null,
       assets: [
@@ -34,7 +34,7 @@ const apiKitsPayload = {
     },
     {
       id: "kit-2",
-      name: "Audio Kit",
+      name: "Audio Box",
       image: null,
       imageExpiration: null,
       assets: [],
@@ -81,38 +81,38 @@ describe("KitsListComponent", () => {
     });
   });
 
-  it("renders the kit count trigger for a multi-kit note", () => {
+  it("renders the box count trigger for a multi-kit note", () => {
     renderComponent(2, "kit-1,kit-2");
 
-    expect(screen.getByRole("button", { name: "2 kits" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "2 boxes" })).toBeVisible();
   });
 
-  it("lists every kit with its member assets when opened", async () => {
+  it("lists every box with its member assets when opened", async () => {
     const user = userEvent.setup();
     renderComponent(2, "kit-1,kit-2");
 
-    await user.click(screen.getByRole("button", { name: "2 kits" }));
+    await user.click(screen.getByRole("button", { name: "2 boxes" }));
 
-    expect(await screen.findByText("Camera Kit")).toBeVisible();
-    expect(screen.getByText("Audio Kit")).toBeVisible();
+    expect(await screen.findByText("Camera Box")).toBeVisible();
+    expect(screen.getByText("Audio Box")).toBeVisible();
     expect(screen.getByText("Sony FX3")).toBeVisible();
     expect(screen.getByText("(Cameras)")).toBeVisible();
   });
 
-  it("counts each kit's member assets", async () => {
+  it("counts each box's member assets", async () => {
     const user = userEvent.setup();
     renderComponent(2, "kit-1,kit-2");
 
-    await user.click(screen.getByRole("button", { name: "2 kits" }));
+    await user.click(screen.getByRole("button", { name: "2 boxes" }));
 
     expect(await screen.findByText("(1 assets)")).toBeVisible();
     expect(screen.getByText("(0 assets)")).toBeVisible();
   });
 
-  it("links straight to the kit for a single-kit note", () => {
+  it("links straight to the box for a single-kit note", () => {
     renderComponent(1, "kit-1");
 
-    expect(screen.getByRole("link", { name: "Camera Kit" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Camera Box" })).toHaveAttribute(
       "href",
       "/kits/kit-1"
     );
@@ -131,6 +131,6 @@ describe("KitsListComponent", () => {
 
     renderComponent(3, "kit-1,kit-2,kit-3");
 
-    expect(screen.getByRole("button", { name: "3 kits" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "3 boxes" })).toBeVisible();
   });
 });

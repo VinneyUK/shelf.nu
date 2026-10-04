@@ -259,7 +259,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     kits = await updateKitsWithBookingCustodians(kits);
 
     const header = {
-      title: "Kits",
+      title: "Boxes",
     };
 
     const modelName = {
@@ -285,13 +285,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         modelName,
         search,
         hasActiveFilters,
-        searchFieldLabel: "Search kits",
+        searchFieldLabel: "Search boxes",
         teamMembers,
         totalTeamMembers,
         currentUserTeamMember,
         searchFieldTooltip: {
-          title: "Search your kits database",
-          text: "Search kits based on name or description.",
+          title: "Search your boxes database",
+          text: "Search boxes based on name or description.",
         },
         locations,
         totalLocations,
@@ -338,8 +338,9 @@ export default function KitsIndexPage() {
     <>
       <Header>
         {canCreateKit && (
-          <Button to="new" role="link" aria-label="new kit">
-            New kit
+          <Button to="new" role="link" aria-label="new box">
+            
+            New box
           </Button>
         )}
       </Header>
@@ -441,15 +442,15 @@ export default function KitsIndexPage() {
             ItemComponent={ListContent}
             bulkActions={isBase ? undefined : <BulkActionsDropdown />}
             customEmptyStateContent={{
-              title: "No kits yet",
-              text: "Kits let you group related assets together. Create a kit to bundle equipment that's typically used as a set.",
+              title: "No boxes yet",
+              text: "Boxes let you group related assets together. Create a box to bundle equipment that's typically used as a set.",
               newButtonRoute: "/kits/new",
-              newButtonContent: "Create your first kit",
+              newButtonContent: "Create your first box",
             }}
             headerChildren={
               <>
                 <Th>Category</Th>
-                <Th>Location</Th>
+                <Th>Place</Th>
                 <Th>Description</Th>
                 <Th>Assets</Th>
                 {custodyEnabled ? ( // customise feature

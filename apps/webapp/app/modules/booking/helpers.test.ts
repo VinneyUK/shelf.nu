@@ -109,11 +109,11 @@ describe("isBookingArchivable", () => {
 
 describe("groupAndSortAssetsByKit", () => {
   describe("grouping behavior", () => {
-    it("keeps assets from the same kit contiguous", () => {
+    it("keeps assets from the same box contiguous", () => {
       const assets = [
-        createAsset("1", "Asset A", "AVAILABLE", "kit-1", "Kit 1"),
-        createAsset("2", "Asset B", "AVAILABLE", "kit-2", "Kit 2"),
-        createAsset("3", "Asset C", "AVAILABLE", "kit-1", "Kit 1"),
+        createAsset("1", "Asset A", "AVAILABLE", "kit-1", "Box 1"),
+        createAsset("2", "Asset B", "AVAILABLE", "kit-2", "Box 2"),
+        createAsset("3", "Asset C", "AVAILABLE", "kit-1", "Box 1"),
       ];
       const result = groupAndSortAssetsByKit(assets, "title", "asc");
       const kit1 = result
@@ -123,13 +123,13 @@ describe("groupAndSortAssetsByKit", () => {
     });
   });
 
-  describe("sorting by title (flat interleave of kits and assets)", () => {
-    it("orders kit units and standalone assets together by name", () => {
+  describe("sorting by title (flat interleave of boxes and assets)", () => {
+    it("orders box units and standalone assets together by name", () => {
       const assets = [
         createAsset("z", "Zebra", "AVAILABLE"),
-        createAsset("k", "member", "AVAILABLE", "kit-1", "Alpha Kit"),
+        createAsset("k", "member", "AVAILABLE", "kit-1", "Alpha Box"),
         createAsset("c", "Camera", "AVAILABLE"),
-        createAsset("d", "member", "AVAILABLE", "kit-2", "Delta Kit"),
+        createAsset("d", "member", "AVAILABLE", "kit-2", "Delta Box"),
       ];
       const result = groupAndSortAssetsByKit(assets, "title", "asc");
       // Alpha Kit(k) < Camera(c) < Delta Kit(d) < Zebra(z)
@@ -139,7 +139,7 @@ describe("groupAndSortAssetsByKit", () => {
     it("reverses order when descending", () => {
       const assets = [
         createAsset("a", "Apple", "AVAILABLE"),
-        createAsset("b", "member", "AVAILABLE", "kit-1", "Mango Kit"),
+        createAsset("b", "member", "AVAILABLE", "kit-1", "Mango Box"),
       ];
       const result = groupAndSortAssetsByKit(assets, "title", "desc");
       expect(result.map((a) => a.id)).toEqual(["b", "a"]); // Mango Kit > Apple
@@ -165,7 +165,7 @@ describe("groupAndSortAssetsByKit", () => {
       expect(result.map((a) => a.id)).toEqual(["a", "b"]);
     });
 
-    it("keeps a kit on top while ANY member is not checked out", () => {
+    it("keeps a box on top while ANY member is not checked out", () => {
       const assets = [
         createAsset("s", "Solo", "CHECKED_OUT"),
         createAsset("m1", "M1", "CHECKED_OUT", "kit-1", "Kit"),
@@ -177,7 +177,7 @@ describe("groupAndSortAssetsByKit", () => {
       expect(result.map((a) => a.id)).toEqual(["m2", "m1", "s"]);
     });
 
-    it("sinks a kit to the bottom only when ALL members are checked out", () => {
+    it("sinks a box to the bottom only when ALL members are checked out", () => {
       const assets = [
         createAsset("avail", "Zzz", "AVAILABLE"),
         createAsset("m1", "M1", "CHECKED_OUT", "kit-1", "Kit"),
@@ -210,30 +210,30 @@ describe("groupAndSortAssetsByKit", () => {
   });
 
   describe("sorting by item type", () => {
-    it("groups kits first then assets (desc)", () => {
+    it("groups boxes first then assets (desc)", () => {
       const assets = [
         createAsset("solo", "Solo", "AVAILABLE"),
-        createAsset("m", "member", "AVAILABLE", "kit-1", "Kit A"),
+        createAsset("m", "member", "AVAILABLE", "kit-1", "Box A"),
       ];
       const result = groupAndSortAssetsByKit(assets, "type", "desc");
       expect(result.map((a) => a.id)).toEqual(["m", "solo"]);
     });
 
-    it("groups assets first then kits (asc)", () => {
+    it("groups assets first then boxes (asc)", () => {
       const assets = [
-        createAsset("m", "member", "AVAILABLE", "kit-1", "Kit A"),
+        createAsset("m", "member", "AVAILABLE", "kit-1", "Box A"),
         createAsset("solo", "Solo", "AVAILABLE"),
       ];
       const result = groupAndSortAssetsByKit(assets, "type", "asc");
       expect(result.map((a) => a.id)).toEqual(["solo", "m"]);
     });
 
-    it("orders multiple kits and assets alphabetically within their bucket", () => {
+    it("orders multiple boxes and assets alphabetically within their bucket", () => {
       const assets = [
         createAsset("z", "Zebra", "AVAILABLE"),
         createAsset("a", "Apple", "AVAILABLE"),
-        createAsset("kb", "member", "AVAILABLE", "kit-b", "Beta Kit"),
-        createAsset("ka", "member", "AVAILABLE", "kit-a", "Alpha Kit"),
+        createAsset("kb", "member", "AVAILABLE", "kit-b", "Beta Box"),
+        createAsset("ka", "member", "AVAILABLE", "kit-a", "Alpha Box"),
       ];
       const result = groupAndSortAssetsByKit(assets, "type", "desc");
       // Kits first (Alpha, Beta), then assets (Apple, Zebra).
@@ -242,7 +242,7 @@ describe("groupAndSortAssetsByKit", () => {
   });
 
   describe("sorting by category (flat, nulls last)", () => {
-    it("interleaves kits and assets by category, nulls last", () => {
+    it("interleaves boxes and assets by category, nulls last", () => {
       const assets = [
         createAsset("n", "NoCat", "AVAILABLE"),
         createAsset("m", "member", "AVAILABLE", "kit-1", "Kit", "Beta"),
@@ -254,8 +254,8 @@ describe("groupAndSortAssetsByKit", () => {
     });
   });
 
-  describe("sorting by location (flat, nulls last)", () => {
-    it("interleaves kits and assets by location, nulls last", () => {
+  describe("sorting by place (flat, nulls last)", () => {
+    it("interleaves boxes and assets by place, nulls last", () => {
       const assets = [
         createAsset("n", "NoLoc", "AVAILABLE"),
         createAsset(
@@ -290,10 +290,10 @@ describe("groupAndSortAssetsByKit", () => {
       expect(result.map((a) => a.id)).toEqual(["a", "b"]);
     });
 
-    it("handles only kit assets", () => {
+    it("handles only box assets", () => {
       const assets = [
-        createAsset("2", "member", "AVAILABLE", "kit-b", "Beta Kit"),
-        createAsset("1", "member", "AVAILABLE", "kit-a", "Alpha Kit"),
+        createAsset("2", "member", "AVAILABLE", "kit-b", "Beta Box"),
+        createAsset("1", "member", "AVAILABLE", "kit-a", "Alpha Box"),
       ];
       const result = groupAndSortAssetsByKit(assets, "title", "asc");
       expect(result.map((a) => a.kitId)).toEqual(["kit-a", "kit-b"]);
@@ -344,7 +344,7 @@ describe("filterBookingAssets", () => {
     expect(result.map((a) => a.id)).toEqual(["a1"]);
   });
 
-  it("matches sequentialId, tag, location, qr id, and barcode value", () => {
+  it("matches sequentialId, tag, place, qr id, and barcode value", () => {
     const assets = [
       asset({ id: "seq", sequentialId: "SAM-0042" }),
       asset({ id: "tag", tags: [{ name: "Fragile" }] }),
@@ -380,7 +380,7 @@ describe("filterBookingAssets", () => {
     expect(result.map((a) => a.id)).toEqual(["a1", "a2"]);
   });
 
-  it("re-expands the whole kit when one of its assets matches", () => {
+  it("re-expands the whole box when one of its assets matches", () => {
     const assets = [
       asset({ id: "k1", kitId: "kit-1", title: "Camera body" }),
       asset({ id: "k2", kitId: "kit-1", title: "Tripod" }),
@@ -391,19 +391,19 @@ describe("filterBookingAssets", () => {
     expect(result.map((a) => a.id)).toEqual(["k1", "k2"]);
   });
 
-  it("matches by a kit-level field (kit location) and surfaces the whole kit", () => {
+  it("matches by a kit-level field (box place) and surfaces the whole box", () => {
     const assets = [
       asset({
         id: "k1",
         kitId: "kit-1",
         title: "Camera body",
-        kit: { name: "Cam Kit", location: { name: "Studio B" } },
+        kit: { name: "Cam Box", location: { name: "Studio B" } },
       }),
       asset({
         id: "k2",
         kitId: "kit-1",
         title: "Tripod",
-        kit: { name: "Cam Kit", location: { name: "Studio B" } },
+        kit: { name: "Cam Box", location: { name: "Studio B" } },
       }),
       asset({ id: "solo", kitId: null, title: "Unrelated" }),
     ];
@@ -867,7 +867,7 @@ describe("hasKitBookingConflicts", () => {
     checkedInAt: Date | null = null
   ) => ({ booking, checkedOutAt, checkedInAt });
 
-  it("treats a kit on an overlapping RESERVED booking as a conflict", () => {
+  it("treats a box on an overlapping RESERVED booking as a conflict", () => {
     expect(
       hasKitBookingConflicts(
         [slice({ id: "other", status: BookingStatus.RESERVED })],
@@ -876,7 +876,7 @@ describe("hasKitBookingConflicts", () => {
     ).toBe(true);
   });
 
-  it("treats a kit still out on an overlapping ONGOING or OVERDUE booking as a conflict", () => {
+  it("treats a box still out on an overlapping ONGOING or OVERDUE booking as a conflict", () => {
     for (const status of [BookingStatus.ONGOING, BookingStatus.OVERDUE]) {
       expect(
         hasKitBookingConflicts([slice({ id: "other", status }, OUT)], CURRENT)
@@ -884,7 +884,7 @@ describe("hasKitBookingConflicts", () => {
     }
   });
 
-  it("ignores an ONGOING booking whose slices of the kit have all come back", () => {
+  it("ignores an ONGOING booking whose slices of the box have all come back", () => {
     expect(
       hasKitBookingConflicts(
         [slice({ id: "other", status: BookingStatus.ONGOING }, OUT, IN)],
@@ -893,7 +893,7 @@ describe("hasKitBookingConflicts", () => {
     ).toBe(false);
   });
 
-  it("ignores an ONGOING booking that holds the kit but never took it out", () => {
+  it("ignores an ONGOING booking that holds the box but never took it out", () => {
     // A kit added after the booking departed has not left the shelf.
     expect(
       hasKitBookingConflicts(
@@ -903,7 +903,7 @@ describe("hasKitBookingConflicts", () => {
     ).toBe(false);
   });
 
-  it("still conflicts while any one slice of the kit is out", () => {
+  it("still conflicts while any one slice of the box is out", () => {
     // A kit of two quantity-tracked members, one returned and one not.
     const other = { id: "other", status: BookingStatus.ONGOING };
     expect(
@@ -923,7 +923,7 @@ describe("hasKitBookingConflicts", () => {
     ).toBe(false);
   });
 
-  it("does not treat a DRAFT booking as holding the kit", () => {
+  it("does not treat a DRAFT booking as holding the box", () => {
     expect(
       hasKitBookingConflicts(
         [slice({ id: "other", status: BookingStatus.DRAFT })],
@@ -979,7 +979,7 @@ describe("buildPdfAssetRows", () => {
     ...over,
   });
 
-  it("renders one row per BookingAsset slice for a QT asset booked standalone + via two kits", () => {
+  it("renders one row per BookingAsset slice for a QT asset booked standalone + via two boxes", () => {
     // Boards = 4 standalone + 3 via kit b1 + 3 via kit b2. The PDF must mirror
     // the on-screen overview: THREE rows, each with its own quantity and kit,
     // never one summed row. `Asset.quantity` (workspace stock = 100) must not
@@ -1094,7 +1094,7 @@ describe("buildPdfAssetRows", () => {
     expect(rows).toEqual([]);
   });
 
-  it("produces rows that group by kit without collapsing duplicate asset ids", () => {
+  it("produces rows that group by box without collapsing duplicate asset ids", () => {
     // End-to-end: the per-slice rows must survive `groupAndSortAssetsByKit`
     // (which groups by the resolved kit id and never dedupes asset ids), so
     // all three Boards slices remain distinct rows.
@@ -1143,7 +1143,7 @@ describe("buildPdfAssetRows", () => {
     ]);
   });
 
-  it("renders a detached slice under its original kit via sourceKitId", () => {
+  it("renders a detached slice under its original box via sourceKitId", () => {
     // The asset has since been removed from the kit: its `AssetKit` row is
     // gone (so `assetKits` is empty and `assetKitId` was `SET NULL`'d), but
     // the finished booking must still describe the job as containing that
@@ -1166,7 +1166,7 @@ describe("buildPdfAssetRows", () => {
           "kit-camera",
           {
             id: "kit-camera",
-            name: "Camera Kit",
+            name: "Camera Box",
             location: { name: "Studio" },
           },
         ],
@@ -1179,13 +1179,13 @@ describe("buildPdfAssetRows", () => {
       kitId: "kit-camera",
       kit: {
         id: "kit-camera",
-        name: "Camera Kit",
+        name: "Camera Box",
         location: { name: "Studio" },
       },
     });
   });
 
-  it("leaves a detached slice standalone when its source kit is not resolvable", () => {
+  it("leaves a detached slice standalone when its source box is not resolvable", () => {
     // `sourceKitId`'s FK accepts a `Kit` in any organization, so the caller's
     // lookup is org-scoped and can legitimately come back empty. That must
     // degrade to a loose row, never crash.
@@ -1207,7 +1207,7 @@ describe("buildPdfAssetRows", () => {
     expect(rows[0]).toMatchObject({ kitId: null, kit: null });
   });
 
-  it("prefers the live membership over the snapshot kit", () => {
+  it("prefers the live membership over the snapshot box", () => {
     // While the membership lives the two agree, but the live join stays the
     // source of truth — a renamed/moved kit must render from current data.
     const boards = rawAsset({
@@ -1249,10 +1249,10 @@ describe("buildPdfAssetRows", () => {
   describe("isRemovedFromKit (printed residue marker)", () => {
     /** The snapshot map every case below resolves `kit-camera` through. */
     const cameraSnapshot = new Map([
-      ["kit-camera", { id: "kit-camera", name: "Camera Kit", location: null }],
+      ["kit-camera", { id: "kit-camera", name: "Camera Box", location: null }],
     ]);
 
-    it("flags a slice whose asset has genuinely left the kit", () => {
+    it("flags a slice whose asset has genuinely left the box", () => {
       // Membership gone (`assetKits` empty, `assetKitId` SET NULL'd) but the
       // slice still renders under `kit-camera` via `sourceKitId` — the printed
       // row must say so, or it reads as a live kit member.
@@ -1276,13 +1276,13 @@ describe("buildPdfAssetRows", () => {
       });
     });
 
-    it("does not flag a live kit member", () => {
+    it("does not flag a live box member", () => {
       const tripod = rawAsset({
         id: "tripod",
         assetKits: [
           {
             id: "ak-camera",
-            kit: { id: "kit-camera", name: "Camera Kit", location: null },
+            kit: { id: "kit-camera", name: "Camera Box", location: null },
           },
         ],
       });
@@ -1322,7 +1322,7 @@ describe("buildPdfAssetRows", () => {
       expect(rows[0].isRemovedFromKit).toBe(false);
     });
 
-    it("does not flag an asset that was re-added to the same kit", () => {
+    it("does not flag an asset that was re-added to the same box", () => {
       // Re-adding creates a NEW `AssetKit` row the nulled slice never points
       // at, so the row still resolves through the snapshot — but the asset IS
       // a current member again, so calling it removed would be a lie.
@@ -1331,7 +1331,7 @@ describe("buildPdfAssetRows", () => {
         assetKits: [
           {
             id: "ak-camera-new",
-            kit: { id: "kit-camera", name: "Camera Kit", location: null },
+            kit: { id: "kit-camera", name: "Camera Box", location: null },
           },
         ],
       });
@@ -1393,7 +1393,7 @@ describe("buildPdfBookingAssetSlices", () => {
     asset: { assetKits: [], assetLocations: [], ...over.asset },
   });
 
-  it("sets kitId to the shared Kit.id, NOT the per-membership AssetKit.id (#2790)", () => {
+  it("sets kitId to the shared Box.id, NOT the per-membership AssetKit.id (#2790)", () => {
     // The bug: `kitId` held the `AssetKit.id` (unique per asset-in-kit), so
     // `filterBookingAssets`' kit re-expansion never surfaced siblings on search.
     // It must be the shared `Kit.id`; the `AssetKit.id` is kept as `assetKitId`.
@@ -1419,7 +1419,7 @@ describe("buildPdfBookingAssetSlices", () => {
     expect(slices[0].kit).toEqual({ id: "kit-b1", name: "b1", location: null });
   });
 
-  it("leaves kitId, assetKitId and kit null for a standalone slice", () => {
+  it("leaves kitId, assetKitId and box null for a standalone slice", () => {
     const slices = buildPdfBookingAssetSlices([
       bookingAssetRow({
         id: "ba-std",
@@ -1432,7 +1432,7 @@ describe("buildPdfBookingAssetSlices", () => {
     expect(slices[0].kit).toBeNull();
   });
 
-  it("gives a QT asset booked via two kits two slices: same asset id, different kits", () => {
+  it("gives a QT asset booked via two boxes two slices: same asset id, different boxes", () => {
     const assetKits = [
       { id: "ak-b1", kit: { id: "kit-b1", name: "b1", location: null } },
       { id: "ak-b2", kit: { id: "kit-b2", name: "b2", location: null } },
@@ -1460,7 +1460,7 @@ describe("buildPdfBookingAssetSlices", () => {
     ]);
   });
 
-  it("resolves the primary location from the asset's AssetLocation pivot", () => {
+  it("resolves the primary place from the asset's AssetLocation pivot", () => {
     const slices = buildPdfBookingAssetSlices([
       bookingAssetRow({
         id: "ba-1",
@@ -1474,7 +1474,7 @@ describe("buildPdfBookingAssetSlices", () => {
     expect(slices[0].location).toEqual({ name: "Shelf A" });
   });
 
-  it("feeds filterBookingAssets so a kit-member search re-expands the whole kit (fixed behavior)", () => {
+  it("feeds filterBookingAssets so a kit-member search re-expands the whole box (fixed behavior)", () => {
     // Two assets in kit b1 + one unrelated standalone. Searching one kit member
     // by title must surface BOTH kit members (re-expansion by the shared Kit.id)
     // and not the unrelated asset. Before the fix (kitId = AssetKit.id) only the

@@ -59,15 +59,18 @@ export function RemovedFromKitBadge() {
           className="inline-flex cursor-help items-center gap-1 rounded-2xl px-2 py-[2px] text-xs font-medium"
         >
           <TriangleAlertIcon aria-hidden="true" className="size-3" />
-          Removed from kit
+          
+          Removed from box
         </TooltipTrigger>
         <TooltipContent side="bottom" align="start">
           <div className="max-w-[260px] text-left sm:max-w-[320px]">
             <h6 className="mb-1 text-xs font-semibold text-gray-700">
-              No longer part of this kit
+              
+              No longer part of this box
             </h6>
             <div className="whitespace-normal text-xs font-medium text-gray-500">
-              This asset was removed from the kit after this booking was made.
+              
+              This asset was removed from the box after this booking was made.
               It stays on the booking as a record of what was booked, so
               in-progress and past bookings aren&apos;t rewritten.
             </div>

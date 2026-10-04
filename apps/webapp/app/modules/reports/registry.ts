@@ -61,9 +61,9 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "top-booked-kits",
-    title: "Top Booked Kits",
+    title: "Top Booked Boxes",
     description:
-      "Identify your most frequently booked kits and their utilization patterns.",
+      "Identify your most frequently booked boxes and their utilization patterns.",
     category: "bookings",
     icon: "Boxes",
     enabled: true,
@@ -173,7 +173,7 @@ export const REPORTS: ReportDefinition[] = [
     id: "distribution",
     title: "Asset Distribution",
     description:
-      "Breakdown of assets by category, location, and status for inventory planning.",
+      "Breakdown of assets by category, place, and status for inventory planning.",
     category: "assets",
     icon: "LayoutGrid",
     enabled: true, // R10

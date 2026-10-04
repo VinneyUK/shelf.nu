@@ -9,7 +9,7 @@ export function loader() {
 }
 
 export const handle = {
-  breadcrumb: () => <Link to="/kits">Kits</Link>,
+  breadcrumb: () => <Link to="/kits">Boxes</Link>,
 };
 
 export default function Kits() {

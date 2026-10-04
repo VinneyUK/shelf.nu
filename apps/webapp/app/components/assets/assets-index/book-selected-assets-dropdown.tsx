@@ -82,7 +82,7 @@ function ConditionalActionsDropdown() {
     if (someAssetsPartOfKit) {
       return {
         reason:
-          "Cannot book assets directly because some of the assets are part of a kit.",
+          "Cannot book assets directly because some of the assets are part of a box.",
       };
     }
 

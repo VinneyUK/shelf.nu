@@ -307,7 +307,8 @@ export default function DuplicateBooking() {
               info-box treatment so the modal feels consistent with other
               acknowledge-and-confirm surfaces. */}
           <p className="mb-3 rounded border border-warning-200 bg-warning-50 p-2 text-xs text-warning-800">
-            Kit changes since the original booking — these will be applied to
+            
+            Box changes since the original booking — these will be applied to
             the duplicate. The original booking is unchanged.
           </p>
 

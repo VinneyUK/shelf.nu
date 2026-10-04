@@ -215,8 +215,8 @@ function kitsFrom(response: unknown) {
   return body.booking.kits;
 }
 
-describe("GET /api/mobile/bookings/:bookingId — the kits its assets group under", () => {
-  it("describes every kit the booking holds, with the kit's own asset count", async () => {
+describe("GET /api/mobile/bookings/:bookingId — the boxes its assets group under", () => {
+  it("describes every box the booking holds, with the box's own asset count", async () => {
     findFirstMock.mockResolvedValue(
       bookingRow([
         slice({ id: "ba1", assetId: "a1", membership: "ak1", kit: AUDIO }),
@@ -263,7 +263,7 @@ describe("GET /api/mobile/bookings/:bookingId — the kits its assets group unde
     expect(kits[0]).not.toHaveProperty("_count");
   });
 
-  it("sends no kits, and runs no kit query, for a booking of loose assets", async () => {
+  it("sends no boxes, and runs no box query, for a booking of loose assets", async () => {
     findFirstMock.mockResolvedValue(
       bookingRow([
         slice({ id: "ba1", assetId: "a1", membership: null, kit: null }),
@@ -274,7 +274,7 @@ describe("GET /api/mobile/bookings/:bookingId — the kits its assets group unde
     expect(kitFindManyMock).not.toHaveBeenCalled();
   });
 
-  it("scopes the kit lookup to the caller's organization", async () => {
+  it("scopes the box lookup to the caller's organization", async () => {
     findFirstMock.mockResolvedValue(
       bookingRow([
         slice({ id: "ba1", assetId: "a1", membership: "ak1", kit: AUDIO }),
@@ -294,7 +294,7 @@ describe("GET /api/mobile/bookings/:bookingId — the kits its assets group unde
     );
   });
 
-  it("leaves an asset whose slices disagree on a kit out of the grouping", async () => {
+  it("leaves an asset whose slices disagree on a box out of the grouping", async () => {
     // A quantity-tracked asset booked both standalone and through a kit has no
     // single kit to sit under, so neither its rows nor that kit are grouped.
     findFirstMock.mockResolvedValue(
@@ -309,8 +309,8 @@ describe("GET /api/mobile/bookings/:bookingId — the kits its assets group unde
   });
 });
 
-describe("GET /api/mobile/bookings/:bookingId — kit images", () => {
-  it("sends a lapsed kit image re-signed, with its new expiry", async () => {
+describe("GET /api/mobile/bookings/:bookingId — box images", () => {
+  it("sends a lapsed box image re-signed, with its new expiry", async () => {
     findFirstMock.mockResolvedValue(
       bookingRow([
         slice({ id: "ba1", assetId: "a1", membership: "ak1", kit: AUDIO }),

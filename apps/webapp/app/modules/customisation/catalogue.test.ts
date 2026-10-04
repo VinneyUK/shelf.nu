@@ -194,7 +194,7 @@ describe("applyCustomisationsToMenu", () => {
       })
     );
     expect(titles(out.topMenuItems)).not.toContain("Team");
-    expect(titles(out.topMenuItems)).not.toContain("Kits");
+    expect(titles(out.topMenuItems)).not.toContain("Boxes");
     expect(titles(out.topMenuItems)).not.toContain("Tags");
     expect(titles(out.topMenuItems)).not.toContain("Organization"); // headings are gone
     expect(out.bottomMenuItems).toEqual([]);
@@ -222,7 +222,7 @@ describe("applyCustomisationsToMenu", () => {
 });
 
 describe("custody switch", () => {
-  it("blocks the assign and release custody pages for assets and kits", () => {
+  it("blocks the assign and release custody pages for assets and boxes", () => {
     const c = { ...DEFAULT_CUSTOMISATIONS, custodyEnabled: false };
     for (const path of [
       "/assets/a1/overview/assign-custody",

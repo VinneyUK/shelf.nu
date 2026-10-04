@@ -145,7 +145,7 @@ describe("createBarcode", () => {
     ).rejects.toThrow(ShelfError);
   });
 
-  it("should create barcode for kit when kitId provided", async () => {
+  it("should create barcode for box when kitId provided", async () => {
     expect.assertions(1);
     //@ts-expect-error missing vitest type
     db.barcode.create.mockResolvedValue(mockBarcodeData);
@@ -319,7 +319,7 @@ describe("createBarcodes", () => {
     );
   });
 
-  it("should handle constraint violations for kit barcodes", async () => {
+  it("should handle constraint violations for box barcodes", async () => {
     expect.assertions(1);
 
     // Mock Prisma constraint violation error
@@ -341,7 +341,7 @@ describe("createBarcodes", () => {
         assetId: null,
         kitId: "other-kit",
         asset: null,
-        kit: { name: "Test Kit" },
+        kit: { name: "Test Box" },
       },
     ]);
 
@@ -444,7 +444,7 @@ describe("updateBarcode", () => {
     );
   });
 
-  it("should handle constraint violations for kit barcodes", async () => {
+  it("should handle constraint violations for box barcodes", async () => {
     expect.assertions(1);
 
     // Mock Prisma constraint violation error
@@ -466,7 +466,7 @@ describe("updateBarcode", () => {
         assetId: null,
         kitId: "other-kit",
         asset: null,
-        kit: { name: "Test Kit" },
+        kit: { name: "Test Box" },
       },
     ]);
 
@@ -753,7 +753,7 @@ describe("updateBarcodes", () => {
     );
   });
 
-  it("should handle constraint violations for kit updates", async () => {
+  it("should handle constraint violations for box updates", async () => {
     expect.assertions(1);
 
     // Mock existing barcodes for the updateBarcodes function
@@ -768,7 +768,7 @@ describe("updateBarcodes", () => {
           assetId: null,
           kitId: "other-kit",
           asset: null,
-          kit: { name: "Test Kit" },
+          kit: { name: "Test Box" },
         },
       ]);
 
@@ -821,7 +821,7 @@ describe("deleteBarcodes", () => {
     });
   });
 
-  it("should delete all barcodes for kit", async () => {
+  it("should delete all barcodes for box", async () => {
     expect.assertions(1);
     //@ts-expect-error missing vitest type
     db.barcode.deleteMany.mockResolvedValue({ count: 1 });
@@ -1014,7 +1014,7 @@ describe("validateBarcodeUniqueness", () => {
     });
   });
 
-  it("should handle kit relationships correctly", async () => {
+  it("should handle box relationships correctly", async () => {
     expect.assertions(1);
     const existingBarcode = {
       id: "existing-1",
@@ -1022,7 +1022,7 @@ describe("validateBarcodeUniqueness", () => {
       assetId: null,
       kitId: "other-kit",
       asset: null,
-      kit: { name: "Existing Kit" },
+      kit: { name: "Existing Box" },
     };
     //@ts-expect-error missing vitest type
     db.barcode.findMany.mockResolvedValue([existingBarcode]);
@@ -1035,7 +1035,7 @@ describe("validateBarcodeUniqueness", () => {
 
     expect(error.additionalData.validationErrors).toEqual({
       "barcodes[0].value": {
-        message: 'This barcode value is already used by "Existing Kit"',
+        message: 'This barcode value is already used by "Existing Box"',
       },
     });
   });
@@ -1303,11 +1303,11 @@ describe("parseBarcodesFromImportData", () => {
         organizationId: "org-1",
       })
     ).rejects.toThrow(
-      "Some barcodes are already linked to other assets or kits in your organization"
+      "Some barcodes are already linked to other assets or boxes in your organization"
     );
   });
 
-  it("should throw error for barcodes already linked to kits", async () => {
+  it("should throw error for barcodes already linked to boxes", async () => {
     expect.assertions(1);
     const existingLinkedBarcode = {
       id: "existing-1",
@@ -1315,7 +1315,7 @@ describe("parseBarcodesFromImportData", () => {
       assetId: null,
       kitId: "other-kit",
       asset: null,
-      kit: { name: "Existing Kit" },
+      kit: { name: "Existing Box" },
     };
     //@ts-expect-error missing vitest type
     db.barcode.findMany.mockResolvedValue([existingLinkedBarcode]);
@@ -1335,7 +1335,7 @@ describe("parseBarcodesFromImportData", () => {
         organizationId: "org-1",
       })
     ).rejects.toThrow(
-      "Some barcodes are already linked to other assets or kits in your organization"
+      "Some barcodes are already linked to other assets or boxes in your organization"
     );
   });
 
@@ -1604,7 +1604,7 @@ describe("parseBarcodesFromImportData", () => {
     ]);
   });
 
-  it("should not reuse barcodes that are linked to assets or kits", async () => {
+  it("should not reuse barcodes that are linked to assets or boxes", async () => {
     expect.assertions(1);
     const linkedBarcodes = [
       {
@@ -1621,7 +1621,7 @@ describe("parseBarcodesFromImportData", () => {
         assetId: null,
         kitId: "other-kit", // Linked to a kit
         asset: null,
-        kit: { name: "Other Kit" },
+        kit: { name: "Other Box" },
       },
     ];
     //@ts-expect-error missing vitest type
@@ -1642,7 +1642,7 @@ describe("parseBarcodesFromImportData", () => {
         organizationId: "org-1",
       })
     ).rejects.toThrow(
-      "Some barcodes are already linked to other assets or kits in your organization"
+      "Some barcodes are already linked to other assets or boxes in your organization"
     );
   });
 });

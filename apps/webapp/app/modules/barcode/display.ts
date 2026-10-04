@@ -338,7 +338,7 @@ export function describeCodeFallback(
     resolved.workspacePreference === "SAM_ID"
   ) {
     return {
-      text: `Your workspace prefers ${preferredLabel}, which kits do not have. Showing the ${labelForPreference(
+      text: `Your workspace prefers ${preferredLabel}, which boxes do not have. Showing the ${labelForPreference(
         resolved.type
       )} instead.`,
       fixable: false,

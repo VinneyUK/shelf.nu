@@ -529,7 +529,7 @@ describe("GET /api/mobile/bookings/calendar", () => {
       mockDb.booking.findMany.mockResolvedValue([
         {
           id: "b1",
-          name: "Kit out",
+          name: "Box out",
           status: "ONGOING",
           from: new Date("2026-08-10T09:00:00.000Z"),
           to: new Date("2026-08-10T17:00:00.000Z"),

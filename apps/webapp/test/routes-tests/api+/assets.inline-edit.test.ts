@@ -86,7 +86,7 @@ describe("inline edit", () => {
     ).toBe(400);
     expect(mocks.updateAsset).not.toHaveBeenCalled();
   });
-  it("moves a location with the current one as the 'from'", async () => {
+  it("moves a place with the current one as the 'from'", async () => {
     mocks.assetLocation.findFirst.mockResolvedValue({ locationId: "old" });
     await post({ assetId: "a1", field: "location", value: "new" });
     expect(mocks.updateAsset).toHaveBeenCalledWith(

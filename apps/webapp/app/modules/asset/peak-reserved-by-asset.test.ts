@@ -175,7 +175,7 @@ describe("getPeakReservedUnitsByAsset", () => {
     expect(peaks.get(ASSET)).toBeUndefined();
     expect(peaks.get(OTHER)).toBe(60);
   });
-  it("does not let a kit slice's return shrink the standalone reservation", () => {
+  it("does not let a box slice's return shrink the standalone reservation", () => {
     // One (booking, asset) pair can hold a standalone slice and kit-driven
     // ones at once. A return logged against the kit slice belongs to that
     // slice — attributing it to the standalone row would understate what is
@@ -210,7 +210,7 @@ describe("getPeakReservedUnitsByAsset", () => {
     });
   });
 
-  it("only lets a kit slice absorb what it has not already returned", async () => {
+  it("only lets a box slice absorb what it has not already returned", async () => {
     // The kit row's 40 units were returned under its own row id, so it can
     // soak up none of the legacy total — all 10 reaches the standalone row.
     const tx = txWith(
@@ -248,7 +248,7 @@ describe("getPeakReservedUnitsByAsset", () => {
     expect(peaks.get(ASSET)).toBe(50);
   });
 
-  it("fills kit slices first with a disposition that predates row attribution", async () => {
+  it("fills box slices first with a disposition that predates row attribution", async () => {
     // Legacy logs carry no row id. Per `ConsumptionLog.bookingAssetId` they
     // attribute kit-driven-first, so only what exceeds the kit capacity may
     // reduce the standalone row.

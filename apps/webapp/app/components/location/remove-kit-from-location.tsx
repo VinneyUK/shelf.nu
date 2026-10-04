@@ -44,10 +44,11 @@ export default function RemoveKitFromLocation({
               <Icon icon="trash" />
             </span>
           </div>
-          <AlertDialogTitle>Remove "{kit.name}" from location</AlertDialogTitle>
+          <AlertDialogTitle>Remove "{kit.name}" from place</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to remove this kit from the location? All
-            assets within the kit will also be removed from this location.
+            
+            Are you sure you want to remove this box from the place? All
+            assets within the box will also be removed from this place.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

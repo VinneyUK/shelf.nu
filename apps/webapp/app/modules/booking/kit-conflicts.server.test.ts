@@ -51,7 +51,7 @@ const baseArgs = {
 };
 
 describe("findConflictingKits", () => {
-  it("returns nothing without querying when there are no kits or no window", async () => {
+  it("returns nothing without querying when there are no boxes or no window", async () => {
     const client = stubClient([], []);
 
     await expect(
@@ -65,7 +65,7 @@ describe("findConflictingKits", () => {
     expect(client.bookingAsset.findMany).not.toHaveBeenCalled();
   });
 
-  it("scopes the membership lookup to the requested kits and organization", async () => {
+  it("scopes the membership lookup to the requested boxes and organization", async () => {
     const client = stubClient([], []);
 
     await findConflictingKits(baseArgs, client as never);
@@ -104,7 +104,7 @@ describe("findConflictingKits", () => {
     });
   });
 
-  it("skips the slice query when none of the kits has a membership", async () => {
+  it("skips the slice query when none of the boxes has a membership", async () => {
     const client = stubClient([], []);
 
     await expect(
@@ -113,7 +113,7 @@ describe("findConflictingKits", () => {
     expect(client.bookingAsset.findMany).not.toHaveBeenCalled();
   });
 
-  it("names each conflicting kit once, judging each kit on its own slices", async () => {
+  it("names each conflicting box once, judging each box on its own slices", async () => {
     const client = stubClient(
       [
         { id: "ak-a1", kitId: "kit-a", kit: { name: "Projector case" } },
@@ -149,7 +149,7 @@ describe("findConflictingKits", () => {
     ).resolves.toEqual([{ id: "kit-a", name: "Projector case" }]);
   });
 
-  it("lets an in-flight booking ignore reservations but not a kit still out", async () => {
+  it("lets an in-flight booking ignore reservations but not a box still out", async () => {
     const memberships = [
       { id: "ak-a1", kitId: "kit-a", kit: { name: "Projector case" } },
       { id: "ak-b1", kitId: "kit-b", kit: { name: "Clamp set" } },

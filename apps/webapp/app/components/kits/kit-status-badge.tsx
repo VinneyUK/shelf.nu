@@ -87,7 +87,7 @@ export function KitStatusBadge({
         {userFriendlyKitStatus(status)}
       </Badge>
       {!availableToBook && (
-        <UnavailableBadge title="This kit is not available for Bookings because some of its assets are marked as unavailable" />
+        <UnavailableBadge title="This box is not available for Bookings because some of its assets are marked as unavailable" />
       )}
     </div>
   );

@@ -22,8 +22,9 @@ export function NewAuditInfoDialog() {
         >
           <div className="px-6 pb-6">
             <p className="mb-6 text-sm text-gray-600">
+              
               Audits help you verify your asset inventory by checking that
-              expected assets are in their designated locations. Choose how
+              expected assets are in their designated places. Choose how
               you'd like to create your audit:
             </p>
 
@@ -64,12 +65,14 @@ export function NewAuditInfoDialog() {
                   </div>
                   <div className="flex-1">
                     <h4 className="mb-1 font-medium text-gray-900">
-                      From Locations
+                      
+                      From Places
                     </h4>
                     <p className="mb-3 text-sm text-gray-600">
-                      Audit the assets across one or more locations. Ideal for
+                      
+                      Audit the assets across one or more places. Ideal for
                       room-by-room or area-based inventory checks. Select the
-                      locations you want on the Locations page, then choose
+                      places you want on the Places page, then choose
                       Actions → Create audit.
                     </p>
                     <Button
@@ -78,7 +81,8 @@ export function NewAuditInfoDialog() {
                       size="xs"
                       onClick={handleClose}
                     >
-                      Go to Locations
+                      
+                      Go to Places
                     </Button>
                   </div>
                 </div>
@@ -92,12 +96,14 @@ export function NewAuditInfoDialog() {
                   </div>
                   <div className="flex-1">
                     <h4 className="mb-1 font-medium text-gray-900">
-                      From Kits
+                      
+                      From Boxes
                     </h4>
                     <p className="mb-3 text-sm text-gray-600">
-                      Audit the assets across one or more kits. Great for
-                      verifying that kit contents are complete. Select kits on
-                      the Kits page, then choose Actions → Create audit.
+                      
+                      Audit the assets across one or more boxes. Great for
+                      verifying that box contents are complete. Select boxes on
+                      the Boxes page, then choose Actions → Create audit.
                     </p>
                     <Button
                       to="/kits"
@@ -105,7 +111,8 @@ export function NewAuditInfoDialog() {
                       size="xs"
                       onClick={handleClose}
                     >
-                      Go to Kits
+                      
+                      Go to Boxes
                     </Button>
                   </div>
                 </div>

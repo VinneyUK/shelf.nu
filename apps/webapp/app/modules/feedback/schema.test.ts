@@ -29,7 +29,7 @@ describe("feedbackSchema", () => {
       sentryEventId: "evt_abc",
       errorStatus: "500",
       errorTitle: "Oops, something went wrong",
-      errorMessage: "Something went wrong while fetching the kit",
+      errorMessage: "Something went wrong while fetching the box",
     });
     expect(result.success).toBe(true);
   });

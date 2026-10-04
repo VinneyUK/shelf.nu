@@ -77,7 +77,7 @@ Search assets based on asset fields. Separate your keywords by a comma(,) to sea
 - Name
 - Description
 - Category
-- Location
+- Place
 - Tags
 - Custodian names (first or last name)
 - QR code value
@@ -371,7 +371,7 @@ export async function simpleModeLoader({
       Logger.error(
         new ShelfError({
           cause,
-          message: "Failed to attach kit names to booking assets",
+          message: "Failed to attach box names to booking assets",
           label: "Assets",
           additionalData: { organizationId, assetCount: assets.length },
           shouldBeCaptured: true,

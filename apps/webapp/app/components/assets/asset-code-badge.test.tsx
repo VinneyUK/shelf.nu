@@ -80,7 +80,7 @@ describe("AssetCodeBadge", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not tell a kit to add a SAM ID it cannot have", () => {
+  it("does not tell a box to add a SAM ID it cannot have", () => {
     // why: `Kit` has no `sequentialId` column and no UI to set one, so the
     // generic fallback body — "this item has no SAM ID. Add one … to fix" —
     // is an instruction nobody can follow. An impossible instruction reads as
@@ -96,7 +96,7 @@ describe("AssetCodeBadge", () => {
     );
 
     expect(
-      screen.getByLabelText(/which kits do not have/i)
+      screen.getByLabelText(/which boxes do not have/i)
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/Add one/i)).toBeNull();
   });

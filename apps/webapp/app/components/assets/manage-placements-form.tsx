@@ -181,9 +181,9 @@ export function ManagePlacementsForm({
        * reporting the user's untouched numbers back at them as an error.
        */
       if (openedOverPlaced) {
-        return `These locations hold ${placedSum} ${unit} between them, but the asset's total is now ${totalPool}. Stock was used up while every unit was assigned to a location, so ${
+        return `These places hold ${placedSum} ${unit} between them, but the asset's total is now ${totalPool}. Stock was used up while every unit was assigned to a place, so ${
           placedSum - totalPool
-        } ${unit} are still recorded somewhere they no longer are. Lower the location that lost them, then save.`;
+        } ${unit} are still recorded somewhere they no longer are. Lower the place that lost them, then save.`;
       }
       return `Sum of placements (${placedSum}) exceeds the asset's total quantity (${totalPool}).`;
     }
@@ -191,7 +191,7 @@ export function ManagePlacementsForm({
     for (const r of rows) {
       if (!r.locationId) continue;
       if (seen.has(r.locationId)) {
-        return "Each location can appear at most once. Remove the duplicate row.";
+        return "Each place can appear at most once. Remove the duplicate row.";
       }
       seen.add(r.locationId);
     }
@@ -269,18 +269,20 @@ export function ManagePlacementsForm({
       {kitDriven.length > 0 ? (
         <div className="mb-4 space-y-2">
           <p className="text-xs font-medium text-gray-500">
-            Placements managed by kits (read-only)
+            
+            Placements managed by boxes (read-only)
           </p>
           {kitDriven.map((p) => (
             <div
               key={`${p.locationId}-${p.kit.id}`}
               className="flex items-center justify-between gap-2 rounded-md border border-blue-100 bg-blue-50/50 p-2 text-sm"
-              title={`Change the kit "${p.kit.name}" (location or per-asset qty) to modify this placement.`}
+              title={`Change the box "${p.kit.name}" (place or per-asset qty) to modify this placement.`}
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-gray-700">{p.locationName}</span>
                 <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                  via kit {p.kit.name}
+                  
+                  via box {p.kit.name}
                 </span>
               </div>
               {isQty ? (
@@ -305,9 +307,9 @@ export function ManagePlacementsForm({
               onChange={(e) => updateLocation(row.rowId, e.target.value)}
               disabled={disabled}
               className="h-9 min-w-0 flex-1 rounded-md border border-gray-300 px-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              aria-label={`Location for placement ${idx + 1}`}
+              aria-label={`Place for placement ${idx + 1}`}
             >
-              <option value="">— Select a location —</option>
+              <option value="">— Select a place —</option>
               {availableLocations(row.locationId).map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}
@@ -353,7 +355,7 @@ export function ManagePlacementsForm({
           disabled={disabled || !canAddRow}
           onClick={addRow}
         >
-          + Add{rows.length > 0 ? " another" : ""} location
+          + Add{rows.length > 0 ? " another" : ""}  place
         </Button>
       </div>
 
@@ -371,7 +373,7 @@ export function ManagePlacementsForm({
           </div>
           {kitDrivenSum > 0 ? (
             <div className="flex justify-between text-blue-700">
-              <span>Via kits</span>
+              <span>Via boxes</span>
               <span className="tabular-nums">
                 {kitDrivenSum} {unit}
               </span>

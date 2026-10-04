@@ -617,7 +617,7 @@ describe("createBooking", () => {
     expect(result).toEqual(mockBookingData);
   });
 
-  it("drops an INDIVIDUAL asset from the standalone bucket when it is also a kit slice", async () => {
+  it("drops an INDIVIDUAL asset from the standalone bucket when it is also a box slice", async () => {
     // Defense-in-depth: an INDIVIDUAL asset present in BOTH `assetIds` and
     // `kitSlices` is one physical unit and must be written ONCE (the kit-driven
     // row), never twice. QUANTITY_TRACKED would be kept in both buckets.
@@ -658,7 +658,7 @@ describe("createBooking", () => {
     );
   });
 
-  it("stamps sourceKitId on kit-driven slices so provenance survives kit edits", async () => {
+  it("stamps sourceKitId on kit-driven slices so provenance survives box edits", async () => {
     // why: `assetKitId` is SET NULL'd when the asset leaves the kit, which
     // erases the fact that the slice came from a kit. `sourceKitId` must be
     // written at insert time or the information is unrecoverable later.
@@ -1681,7 +1681,7 @@ describe("partialCheckinBooking", () => {
     ).rejects.toThrow(ShelfError);
   });
 
-  it("should handle kit check-in when all kit assets are scanned", async () => {
+  it("should handle box check-in when all box assets are scanned", async () => {
     expect.assertions(2);
 
     const paramsWithKit = {
@@ -1930,7 +1930,7 @@ describe("getPartiallyCheckedInAssetIds", () => {
 describe("getKitIdsByAssets", () => {
   // An asset belongs to a kit for every `AssetKit` row it carries; an empty
   // assetKits array represents "not in any kit".
-  it("should return unique kit IDs from assets", () => {
+  it("should return unique box IDs from assets", () => {
     const assets = [
       { id: "asset-1", assetKits: [{ kitId: "kit-1" }] },
       { id: "asset-2", assetKits: [{ kitId: "kit-1" }] },
@@ -1943,7 +1943,7 @@ describe("getKitIdsByAssets", () => {
     expect(result).toEqual(["kit-1", "kit-2"]);
   });
 
-  it("should return empty array when no kits present", () => {
+  it("should return empty array when no boxes present", () => {
     const assets = [
       { id: "asset-1", assetKits: [] },
       { id: "asset-2", assetKits: [] },
@@ -1954,7 +1954,7 @@ describe("getKitIdsByAssets", () => {
     expect(result).toEqual([]);
   });
 
-  it("names every kit a quantity-tracked asset belongs to, not just the first", () => {
+  it("names every box a quantity-tracked asset belongs to, not just the first", () => {
     // A release leg: the kit reached through the second membership still owes
     // this booking something, and a first-row read would strand it.
     const assets = [
@@ -1992,7 +1992,7 @@ describe("getKitIdsToAcquire", () => {
     };
   }
 
-  it("stamps only the kit a slice was booked under", async () => {
+  it("stamps only the box a slice was booked under", async () => {
     // The asset sits in both kits; the booking took it from kit-1.
     const result = await getKitIdsToAcquire({
       slices: [
@@ -2033,7 +2033,7 @@ describe("getKitIdsToAcquire", () => {
     expect(forwards).toEqual(backwards);
   });
 
-  it("stamps no kit for a standalone quantity-tracked slice", async () => {
+  it("stamps no box for a standalone quantity-tracked slice", async () => {
     // Loose units come out of the free pool, which is a separate axis from the
     // kit slices — every kit holding this asset stays intact.
     const result = await getKitIdsToAcquire({
@@ -2050,7 +2050,7 @@ describe("getKitIdsToAcquire", () => {
     expect(result).toEqual([]);
   });
 
-  it("stamps the kit for a standalone INDIVIDUAL slice", async () => {
+  it("stamps the box for a standalone INDIVIDUAL slice", async () => {
     // The one physical item leaves, so its kit is genuinely incomplete.
     const result = await getKitIdsToAcquire({
       slices: [
@@ -2111,7 +2111,7 @@ describe("getKitIdsToAcquire", () => {
     expect(result).toEqual([]);
   });
 
-  it("keeps a booking's kit slice and its free-pool slice apart", async () => {
+  it("keeps a booking's box slice and its free-pool slice apart", async () => {
     // Both slices are the same asset on the same booking: one booked under
     // kit-1, one loose. Only the kit-driven one stamps.
     const result = await getKitIdsToAcquire({
@@ -2799,7 +2799,7 @@ describe("updateBookingAssets", () => {
     expect(result).toEqual(mockBooking);
   });
 
-  it("does NOT flip kit status to CHECKED_OUT when kitIds provided for ONGOING booking (progressive checkout)", async () => {
+  it("does NOT flip box status to CHECKED_OUT when kitIds provided for ONGOING booking (progressive checkout)", async () => {
     // Kits added to an active booking stay AVAILABLE too — no status sync at
     // add time; checkout is a deliberate, separate step.
     expect.assertions(4);
@@ -2825,7 +2825,7 @@ describe("updateBookingAssets", () => {
     expect(result).toEqual(mockBooking);
   });
 
-  it("should not update asset or kit status for RESERVED booking", async () => {
+  it("should not update asset or box status for RESERVED booking", async () => {
     expect.assertions(3);
 
     const mockBooking = {
@@ -2944,7 +2944,7 @@ describe("updateBookingAssets", () => {
     expect(db.$executeRaw).toHaveBeenCalled();
   });
 
-  it("creates two kit-driven rows for the same asset in two kits", async () => {
+  it("creates two kit-driven rows for the same asset in two boxes", async () => {
     // The data-integrity fix: a single quantity-tracked asset that
     // belongs to TWO kits added to one booking must produce TWO
     // kit-driven BookingAsset inserts — one per AssetKit (distinct
@@ -3052,7 +3052,7 @@ describe("updateBookingAssets", () => {
     expect(kitDrivenCall?.[0]?.join("")).toContain("sourceKitId");
   });
 
-  it("skips a kit slice for an INDIVIDUAL asset already standalone on the booking", async () => {
+  it("skips a box slice for an INDIVIDUAL asset already standalone on the booking", async () => {
     // Adding a kit whose INDIVIDUAL member is already a standalone row must NOT
     // insert a second (kit-driven) row for that one physical unit. QT is exempt.
     expect.assertions(2);
@@ -3864,7 +3864,7 @@ describe("reserveBooking", () => {
    * time. The case here holds only a quantity-tracked member, which the asset
    * conflict rule exempts, so any refusal can only come from the kit rule.
    */
-  describe("kit held by another overlapping booking", () => {
+  describe("box held by another overlapping booking", () => {
     const draftHoldingKit = {
       ...mockBookingData,
       status: BookingStatus.DRAFT,
@@ -3892,7 +3892,7 @@ describe("reserveBooking", () => {
       ],
     };
 
-    it("refuses to reserve a kit another booking has reserved for the same period", async () => {
+    it("refuses to reserve a box another booking has reserved for the same period", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere([
@@ -3906,12 +3906,12 @@ describe("reserveBooking", () => {
       db.booking.findUniqueOrThrow.mockResolvedValue(draftHoldingKit);
 
       await expect(reserveBooking(mockReserveParams)).rejects.toThrow(
-        "Cannot reserve booking. Some kits are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
+        "Cannot reserve booking. Some boxes are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
       );
       expect(db.booking.update).not.toHaveBeenCalled();
     });
 
-    it("reserves a kit whose overlapping booking has already returned it", async () => {
+    it("reserves a box whose overlapping booking has already returned it", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere([
@@ -3946,7 +3946,7 @@ describe("reserveBooking", () => {
       );
     });
 
-    it("reserves when its own slice is a kit member detached mid-booking, even though another booking holds the kit", async () => {
+    it("reserves when its own slice is a box member detached mid-booking, even though another booking holds the box", async () => {
       expect.assertions(1);
 
       const draftWithDetachedKitRow = {
@@ -4181,7 +4181,7 @@ describe("reserveBooking", () => {
       expect(db.booking.update).not.toHaveBeenCalled();
     });
 
-    it("reserves a KIT-only QT asset even when the free pool is exhausted (kit slices skip the free-pool guard)", async () => {
+    it("reserves a KIT-only QT asset even when the free pool is exhausted (box slices skip the free-pool guard)", async () => {
       expect.assertions(1);
 
       // The QT asset is on this booking ONLY as a kit-driven slice
@@ -4806,7 +4806,7 @@ describe("checkoutBooking", () => {
    * The case holds only a quantity-tracked member, which the asset conflict
    * rule exempts, so any refusal can only come from the kit rule.
    */
-  describe("kit held by another overlapping booking", () => {
+  describe("box held by another overlapping booking", () => {
     const reservedHoldingKit = {
       ...mockBookingData,
       status: BookingStatus.RESERVED,
@@ -4832,7 +4832,7 @@ describe("checkoutBooking", () => {
       ],
     };
 
-    it("refuses to check out a kit another booking still has out", async () => {
+    it("refuses to check out a box another booking still has out", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere([
@@ -4846,12 +4846,12 @@ describe("checkoutBooking", () => {
       db.booking.findUniqueOrThrow.mockResolvedValue(reservedHoldingKit);
 
       await expect(checkoutBooking(mockCheckoutParams)).rejects.toThrow(
-        "Cannot check out booking. Some kits are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
+        "Cannot check out booking. Some boxes are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
       );
       expect(db.booking.update).not.toHaveBeenCalled();
     });
 
-    it("checks out a kit whose overlapping booking has already returned it", async () => {
+    it("checks out a box whose overlapping booking has already returned it", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere([
@@ -5279,7 +5279,7 @@ describe("checkoutBooking", () => {
       expect(caughtMessage).not.toContain("Tripod");
     });
 
-    it("(d) validates only STANDALONE slices against the free pool — a QT asset split across kits + standalone still checks out (#2790)", async () => {
+    it("(d) validates only STANDALONE slices against the free pool — a QT asset split across boxes + standalone still checks out (#2790)", async () => {
       expect.assertions(1);
 
       // Reproduction of the reported bug: "Boards" has total 10 with 6 units
@@ -5753,7 +5753,7 @@ describe("fulfilModelRequestsAndCheckout", () => {
    * The case holds only a quantity-tracked member, which the asset conflict
    * rule exempts, so any refusal can only come from the kit rule.
    */
-  describe("kit held by another overlapping booking", () => {
+  describe("box held by another overlapping booking", () => {
     const kitSlice = {
       asset: {
         id: "asset-cables",
@@ -5778,7 +5778,7 @@ describe("fulfilModelRequestsAndCheckout", () => {
       _count: { bookingAssets: 1 },
     };
 
-    it("refuses to check out a kit another booking has reserved for the same period", async () => {
+    it("refuses to check out a box another booking has reserved for the same period", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere([
@@ -5794,12 +5794,12 @@ describe("fulfilModelRequestsAndCheckout", () => {
       await expect(
         fulfilModelRequestsAndCheckout({ ...mockFulfilParams, assetIds: [] })
       ).rejects.toThrow(
-        "Cannot check out booking. Some kits are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
+        "Cannot check out booking. Some boxes are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
       );
       expect(hasStatusUpdate()).toBe(false);
     });
 
-    it("checks out a kit whose overlapping booking has already returned it", async () => {
+    it("checks out a box whose overlapping booking has already returned it", async () => {
       expect.assertions(2);
 
       mockHeldKitElsewhere(
@@ -6200,7 +6200,7 @@ describe("checkinBooking", () => {
     });
   });
 
-  it("should reset all assets (kit + singular) even when singular is in partial check-in history", async () => {
+  it("should reset all assets (box + singular) even when singular is in partial check-in history", async () => {
     expect.assertions(1);
 
     const mockBooking = {
@@ -7473,7 +7473,7 @@ describe("duplicateBooking", () => {
     expect(distinctKitIds.size).toBe(2);
   });
 
-  it("re-resolves kit contents from current AssetKit rows (drift includes new QT addition)", async () => {
+  it("re-resolves box contents from current AssetKit rows (drift includes new QT addition)", async () => {
     // Drift repro: the source booking carries a kit with 3 INDIVIDUAL
     // members. After source creation, a 4th QT asset (qty 5) is added to
     // the kit. duplicateBooking must rebuild the kit-driven slices from
@@ -7681,7 +7681,7 @@ describe("duplicateBooking", () => {
     );
   });
 
-  it("drops assets that were removed from a kit instead of copying them in as standalone", async () => {
+  it("drops assets that were removed from a box instead of copying them in as standalone", async () => {
     // why: the reported customer bug. When an asset leaves a kit the DB
     // SET NULLs the slice's assetKitId, demoting it to standalone. Copying
     // standalone rows verbatim then re-adds the swapped-out asset to the
@@ -7811,7 +7811,7 @@ describe("duplicateBooking", () => {
     expect(eventRows.some((e) => e.assetId === "switch-a")).toBe(false);
   });
 
-  it("re-resolves a kit whose members were ALL removed since the source booking", async () => {
+  it("re-resolves a box whose members were ALL removed since the source booking", async () => {
     // why: every slice of `kit-1` is now detached residue, so there is no
     // remaining `assetKitId` to hop through. Deriving the kit set from
     // `sourceKitId` is what keeps the kit in the duplicate — it is
@@ -7904,7 +7904,7 @@ describe("duplicateBooking", () => {
     );
   });
 
-  it("still resolves the kit for a legacy kit-driven row that has no sourceKitId", async () => {
+  it("still resolves the box for a legacy kit-driven row that has no sourceKitId", async () => {
     // why: "assetKitId non-null => sourceKitId non-null" is enforced by code
     // alone — there is no CHECK constraint — and the migration necessarily
     // lands before the new code, so during a rolling deploy an older instance
@@ -8029,7 +8029,7 @@ describe("computeBookingKitDrift", () => {
       .mockResolvedValueOnce(kits);
   }
 
-  it("reports an asset removed from the kit since the booking was created", async () => {
+  it("reports an asset removed from the box since the booking was created", async () => {
     // why: this is the half of drift that has never worked. The removed
     // asset's slice was demoted to standalone by the `assetKitId` SET NULL
     // cascade, so a snapshot keyed on `assetKitId` could never see it.
@@ -8108,7 +8108,7 @@ describe("computeBookingKitDrift", () => {
     ]);
   });
 
-  it("reports an asset added to the kit since the booking was created", async () => {
+  it("reports an asset added to the box since the booking was created", async () => {
     // Pins the half of drift that already worked, so the snapshot-predicate
     // rewrite can't regress it.
     expect.assertions(2);
@@ -8181,7 +8181,7 @@ describe("computeBookingKitDrift", () => {
     expect(drift[0].removed).toEqual([]);
   });
 
-  it("reports both sides when a kit member was swapped out for another", async () => {
+  it("reports both sides when a box member was swapped out for another", async () => {
     // The reported customer scenario: Switch A was pulled from the kit and
     // Switch C put in its place. Before `sourceKitId` the modal showed only
     // the addition, so the user was never warned the duplicate would lose
@@ -8264,7 +8264,7 @@ describe("computeBookingKitDrift", () => {
     expect(drift[0].removed.map((a) => a.assetId)).toEqual(["switch-a"]);
   });
 
-  it("omits kits whose membership still matches the booking snapshot", async () => {
+  it("omits boxes whose membership still matches the booking snapshot", async () => {
     // Kits without drift are dropped entirely so the modal's banner stays
     // hidden when nothing changed.
     expect.assertions(1);
@@ -8317,7 +8317,7 @@ describe("computeBookingKitDrift", () => {
     expect(drift).toEqual([]);
   });
 
-  it("still resolves the kit for legacy rows written without a sourceKitId", async () => {
+  it("still resolves the box for legacy rows written without a sourceKitId", async () => {
     // Rolling-deploy window: the migration lands before the code, so an old
     // instance can write a kit-driven row with `assetKitId` set and
     // `sourceKitId` NULL. Keying the snapshot on `sourceKitId` ALONE would
@@ -8641,7 +8641,7 @@ describe("extendBooking", () => {
             status: AssetStatus.CHECKED_OUT,
             type: AssetType.INDIVIDUAL,
             assetModelId: "model-1",
-            title: "Monitor in a kit",
+            title: "Monitor in a box",
           },
           assetId: "asset-2",
           assetKitId: "ak-1",
@@ -9434,7 +9434,7 @@ describe("extendBooking", () => {
    * A kit this booking still has out is exclusive to it for the extension
    * window, whichever membership another booking reserved it through.
    */
-  describe("kit still out", () => {
+  describe("box still out", () => {
     const OTHER_MEMBERSHIP_ID = "ak-case-tripod";
 
     /** One slice of the case on this booking, with its own markers. */
@@ -9523,7 +9523,7 @@ describe("extendBooking", () => {
       );
     }
 
-    it("refuses to extend over a reservation of a kit this booking still has out", async () => {
+    it("refuses to extend over a reservation of a box this booking still has out", async () => {
       expect.assertions(2);
 
       mockCaseMemberships();
@@ -9545,7 +9545,7 @@ describe("extendBooking", () => {
       expect(db.booking.update).not.toHaveBeenCalled();
     });
 
-    it("extends a booking whose only item still out is a quantity-tracked kit slice", async () => {
+    it("extends a booking whose only item still out is a quantity-tracked box slice", async () => {
       expect.assertions(1);
 
       // A quantity-tracked asset flips to CHECKED_OUT only once every unit
@@ -9579,7 +9579,7 @@ describe("extendBooking", () => {
       );
     });
 
-    it("does not hold a kit this booking has already returned", async () => {
+    it("does not hold a box this booking has already returned", async () => {
       expect.assertions(1);
 
       mockCaseMemberships();
@@ -9738,7 +9738,7 @@ describe("removeAssets", () => {
     });
   });
 
-  it("removes BOTH standalone and kit-driven rows when the caller mixes assets and kits", async () => {
+  it("removes BOTH standalone and kit-driven rows when the caller mixes assets and boxes", async () => {
     expect.assertions(1);
 
     // The booking-overview bulk-remove sends standalone asset ids AND kit ids
@@ -9773,7 +9773,7 @@ describe("removeAssets", () => {
       userId: "user-1",
       organizationId: "org-1",
       kitIds: ["kit-1"],
-      kits: [{ id: "kit-1", name: "Kit 1" }],
+      kits: [{ id: "kit-1", name: "Box 1" }],
       assets: [{ id: "asset-standalone", title: "Standalone asset" }],
     });
 
@@ -9791,7 +9791,7 @@ describe("removeAssets", () => {
     });
   });
 
-  it("removes both rows of an asset booked standalone AND inside a removed kit", async () => {
+  it("removes both rows of an asset booked standalone AND inside a removed box", async () => {
     expect.assertions(1);
 
     // A qty-tracked asset can hold a standalone row AND a kit-driven row on
@@ -9823,7 +9823,7 @@ describe("removeAssets", () => {
       userId: "user-1",
       organizationId: "org-1",
       kitIds: ["kit-1"],
-      kits: [{ id: "kit-1", name: "Kit 1" }],
+      kits: [{ id: "kit-1", name: "Box 1" }],
       // The caller saw the user tick this asset's own row, so it says so
       // explicitly instead of letting the service infer.
       standaloneAssetIds: ["asset-both"],
@@ -9926,7 +9926,7 @@ describe("removeAssets", () => {
     );
   });
 
-  it("keeps the delete scoped to kit-driven rows when only kits are removed", async () => {
+  it("keeps the delete scoped to kit-driven rows when only boxes are removed", async () => {
     expect.assertions(1);
 
     // Guards the reason the kit-scoped branch exists: an asset can sit on the
@@ -9957,7 +9957,7 @@ describe("removeAssets", () => {
       userId: "user-1",
       organizationId: "org-1",
       kitIds: ["kit-1"],
-      kits: [{ id: "kit-1", name: "Kit 1" }],
+      kits: [{ id: "kit-1", name: "Box 1" }],
       assets: [],
     });
 
@@ -14048,7 +14048,7 @@ describe("addScannedAssetsToBooking", () => {
    * The case holds only a quantity-tracked member, which the asset conflict
    * rule exempts, so any refusal can only come from the kit rule.
    */
-  describe("kit held by another overlapping booking", () => {
+  describe("box held by another overlapping booking", () => {
     const from = new Date("2026-07-01T09:00:00Z");
     const to = new Date("2026-07-01T17:00:00Z");
 
@@ -14097,7 +14097,7 @@ describe("addScannedAssetsToBooking", () => {
       );
     }
 
-    it("refuses to add a kit another booking has reserved for the same period", async () => {
+    it("refuses to add a box another booking has reserved for the same period", async () => {
       expect.assertions(2);
 
       mockScanTarget();
@@ -14110,12 +14110,12 @@ describe("addScannedAssetsToBooking", () => {
       ]);
 
       await expect(addScannedAssetsToBooking(scanCase)).rejects.toThrow(
-        "Cannot add to booking. Some kits are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
+        "Cannot add to booking. Some boxes are already booked or checked out for an overlapping period: Camera case. Please remove them and try again."
       );
       expect(db.booking.update).not.toHaveBeenCalled();
     });
 
-    it("adds a kit whose overlapping booking has already returned it", async () => {
+    it("adds a box whose overlapping booking has already returned it", async () => {
       expect.assertions(2);
 
       mockScanTarget();
@@ -14214,7 +14214,7 @@ describe("addScannedAssetsToBooking", () => {
     );
   });
 
-  it("resolves a kit slice's sourceKitId from the AssetKit row, ignoring the client-supplied kitId", async () => {
+  it("resolves a box slice's sourceKitId from the AssetKit row, ignoring the client-supplied kitId", async () => {
     // The scan drawer's `kitId` is untrusted JSON and `BookingAsset.sourceKitId`
     // has an FK that accepts ANY kit — including another org's. The server must
     // re-resolve it from the `assetKitId`, which `assertAssetKitsBelongToOrg`
@@ -14235,7 +14235,7 @@ describe("addScannedAssetsToBooking", () => {
     db.asset.findMany.mockResolvedValue([
       {
         id: "asset-kit-member",
-        title: "Kit Member",
+        title: "Box Member",
         type: AssetType.QUANTITY_TRACKED,
         assetModelId: null,
       },
@@ -14339,7 +14339,7 @@ describe("getAvailableAssetsIdsForBooking", () => {
     vitest.clearAllMocks();
   });
 
-  it("returns the ids of assets that don't belong to a kit", async () => {
+  it("returns the ids of assets that don't belong to a box", async () => {
     // why: stub the org-scoped asset lookup so the function resolves against
     // deterministic rows without a real DB; neither asset belongs to a kit.
     (db.asset.findMany as ReturnType<typeof vitest.fn>).mockResolvedValue([
@@ -14352,7 +14352,7 @@ describe("getAvailableAssetsIdsForBooking", () => {
     ).resolves.toEqual(["asset-1", "asset-2"]);
   });
 
-  it("returns a QUANTITY_TRACKED kit member — its free pool stays directly bookable", async () => {
+  it("returns a QUANTITY_TRACKED box member — its free pool stays directly bookable", async () => {
     // A QT asset allocates only a slice of its pool per kit (and may sit in
     // several kits at once), so the remaining units are legitimately bookable
     // on their own. Rejecting on mere membership 400'd the "Book" actions on
@@ -14396,7 +14396,7 @@ describe("getAvailableAssetsIdsForBooking", () => {
 
     expect(thrown).toBeInstanceOf(ShelfError);
     const err = thrown as ShelfError;
-    expect(err.message).toContain("belong to a kit");
+    expect(err.message).toContain("belong to a box");
     // The outer catch re-wraps, but ShelfError inherits status/shouldBeCaptured
     // from the cause, so the handled-client classification survives.
     expect(err.status).toBe(400);
@@ -14675,10 +14675,10 @@ describe("assertKitsAddableToActiveBooking", () => {
   );
 
   it.each([BookingStatus.ONGOING, BookingStatus.OVERDUE])(
-    "throws for a kit checked out elsewhere when target is %s",
+    "throws for a box checked out elsewhere when target is %s",
     async (bookingStatus) => {
       mockKitsAlreadyOnBooking([]); // nothing already on booking
-      mockCheckedOutKits([{ id: "kit-1", name: "Kit 1" }]);
+      mockCheckedOutKits([{ id: "kit-1", name: "Box 1" }]);
 
       await expect(
         assertKitsAddableToActiveBooking({
@@ -14692,7 +14692,7 @@ describe("assertKitsAddableToActiveBooking", () => {
     }
   );
 
-  it("does NOT throw for a checked-out kit that is already on this booking", async () => {
+  it("does NOT throw for a checked-out box that is already on this booking", async () => {
     // kit-1 already has a membership on the booking → excluded from the guard,
     // so its CHECKED_OUT status (owned by this booking) is ignored.
     mockKitsAlreadyOnBooking(["kit-1"]);
@@ -14709,7 +14709,7 @@ describe("assertKitsAddableToActiveBooking", () => {
     expect(db.kit.findMany).not.toHaveBeenCalled();
   });
 
-  it("does NOT throw when the newly-added kits are all available", async () => {
+  it("does NOT throw when the newly-added boxes are all available", async () => {
     mockKitsAlreadyOnBooking([]);
     mockCheckedOutKits([]); // none checked out
 
@@ -15115,7 +15115,7 @@ describe("getKitIdsByBookingSlices", () => {
     vitest.clearAllMocks();
   });
 
-  it("resolves a kit from sourceKitId with no membership left", async () => {
+  it("resolves a box from sourceKitId with no membership left", async () => {
     const result = await getKitIdsByBookingSlices({
       slices: [
         { assetId: "asset-1", assetKitId: null, sourceKitId: "kit-1" },
@@ -15159,7 +15159,7 @@ describe("getKitIdsByBookingSlices", () => {
     });
   });
 
-  it("ignores a standalone slice, which carries no kit provenance", async () => {
+  it("ignores a standalone slice, which carries no box provenance", async () => {
     const result = await getKitIdsByBookingSlices({
       slices: [{ assetId: "asset-1", assetKitId: null, sourceKitId: null }],
       organizationId: "org-1",
@@ -15208,12 +15208,12 @@ describe("getKitIdsByBookingSlices", () => {
  * booking ends. A kit in that state cannot be added to a live booking and has
  * no way out of the UI.
  */
-describe("checkinBooking - releases a kit detached mid-booking", () => {
+describe("checkinBooking - releases a box detached mid-booking", () => {
   beforeEach(() => {
     vitest.clearAllMocks();
   });
 
-  it("releases the kit from slice provenance when membership is gone", async () => {
+  it("releases the box from slice provenance when membership is gone", async () => {
     expect.assertions(1);
 
     // why: the slices still carry `sourceKitId`, but `assetKits` is empty —
@@ -15278,7 +15278,7 @@ describe("checkinBooking - releases a kit detached mid-booking", () => {
  * speak for its siblings: it released a kit whose units were still in the field,
  * and stranded a kit whose units had all come back.
  */
-describe("partialCheckinBooking — slice-grained kit release", () => {
+describe("partialCheckinBooking — slice-grained box release", () => {
   const ORG = "org-1";
   /** An instant a slice left on. */
   const OUT = new Date("2026-01-01T10:00:00.000Z");
@@ -15485,7 +15485,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     },
   };
 
-  it("releases only the kit whose slice came back", async () => {
+  it("releases only the box whose slice came back", async () => {
     expect.assertions(1);
 
     // 6 units booked through kit A, 4 through kit B. The claim names kit A's
@@ -15551,7 +15551,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     );
   });
 
-  it("releases a kit whose last slice comes back, whatever a shared asset's other kit still owes", async () => {
+  it("releases a box whose last slice comes back, whatever a shared asset's other box still owes", async () => {
     expect.assertions(1);
 
     // Kit A holds the tape's six units (reconciled by an earlier session) and
@@ -15583,7 +15583,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     expect(releasedKitIds()).toEqual(["kit-a"]);
   });
 
-  it("keeps a kit CHECKED_OUT while its slice still owes units", async () => {
+  it("keeps a box CHECKED_OUT while its slice still owes units", async () => {
     expect.assertions(1);
 
     // Two of kit A's six units are back; four are still out.
@@ -15611,7 +15611,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     expect(db.kit.updateMany).not.toHaveBeenCalled();
   });
 
-  it("holds a kit back for a slice checked out after this request loaded the booking", async () => {
+  it("holds a box back for a slice checked out after this request loaded the booking", async () => {
     expect.assertions(1);
 
     const slices = [
@@ -15650,7 +15650,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     expect(db.kit.updateMany).not.toHaveBeenCalled();
   });
 
-  it("still releases a kit whose member was detached mid-booking", async () => {
+  it("still releases a box whose member was detached mid-booking", async () => {
     expect.assertions(1);
 
     // Membership is gone, so only the slice's own `sourceKitId` names the kit.
@@ -15688,7 +15688,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
    * 10 leaves the kit checked out with nothing of it anywhere, and once the
    * booking completes no later check-in can release it.
    */
-  it("releases a kit once every unit its slice actually sent out is back", async () => {
+  it("releases a box once every unit its slice actually sent out is back", async () => {
     expect.assertions(1);
 
     const slices = [tapeSlice("ba-kit-a", "kit-a", 10), fillerSlice];
@@ -15717,7 +15717,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
     expect(releasedKitIds()).toEqual(["kit-a"]);
   });
 
-  it("holds the kit while a unit its slice sent out is still in the field", async () => {
+  it("holds the box while a unit its slice sent out is still in the field", async () => {
     expect.assertions(1);
 
     const slices = [tapeSlice("ba-kit-a", "kit-a", 10), fillerSlice];
@@ -15754,7 +15754,7 @@ describe("partialCheckinBooking — slice-grained kit release", () => {
    * settle. Capacity has to be what a slice SENT, the same measure the
    * threshold uses.
    */
-  it("does not let a slice that never left absorb an untagged return owed to a kit", async () => {
+  it("does not let a slice that never left absorb an untagged return owed to a box", async () => {
     expect.assertions(1);
 
     const looseSlice = {
@@ -15844,7 +15844,7 @@ describe("model reservation guard — write paths", () => {
     "asset-kit": {
       id: "asset-kit",
       type: AssetType.INDIVIDUAL,
-      title: "Kit member",
+      title: "Box member",
       unitOfMeasure: null,
       assetModelId: "model-1",
       status: AssetStatus.AVAILABLE,

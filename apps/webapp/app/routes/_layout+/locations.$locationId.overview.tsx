@@ -121,7 +121,8 @@ export default function LocationOverview() {
                 <>
                   <h6>Total value</h6>
                   <p>
-                    A sum of all assets' values stored at this location. If no
+                    
+                    A sum of all assets' values stored at this place. If no
                     assets are present, this will be zero.
                   </p>
                 </>

@@ -43,7 +43,7 @@ export async function createLocationNote({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while creating the location note.",
+      message: "Something went wrong while creating the place note.",
       additionalData: { locationId, userId },
       label,
     });
@@ -75,7 +75,7 @@ export async function createSystemLocationNote({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while creating the location update.",
+      message: "Something went wrong while creating the place update.",
       additionalData: { locationId },
       label,
     });
@@ -97,7 +97,7 @@ export async function getLocationNotes({
     if (!location) {
       throw new ShelfError({
         cause: null,
-        message: "Location not found or access denied",
+        message: "Place not found or access denied",
         additionalData: { locationId, organizationId },
         label,
         status: 404,
@@ -125,7 +125,7 @@ export async function getLocationNotes({
 
     throw new ShelfError({
       cause,
-      message: "Something went wrong while fetching the location notes.",
+      message: "Something went wrong while fetching the place notes.",
       additionalData: { locationId, organizationId },
       label,
     });
@@ -173,7 +173,7 @@ export async function deleteLocationNote({
 
     throw new ShelfError({
       cause,
-      message: "Something went wrong while deleting the location note.",
+      message: "Something went wrong while deleting the place note.",
       additionalData: { id, userId, organizationId },
       label,
     });

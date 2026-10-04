@@ -268,7 +268,7 @@ function ConditionalDropdown() {
                       ? {
                           reason: disableReleaseCustody
                             ? "Self service can only release their own custody."
-                            : "Some of the selected kits are not in custody",
+                            : "Some of the selected boxes are not in custody",
                         }
                       : isLoading
                   }
@@ -284,8 +284,8 @@ function ConditionalDropdown() {
                     someAssetsInsideKitsCheckedOutOrInCustody
                       ? {
                           reason: someAssetsInsideKitsCheckedOutOrInCustody
-                            ? "Some of the asset(s) inside this kits are either checked out or in custody. You need to resolve that before you can assign custody."
-                            : "Some of the selected kits are not available",
+                            ? "Some of the asset(s) inside this boxes are either checked out or in custody. You need to resolve that before you can assign custody."
+                            : "Some of the selected boxes are not available",
                         }
                       : isLoading
                   }
@@ -322,7 +322,7 @@ function ConditionalDropdown() {
                     someKitsCheckedOut
                       ? {
                           reason:
-                            "Some of the selected kits are checked out. Please finish your booking first, before deleting them.",
+                            "Some of the selected boxes are checked out. Please finish your booking first, before deleting them.",
                         }
                       : isLoading
                   }

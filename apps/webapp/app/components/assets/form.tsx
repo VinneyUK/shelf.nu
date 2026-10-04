@@ -1234,18 +1234,20 @@ export const AssetForm = ({
 
         {locationsEnabled ? ( // customise feature
           <FormRow
-            rowLabel="Location"
+            rowLabel="Place"
             subHeading={
               <p>
-                A location is a place where an item is supposed to be located.
-                This is different than the last scanned location{" "}
+                
+                A place is a place where an item is supposed to be located.
+                This is different than the last scanned place{" "}
                 <Button
                   to="/locations/new"
                   className="text-gray-600 underline"
                   target="_blank"
                   variant="link-gray"
                 >
-                  Create locations
+                  
+                  Create places
                 </Button>
               </p>
             }
@@ -1261,9 +1263,10 @@ export const AssetForm = ({
                 triggerClassName="disabled w-full cursor-not-allowed"
                 reason={
                   <>
-                    This asset's location is managed by its parent kit{" "}
-                    <strong>"{kitMembership?.name}"</strong>. Update the kit's
-                    location instead.
+                    
+                    This asset's place is managed by its parent box{" "}
+                    <strong>"{kitMembership?.name}"</strong>. Update the box's
+                    place instead.
                   </>
                 }
               >
@@ -1275,7 +1278,7 @@ export const AssetForm = ({
                   defaultValue={locationId || undefined}
                   model={{ name: "location", queryKey: "name" }}
                   contentLabel="Locations"
-                  label="Location"
+                  label="Place"
                   hideLabel
                   initialDataKey="locations"
                   countKey="totalLocations"
@@ -1292,7 +1295,7 @@ export const AssetForm = ({
                 defaultValue={locationId || undefined}
                 model={{ name: "location", queryKey: "name" }}
                 contentLabel="Locations"
-                label="Location"
+                label="Place"
                 hideLabel
                 initialDataKey="locations"
                 countKey="totalLocations"
@@ -1301,8 +1304,8 @@ export const AssetForm = ({
                 extraContent={({ onItemCreated, closePopover }) => (
                   <InlineEntityCreationDialog
                     type="location"
-                    title="Create new location"
-                    buttonLabel="Create new location"
+                    title="Create new place"
+                    buttonLabel="Create new place"
                     onCreated={(created) => {
                       if (created?.type !== "location") return;
                       const location = created.entity;

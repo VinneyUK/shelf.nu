@@ -721,7 +721,7 @@ describe("PartialCheckoutDrawer", () => {
    * the members drop out of `pendingIndividuals`, and the Pending
    * section disappears entirely.
    */
-  it("scanning a kit removes its INDIVIDUAL members from the Pending section", () => {
+  it("scanning a box removes its INDIVIDUAL members from the Pending section", () => {
     const kitId = "kit-defense";
     const kitName = "Defense Equipment";
     const members: BookingExpectedAsset[] = [

@@ -42,7 +42,7 @@ const ERROR_CONTEXT = {
   sentryEventId: "evt_abc",
   errorStatus: "500",
   errorTitle: "Oops, something went wrong",
-  errorMessage: "Something went wrong while fetching the kit",
+  errorMessage: "Something went wrong while fetching the box",
 };
 
 /** Reads a hidden input by name from the portal-rendered form */
@@ -101,7 +101,7 @@ describe("FeedbackModal", () => {
       "Oops, something went wrong"
     );
     expect(getHiddenInput("errorMessage")?.value).toBe(
-      "Something went wrong while fetching the kit"
+      "Something went wrong while fetching the box"
     );
   });
 

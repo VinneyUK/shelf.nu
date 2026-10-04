@@ -244,7 +244,7 @@ describe("POST /api/mobile/bookings/remove-assets — the note", () => {
     // Counting the request instead of the deletion would report it as removed:
     // four named, three actually gone.
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      { id: "kit-1", name: "Camera kit" },
+      { id: "kit-1", name: "Camera box" },
     ] as never);
     world({
       inOrg: ["a1", "a2"],
@@ -262,10 +262,10 @@ describe("POST /api/mobile/bookings/remove-assets — the note", () => {
     expect((response.data as { removedCount: number }).removedCount).toBe(3);
   });
 
-  it("leaves kit members out of the note, which the kit half already covers", async () => {
+  it("leaves box members out of the note, which the box half already covers", async () => {
     // Listing them twice turns a kit removal into a note naming every member.
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      { id: "kit-1", name: "Camera kit" },
+      { id: "kit-1", name: "Camera box" },
     ] as never);
     world({
       inOrg: ["a1"],
@@ -277,6 +277,6 @@ describe("POST /api/mobile/bookings/remove-assets — the note", () => {
 
     const call = serviceCall();
     expect(call.assets?.map((asset) => asset.id)).toEqual(["a1"]);
-    expect(call.kits).toEqual([{ id: "kit-1", name: "Camera kit" }]);
+    expect(call.kits).toEqual([{ id: "kit-1", name: "Camera box" }]);
   });
 });

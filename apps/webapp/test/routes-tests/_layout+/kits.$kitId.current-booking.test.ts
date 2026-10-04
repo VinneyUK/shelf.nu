@@ -75,7 +75,7 @@ const HOLDER_EMAIL = "carol@example.com";
 function kitOutOnBooking() {
   return {
     id: "kit-1",
-    name: "Camera kit",
+    name: "Camera box",
     qrCodes: [{ id: "qr-1" }],
     custody: null,
     barcodes: [],
@@ -142,7 +142,7 @@ async function loadAs(viewerUserId: string, canSeeAllCustody: boolean) {
   };
 }
 
-describe("kit detail loader — booking holder visibility", () => {
+describe("box detail loader — booking holder visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetKit.mockResolvedValue(kitOutOnBooking());

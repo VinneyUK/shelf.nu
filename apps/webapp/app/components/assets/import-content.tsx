@@ -100,7 +100,7 @@ export const ImportContent = () => {
                 Use <b>, (comma)</b> or <b>; (semicolon)</b> as delimiter
               </li>
               <li>
-                Columns like <b>kit, category, location & custodian</b>{" "}
+                Columns like <b>box, category, place & custodian</b>{" "}
                 represent the name of the related entry — if it doesn't exist,
                 we'll create it
               </li>
@@ -177,8 +177,8 @@ export const ImportContent = () => {
                 <b>No duplicates</b> — each qrId must be unique per asset
               </li>
               <li>
-                <b>No linked codes</b> — the qrId must not already be linked to
-                another asset or kit
+                <b>No linked codes</b>  — the qrId must not already be linked to
+                another asset or box
               </li>
               <li>
                 <b>QR ownership</b> — the code must be unclaimed or belong to
@@ -511,7 +511,8 @@ export const FileForm = ({ intent, url }: { intent: string; url?: string }) => {
                         Custodian
                       </th>
                       <th scope="col" className="px-2 py-1">
-                        Kit
+                        
+                        Box
                       </th>
                       <th scope="col" className="px-2 py-1">
                         Issue

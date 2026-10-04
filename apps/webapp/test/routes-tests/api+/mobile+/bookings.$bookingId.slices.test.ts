@@ -124,12 +124,12 @@ beforeEach(() => {
   );
 });
 
-const K1 = { id: "kit-1", name: "Kit One" };
-const K2 = { id: "kit-2", name: "Kit Two" };
-const K3 = { id: "kit-3", name: "Kit Three" };
+const K1 = { id: "kit-1", name: "Box One" };
+const K2 = { id: "kit-2", name: "Box Two" };
+const K3 = { id: "kit-3", name: "Box Three" };
 
-describe("GET /api/mobile/bookings/:bookingId — per-slice breakdown + merged kit", () => {
-  it("exposes slices[] and fixes the merged kit for standalone/kit-driven/mixed assets", async () => {
+describe("GET /api/mobile/bookings/:bookingId — per-slice breakdown + merged box", () => {
+  it("exposes slices[] and fixes the merged box for standalone/kit-driven/mixed assets", async () => {
     findFirstMock.mockResolvedValue({
       id: "booking-1",
       name: "Shoot",

@@ -179,7 +179,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
     if (!barcode.assetId && !barcode.kitId) {
       throw new ShelfError({
         cause: null,
-        message: "Barcode is not linked to any asset or kit",
+        message: "Barcode is not linked to any asset or box",
         additionalData: { value, shouldSendNotification: false },
         shouldBeCaptured: false,
         label: "Barcode",
@@ -235,7 +235,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
       payload({
         barcode: {
           ...barcode,
-          type: barcode.asset ? "asset" : barcode.kit ? "kit" : undefined,
+          type: barcode.asset ? "asset" : barcode.kit ? "box" : undefined,
           asset: barcode.asset
             ? {
                 // Collapse the model-image cascade into the flat image

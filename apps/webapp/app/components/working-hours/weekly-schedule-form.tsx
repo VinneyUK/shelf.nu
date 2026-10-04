@@ -169,7 +169,7 @@ export const WeeklyScheduleForm = ({
           <h3 className="text-text-lg font-semibold">Weekly Schedule</h3>
           <p className="text-sm text-gray-600">
             Set your working hours for each day of the week. These are the{" "}
-            <strong>local hours of your physical location</strong> — they are
+            <strong>local hours of your physical place</strong> — they are
             not converted to anyone&apos;s timezone, so 9:00 means 9:00 on site
             for everyone.
           </p>

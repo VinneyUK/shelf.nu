@@ -111,7 +111,7 @@ export default function LocationActivity() {
               <NoPermissionsIcon />
             </div>
             <h5>Insufficient permissions</h5>
-            <p>You are not allowed to view location notes</p>
+            <p>You are not allowed to view place notes</p>
           </div>
         </div>
       )}

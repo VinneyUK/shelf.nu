@@ -352,7 +352,7 @@ describe("buildCheckinReceipt — quantity-tracked slices", () => {
     expect(rowFor(result, "ba-1").sent).toBe(7);
   });
 
-  it("keeps each slice's numbers separate when one asset is booked standalone and inside a kit", () => {
+  it("keeps each slice's numbers separate when one asset is booked standalone and inside a box", () => {
     const result = build({
       slices: [
         slice({

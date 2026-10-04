@@ -103,7 +103,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     if (!barcode.assetId && !barcode.kitId) {
       throw new ShelfError({
         cause: null,
-        message: "This barcode is not linked to any asset or kit.",
+        message: "This barcode is not linked to any asset or box.",
         additionalData: { value, shouldSendNotification: false },
         label: "Barcode",
         shouldBeCaptured: false,

@@ -64,7 +64,7 @@ const BodySchema = z
     kitIds: z.array(z.string().min(1)).optional().default([]),
   })
   .refine((body) => body.assetIds.length > 0 || body.kitIds.length > 0, {
-    message: "Scan at least one asset or kit to add.",
+    message: "Scan at least one asset or box to add.",
   });
 
 export async function action({ request }: ActionFunctionArgs) {

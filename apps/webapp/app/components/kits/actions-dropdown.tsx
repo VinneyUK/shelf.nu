@@ -256,7 +256,7 @@ function ConditionalActionsDropdown({ fullWidth }: { fullWidth?: boolean }) {
                   onClick={() => setOpen(false)}
                 >
                   <span className="flex items-center gap-2">
-                    <MapPinIcon className="size-4" /> Update location
+                    <MapPinIcon className="size-4" />  Update place
                   </span>
                 </Button>
               </DropdownMenuItem>

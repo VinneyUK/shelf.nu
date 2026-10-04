@@ -97,7 +97,7 @@ function SelectedKitsSummary({
       <p className="text-sm text-gray-700">
         Auditing assets in{" "}
         <span className="font-medium">
-          all {count} kit{plural}
+          all {count}  box{plural}
         </span>
         {search ? (
           <>
@@ -115,7 +115,7 @@ function SelectedKitsSummary({
       <span>
         Auditing assets in{" "}
         <span className="font-medium">
-          {count} kit{plural}
+          {count}  box{plural}
         </span>
         .
       </span>
@@ -135,7 +135,8 @@ function SelectedKitsSummary({
             className="z-[999999] mt-2 max-h-[300px] w-[260px] overflow-y-auto rounded-md border border-gray-200 bg-white shadow-md"
           >
             <p className="border-b border-gray-100 px-3 py-2 text-xs font-medium text-gray-500">
-              Selected kits ({count})
+              
+              Selected boxes ({count})
             </p>
             <ul className="py-1">
               {kits.map((kit) => {
@@ -200,7 +201,7 @@ export default function KitsBulkStartAuditDialog() {
       type="start-audit"
       className="md:w-[800px]"
       title="Start an audit"
-      description="Set up an audit for the assets in the kits you selected."
+      description="Set up an audit for the assets in the boxes you selected."
       actionUrl="/api/audits/start"
       arrayFieldId="kitIds"
       formClassName="px-0"
@@ -222,7 +223,8 @@ export default function KitsBulkStartAuditDialog() {
             <div className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-gray-400" />
               <p>
-                The audit will include every asset currently in the selected kit
+                
+                The audit will include every asset currently in the selected box
                 {displayCount === 1 ? "" : "s"}.
               </p>
             </div>

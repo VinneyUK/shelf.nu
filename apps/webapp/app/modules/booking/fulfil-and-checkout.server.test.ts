@@ -264,7 +264,7 @@ describe("fulfilAndCheckOut", () => {
     );
   });
 
-  it("refuses a kit scan under the rule before reading, assigning or checking out anything", async () => {
+  it("refuses a box scan under the rule before reading, assigning or checking out anything", async () => {
     const refused = fulfilAndCheckOut({
       ...baseArgs,
       kitIds: ["kit-1"],
@@ -276,7 +276,7 @@ describe("fulfilAndCheckOut", () => {
       shouldBeCaptured: false,
     });
     await expect(refused).rejects.toThrow(
-      "Kits can't be checked out from the reservation scanner. Use Scan to check out for kits."
+      "Boxes can't be checked out from the reservation scanner. Use Scan to check out for boxes."
     );
     expect(db.booking.findFirst).not.toHaveBeenCalled();
     expect(db.bookingAsset.findMany).not.toHaveBeenCalled();

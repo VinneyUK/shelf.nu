@@ -797,8 +797,8 @@ function KitColumnContent({
               type="button"
               className="shrink-0 cursor-help whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-1"
               data-testid="kit-more-chip"
-              aria-label={`+${others.length} more kit${
-                others.length === 1 ? "" : "s"
+              aria-label={`+${others.length} more box${
+                others.length === 1 ? "" : "es"
               }`}
             >
               +{others.length}
@@ -898,7 +898,7 @@ function LocationColumnContent({
               type="button"
               className="shrink-0 cursor-help whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-1"
               data-testid="location-more-chip"
-              aria-label={`+${others.length} more location${
+              aria-label={`+${others.length} more place${
                 others.length === 1 ? "" : "s"
               }`}
             >

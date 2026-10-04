@@ -40,7 +40,7 @@ export function parseScanData({
       const coordinates =
         scan.latitude && scan.longitude
           ? `${scan.latitude}, ${scan.longitude}`
-          : "Unknown location";
+          : "Unknown place";
 
       const ua = parser(scan.userAgent || "");
 

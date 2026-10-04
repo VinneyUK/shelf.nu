@@ -85,7 +85,7 @@ export const HOME_TILES: Tile[] = [
   },
   {
     id: "locations",
-    title: "Locations",
+    title: "Places",
     span: 2,
     Component: LocationDistribution,
     needs: "locationsEnabled",

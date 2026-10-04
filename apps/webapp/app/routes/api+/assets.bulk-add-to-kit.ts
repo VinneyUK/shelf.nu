@@ -92,7 +92,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       throw new ShelfError({
         cause: null,
         message:
-          "All selected assets are quantity-tracked. Quantity-tracked assets must be added to a kit individually with a specific quantity from the kit's manage-assets page.",
+          "All selected assets are quantity-tracked. Quantity-tracked assets must be added to a box individually with a specific quantity from the box's manage-assets page.",
         additionalData: { userId, organizationId, assetIds, kit },
         label: "Kit",
         shouldBeCaptured: false,
@@ -110,14 +110,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const skippedNote =
       skippedQuantityTracked > 0
-        ? ` ${skippedQuantityTracked} quantity-tracked asset(s) were skipped — add them individually from the kit's manage-assets page.`
+        ? ` ${skippedQuantityTracked} quantity-tracked asset(s) were skipped — add them individually from the box's manage-assets page.`
         : "";
 
     sendNotification({
       icon: { name: "success", variant: "success" },
       senderId: userId,
-      title: "Bulk assets added to kit",
-      message: `Successfully added ${individualAssetIds.length} assets to kit "${updatedKit.name}".${skippedNote}`,
+      title: "Bulk assets added to box",
+      message: `Successfully added ${individualAssetIds.length} assets to box "${updatedKit.name}".${skippedNote}`,
     });
 
     return data(payload({ success: true }));

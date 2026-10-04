@@ -430,7 +430,7 @@ function ConditionalDropdown() {
                     disableReleaseCustody
                       ? {
                           reason: someAssetPartOfUnavailableKit
-                            ? "Some of the selected assets have custody assigned via a kit. If you want to change their custody, please update the kit instead."
+                            ? "Some of the selected assets have custody assigned via a box. If you want to change their custody, please update the box instead."
                             : disableReleaseCustody
                             ? "Self service can only release their own custody."
                             : "Some of the selected assets are not in custody.",
@@ -448,7 +448,7 @@ function ConditionalDropdown() {
                     !allAssetsAreAvailable || someAssetPartOfUnavailableKit
                       ? {
                           reason: someAssetPartOfUnavailableKit
-                            ? "Some of the selected assets have custody assigned via a kit. If you want to change their custody, please update the kit instead."
+                            ? "Some of the selected assets have custody assigned via a box. If you want to change their custody, please update the box instead."
                             : "Some of the selected assets are not available.",
                         }
                       : isLoading
@@ -519,14 +519,14 @@ function ConditionalDropdown() {
               <DropdownMenuItem className="border-t py-1 lg:p-0">
                 {kitsEnabled ? ( // customise feature
                   <BulkUpdateDialogTrigger
-                    label="Add to kit"
+                    label="Add to box"
                     type="add-to-kit"
                     onClick={closeMenu}
                     disabled={
                       someAssetCheckedOut
                         ? {
                             reason:
-                              "Some of the selected kits are checked out. Please finish your booking first, before adding them in kit.",
+                              "Some of the selected boxes are checked out. Please finish your booking first, before adding them in box.",
                           }
                         : isLoading
                     }
@@ -536,7 +536,7 @@ function ConditionalDropdown() {
               <DropdownMenuItem className=" py-1 lg:p-0">
                 {kitsEnabled ? ( // customise feature
                   <BulkUpdateDialogTrigger
-                    label="Remove from kit"
+                    label="Remove from box"
                     type="remove-from-kit"
                     onClick={closeMenu}
                     disabled={isLoading}
@@ -573,7 +573,7 @@ function ConditionalDropdown() {
                     someAssetCheckedOut
                       ? {
                           reason:
-                            "Some of the selected kits are checked out. Please finish your booking first, before deleting them.",
+                            "Some of the selected boxes are checked out. Please finish your booking first, before deleting them.",
                         }
                       : isLoading
                   }

@@ -657,7 +657,7 @@ export async function parseQrCodesFromImportData({
       throw new ShelfError({
         cause: null,
         message:
-          "Some of the QR codes you are trying to import are already linked to an asset or a kit. Please use unlinked or unclaimed codes for your import.",
+          "Some of the QR codes you are trying to import are already linked to an asset or a box. Please use unlinked or unclaimed codes for your import.",
         additionalData: { linkedCodes },
         label,
         // User-input validation failure: return a 400 and don't capture it to

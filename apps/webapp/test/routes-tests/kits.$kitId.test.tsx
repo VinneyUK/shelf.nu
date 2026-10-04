@@ -219,13 +219,13 @@ beforeEach(() => {
   dbMocks.assetKit.findMany.mockResolvedValue([]);
 });
 
-describe("kits/$kitId removeAsset action", () => {
+describe("boxes/$kitId removeAsset action", () => {
   it("removes only the kit-allocated Custody row when asset has operator-assigned custody too", async () => {
     // Kit is currently in custody (custody.id present), so the cleanup
     // path runs. Asset has both kit-allocated AND operator-assigned
     // custody → after deleteMany filtered by kitCustodyId, count > 0.
     dbMocks.kit.update.mockResolvedValue({
-      name: "Mixed Custody Kit",
+      name: "Mixed Custody Box",
       custody: { id: "kc-1", custodianId: "tm-1" },
     });
     dbMocks.custody.count.mockResolvedValue(1); // Operator row remains.
@@ -249,7 +249,7 @@ describe("kits/$kitId removeAsset action", () => {
     // Kit is in custody. Asset has ONLY kit-allocated custody, so after
     // the filtered deleteMany no rows remain → status should flip.
     dbMocks.kit.update.mockResolvedValue({
-      name: "Sole Custody Kit",
+      name: "Sole Custody Box",
       custody: { id: "kc-2", custodianId: "tm-1" },
     });
     dbMocks.custody.count.mockResolvedValue(0); // No remaining custody.
@@ -273,10 +273,10 @@ describe("kits/$kitId removeAsset action", () => {
     });
   });
 
-  it("skips custody cleanup entirely when kit has no active custody", async () => {
+  it("skips custody cleanup entirely when box has no active custody", async () => {
     // Kit is not in custody — the cleanup branch is bypassed.
     dbMocks.kit.update.mockResolvedValue({
-      name: "Available Kit",
+      name: "Available Box",
       custody: null,
     });
 
@@ -288,7 +288,7 @@ describe("kits/$kitId removeAsset action", () => {
     expect(dbMocks.asset.updateMany).not.toHaveBeenCalled();
   });
 
-  it("runs the full kit→booking detach sequence, in order, before the pivot delete", async () => {
+  it("runs the full box→booking detach sequence, in order, before the pivot delete", async () => {
     // why: the four helpers are order-sensitive and this route is the one
     // detach path that wires them by hand rather than through the service.
     // `removeKitSlicesFromPlanningBookings` must run first (so the impact
@@ -296,7 +296,7 @@ describe("kits/$kitId removeAsset action", () => {
     // `preserveKitDrivenPlacements` must run before `kit.update` fires the
     // `assetKits: { deleteMany }` that cascades placements away.
     dbMocks.kit.update.mockResolvedValue({
-      name: "Available Kit",
+      name: "Available Box",
       custody: null,
     });
     dbMocks.assetKit.findMany.mockResolvedValue([

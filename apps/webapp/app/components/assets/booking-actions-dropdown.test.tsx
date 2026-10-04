@@ -71,12 +71,12 @@ describe("BookingActionsDropdown", () => {
     capturedLinks = [];
   });
 
-  it("blocks both booking actions for an INDIVIDUAL asset inside a kit", () => {
+  it("blocks both booking actions for an INDIVIDUAL asset inside a box", () => {
     useLoaderDataMock.mockReturnValue({
       asset: {
         ...baseAsset,
         type: "INDIVIDUAL",
-        assetKits: [kitMembership("kit-1", "Camera kit")],
+        assetKits: [kitMembership("kit-1", "Camera box")],
       },
     });
 
@@ -90,17 +90,17 @@ describe("BookingActionsDropdown", () => {
     });
   });
 
-  it("keeps both booking actions enabled for a QUANTITY_TRACKED asset spread across kits", () => {
+  it("keeps both booking actions enabled for a QUANTITY_TRACKED asset spread across boxes", () => {
     useLoaderDataMock.mockReturnValue({
       asset: {
         ...baseAsset,
         type: "QUANTITY_TRACKED",
         quantity: 6,
         assetKits: [
-          kitMembership("kit-1", "BMPCC4K Kit w/ Tripod - Pa"),
-          kitMembership("kit-2", "BMPCC4K Kit w/ Tripod - Hi"),
-          kitMembership("kit-3", "BMPCC4K Kit w/ Tripod - Ta"),
-          kitMembership("kit-4", "BMPCC4K Kit w/ Tripod - Ti"),
+          kitMembership("kit-1", "BMPCC4K Box w/ Tripod - Pa"),
+          kitMembership("kit-2", "BMPCC4K Box w/ Tripod - Hi"),
+          kitMembership("kit-3", "BMPCC4K Box w/ Tripod - Ta"),
+          kitMembership("kit-4", "BMPCC4K Box w/ Tripod - Ti"),
         ],
       },
     });
@@ -111,7 +111,7 @@ describe("BookingActionsDropdown", () => {
     expect(disabledFor("Add to existing booking")).toBe(false);
   });
 
-  it("keeps booking actions enabled for an asset that belongs to no kit", () => {
+  it("keeps booking actions enabled for an asset that belongs to no box", () => {
     useLoaderDataMock.mockReturnValue({
       asset: { ...baseAsset, type: "INDIVIDUAL", assetKits: [] },
     });

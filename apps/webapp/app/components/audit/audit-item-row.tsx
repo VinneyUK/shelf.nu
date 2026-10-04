@@ -121,7 +121,7 @@ export function AuditItemRow({
       // persistence attempt. See `use-audit-scan-persistence.ts` for the
       // matching defensive skip.
       rejectItemType="kit"
-      rejectItemMessage="Audits track assets, not kits — scan the kit's individual assets."
+      rejectItemMessage="Audits track assets, not boxes — scan the box's individual assets."
       renderLoading={(pendingQrId: string, error?: string) => (
         <DefaultLoadingState qrId={pendingQrId} error={error} />
       )}
@@ -218,7 +218,7 @@ export function AuditItemRow({
               )}
               <div className="flex flex-wrap items-center gap-1">
                 <span className={assetTypeBadgeClass}>
-                  {itemType === "asset" ? "asset" : "kit"}
+                  {itemType === "asset" ? "asset" : "box"}
                 </span>
                 <AuditLabels />
                 {/* Action buttons for notes and images */}

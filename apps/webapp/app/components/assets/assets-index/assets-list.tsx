@@ -113,7 +113,7 @@ export const AssetsList = ({
           />
         </Th>
       </When>
-      <Th>Location</Th>
+      <Th>Place</Th>
       <Th>Quantity</Th>
       <Th>Actions</Th>
     </>

@@ -110,9 +110,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         .catch((cause) => {
           throw new ShelfError({
             cause,
-            title: "Location not found",
+            title: "Place not found",
             message:
-              "The location you are trying to access does not exist or you do not have permission to access it.",
+              "The place you are trying to access does not exist or you do not have permission to access it.",
             additionalData: { locationId, userId, organizationId },
             status: 404,
             label: "Location",
@@ -164,9 +164,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       plural: "assets",
     };
     const header = {
-      title: `Move assets to ‘${location?.name}’ location`,
+      title: `Move assets to ‘${location?.name}’ place`,
       subHeading:
-        "Search your database for assets that you would like to move to this location.",
+        "Search your database for assets that you would like to move to this place.",
     };
 
     return payload({
@@ -371,7 +371,8 @@ export default function AddAssetsToLocation() {
             ) : null}
           </TabsTrigger>
           <TabsTrigger className="flex-1 gap-x-2" value="kits">
-            Kits
+            
+            Boxes
             {locationKitIds.length > 0 ? (
               <GrayBadge className="size-[20px] border border-primary-200 bg-primary-50 text-[10px] leading-[10px] text-primary-700">
                 {locationKitIds.length}
@@ -421,11 +422,12 @@ export default function AddAssetsToLocation() {
         <DynamicDropdown
           trigger={
             <div className="flex h-6 cursor-pointer items-center gap-2">
-              Locations <ChevronRight className="hidden rotate-90 md:inline" />
+              
+              Places <ChevronRight className="hidden rotate-90 md:inline" />
             </div>
           }
           model={{ name: "location", queryKey: "name" }}
-          label="Filter by location"
+          label="Filter by place"
           initialDataKey="locations"
           countKey="totalLocations"
           renderItem={({ metadata }) => (
@@ -476,7 +478,7 @@ export default function AddAssetsToLocation() {
           bulkActions={<> </>}
           headerChildren={
             <>
-              <Th>Location</Th>
+              <Th>Place</Th>
               <Th>Category</Th>
               <Th>Tags</Th>
             </>

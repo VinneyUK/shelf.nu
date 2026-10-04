@@ -57,7 +57,7 @@ vi.mock("~/modules/scan/service.server", () => ({
 vi.mock("~/modules/kit/service.server", () => ({
   getKit: vi.fn().mockResolvedValue({
     id: "kit-1",
-    name: "Camera kit",
+    name: "Camera box",
     qrCodes: [{ id: "qr-1" }],
     assetKits: [],
     custody: null,
@@ -101,7 +101,7 @@ function callerHolds(roles: OrganizationRoles[]) {
   });
 }
 
-describe("kit detail loader — last scan", () => {
+describe("box detail loader — last scan", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetLastScanForViewer.mockResolvedValue(null);

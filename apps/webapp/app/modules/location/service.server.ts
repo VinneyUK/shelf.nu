@@ -136,7 +136,7 @@ async function assertKitsInOrganization({
       cause: null,
       title: "Unauthorized",
       message:
-        "You are not authorized to modify one or more of the selected kits.",
+        "You are not authorized to modify one or more of the selected boxes.",
       additionalData: { ...additionalData, organizationId, ids },
       label,
       status: 403,
@@ -388,7 +388,7 @@ export async function getLocation(
 
       throw new ShelfError({
         cause: null,
-        title: "Location not found.",
+        title: "Place not found.",
         message: "",
         additionalData: {
           model: "location",
@@ -417,9 +417,9 @@ export async function getLocation(
 
     throw new ShelfError({
       cause,
-      title: "Location not found",
+      title: "Place not found",
       message:
-        "The location you are trying to access does not exist or you do not have permission to access it.",
+        "The place you are trying to access does not exist or you do not have permission to access it.",
       additionalData: {
         id,
         organizationId,
@@ -457,7 +457,7 @@ export async function getLocationHierarchy(params: {
         "parentId",
         "organizationId",
         0 AS depth
-      FROM "Location"
+      FROM "Place"
       WHERE id = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -466,7 +466,7 @@ export async function getLocationHierarchy(params: {
         l."parentId",
         l."organizationId",
         lh.depth + 1 AS depth
-      FROM "Location" l
+      FROM "Place" l
       INNER JOIN location_hierarchy lh ON lh."parentId" = l.id
       WHERE l."organizationId" = ${organizationId}
     )
@@ -503,7 +503,7 @@ export async function getLocationDescendantsTree(params: {
         name,
         "parentId",
         "organizationId"
-      FROM "Location"
+      FROM "Place"
       WHERE "parentId" = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -511,7 +511,7 @@ export async function getLocationDescendantsTree(params: {
         l.name,
         l."parentId",
         l."organizationId"
-      FROM "Location" l
+      FROM "Place" l
       INNER JOIN location_descendants ld ON ld.id = l."parentId"
       WHERE l."organizationId" = ${organizationId}
     )
@@ -560,7 +560,7 @@ export async function getLocationSubtreeDepth(params: {
         "parentId",
         "organizationId",
         0 AS depth
-      FROM "Location"
+      FROM "Place"
       WHERE id = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -568,7 +568,7 @@ export async function getLocationSubtreeDepth(params: {
         l."parentId",
         l."organizationId",
         ls.depth + 1 AS depth
-      FROM "Location" l
+      FROM "Place" l
       INNER JOIN location_subtree ls ON l."parentId" = ls.id
       WHERE l."organizationId" = ${organizationId}
     )
@@ -681,7 +681,7 @@ export async function getLocations(params: {
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while fetching the locations",
+      message: "Something went wrong while fetching the places",
       additionalData: { ...params },
       label,
     });
@@ -733,7 +733,7 @@ async function validateParentLocation({
   if (currentLocationId && parentId === currentLocationId) {
     throw new ShelfError({
       cause: null,
-      message: "A location cannot be its own parent.",
+      message: "A place cannot be its own parent.",
       additionalData: { currentLocationId, parentId, organizationId },
       label,
       status: 400,
@@ -749,7 +749,7 @@ async function validateParentLocation({
   if (!parentLocation) {
     throw new ShelfError({
       cause: null,
-      message: "Parent location not found.",
+      message: "Parent place not found.",
       additionalData: { parentId, organizationId },
       label,
       status: 404,
@@ -779,7 +779,7 @@ async function validateParentLocation({
     throw new ShelfError({
       cause: null,
       title: "Not allowed",
-      message: `Locations cannot be nested deeper than ${MAX_LOCATION_DEPTH} levels.`,
+      message: `Places cannot be nested deeper than ${MAX_LOCATION_DEPTH} levels.`,
       additionalData: {
         parentId,
         organizationId,
@@ -795,7 +795,7 @@ async function validateParentLocation({
   if (currentLocationId && hierarchy.some((l) => l.id === currentLocationId)) {
     throw new ShelfError({
       cause: null,
-      message: "A location cannot be assigned to one of its descendants.",
+      message: "A place cannot be assigned to one of its descendants.",
       additionalData: { parentId, currentLocationId, organizationId },
       label,
       status: 400,
@@ -905,7 +905,7 @@ export async function deleteLocation({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while deleting the location",
+      message: "Something went wrong while deleting the place",
       additionalData: { id },
       label,
     });
@@ -1122,7 +1122,7 @@ async function createLocationEditNotes({
     id: userId,
   });
 
-  const content = `${userLink} updated the location:\n\n${changes.join("\n")}`;
+  const content = `${userLink} updated the place:\n\n${changes.join("\n")}`;
 
   await createSystemLocationActivityNote({
     locationId,
@@ -1187,7 +1187,7 @@ export async function createLocationsIfNotExists({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while creating locations. Seems like some of the location data in your import file is invalid. Please check and try again.",
+        "Something went wrong while creating places. Seems like some of the place data in your import file is invalid. Please check and try again.",
       additionalData: { userId, organizationId },
       label,
       /** No need to capture those. They are mostly related to malformed CSV data */
@@ -1237,7 +1237,7 @@ export async function bulkDeleteLocations({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while bulk deleting locations.",
+      message: "Something went wrong while bulk deleting places.",
       additionalData: { locationIds, organizationId },
       label,
     });
@@ -1329,7 +1329,7 @@ export async function updateLocationImage({
       cause,
       message: isLikeShelfError(cause)
         ? cause.message
-        : "Something went wrong while updating the location image.",
+        : "Something went wrong while updating the place image.",
       additionalData: { locationId, field: "image" },
       label,
     });
@@ -1401,7 +1401,7 @@ export async function generateLocationWithImages({
       cause,
       message: isLikeShelfError(cause)
         ? cause.message
-        : "Something went wrong while generating locations.",
+        : "Something went wrong while generating places.",
       additionalData: { organizationId, numberOfLocations },
       label,
     });
@@ -1489,9 +1489,9 @@ export async function getLocationKits(
   } catch (cause) {
     throw new ShelfError({
       cause,
-      title: "Something went wrong while fetching the location kits",
+      title: "Something went wrong while fetching the place boxes",
       message:
-        "Something went wrong while fetching the location kits. Please try again or contact support.",
+        "Something went wrong while fetching the place boxes. Please try again or contact support.",
       label,
     });
   }
@@ -1579,7 +1579,7 @@ export async function createLocationChangeNote({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while creating a location change note. Please try again or contact support",
+        "Something went wrong while creating a place change note. Please try again or contact support",
       additionalData: { userId, assetId },
       label,
     });
@@ -1826,7 +1826,7 @@ async function createBulkLocationChangeNotes({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while creating bulk location change notes",
+      message: "Something went wrong while creating bulk place change notes",
       additionalData: { userId, assetIds, removedAssetIds },
       label,
     });
@@ -1905,7 +1905,7 @@ export async function updateLocationAssets({
         if (isNotFoundError(cause)) {
           throw new ShelfError({
             cause,
-            message: "Location not found",
+            message: "Place not found",
             additionalData: { locationId, userId, organizationId },
             status: 404,
             label: "Location",
@@ -2148,7 +2148,7 @@ export async function updateLocationAssets({
           parts.push(`requested ${o.submitted}, max ${o.max}`);
           if (o.breakdown.kitDrivenAtThisLocation > 0) {
             parts.push(
-              `${o.breakdown.kitDrivenAtThisLocation} via kits at this location`
+              `${o.breakdown.kitDrivenAtThisLocation} via boxes at this place`
             );
           }
           if (o.breakdown.otherLocations > 0) {
@@ -2389,7 +2389,7 @@ export async function updateLocationAssets({
     }
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating the location assets.",
+      message: "Something went wrong while updating the place assets.",
       additionalData: { assetIds, organizationId, locationId },
       label,
     });
@@ -2431,7 +2431,7 @@ export async function updateLocationKits({
         if (isNotFoundError(cause)) {
           throw new ShelfError({
             cause,
-            message: "Location not found",
+            message: "Place not found",
             additionalData: { locationId, userId, organizationId },
             status: 404,
             label: "Location",
@@ -2613,7 +2613,7 @@ export async function updateLocationKits({
           throw new ShelfError({
             cause,
             message:
-              "Something went wrong while adding the kits to the location. Please try again or contact support.",
+              "Something went wrong while adding the boxes to the place. Please try again or contact support.",
             additionalData: { kitIds, userId, locationId },
             label,
           });
@@ -2785,7 +2785,7 @@ export async function updateLocationKits({
           throw new ShelfError({
             cause,
             message:
-              "Something went wrong while removing the kits from the location. Please try again or contact support.",
+              "Something went wrong while removing the boxes from the place. Please try again or contact support.",
             additionalData: { removedKitIds, userId, locationId },
             label: "Location",
           });
@@ -2854,7 +2854,7 @@ export async function updateLocationKits({
     }
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating the location kits.",
+      message: "Something went wrong while updating the place boxes.",
       additionalData: { locationId, kitIds },
       label,
     });

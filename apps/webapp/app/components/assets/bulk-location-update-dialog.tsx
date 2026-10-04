@@ -11,7 +11,7 @@ import { WarningBox } from "../shared/warning-box";
 export const BulkLocationUpdateSchema = z.object({
   assetIds: z.array(z.string()).optional().default([]),
   kitIds: z.array(z.string()).optional().default([]),
-  newLocationId: z.string({ required_error: "Please select a location" }),
+  newLocationId: z.string({ required_error: "Please select a place" }),
 });
 
 export default function BulkLocationUpdateDialog() {
@@ -42,9 +42,9 @@ export default function BulkLocationUpdateDialog() {
             <div className="mb-4">
               <WarningBox>
                 <span>
-                  {quantityTrackedCount} quantity-tracked asset(s) in your
+                  {quantityTrackedCount}  quantity-tracked asset(s) in your
                   selection will be skipped. Quantity-tracked assets must have
-                  their placements managed individually with a per-location
+                  their placements managed individually with a per-place
                   quantity.
                 </span>
               </WarningBox>

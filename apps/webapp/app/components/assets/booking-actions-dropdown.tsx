@@ -31,14 +31,16 @@ export default function BookingActionsDropdown() {
       ? {
           reason: (
             <>
-              Cannot book this asset directly because it's part of a kit. Please
+              
+              Cannot book this asset directly because it's part of a box. Please
               book the{" "}
               <Button
                 to={`/kits/${assetKit.id}`}
                 target="_blank"
                 variant="link"
               >
-                kit
+                
+                box
               </Button>{" "}
               instead.
             </>

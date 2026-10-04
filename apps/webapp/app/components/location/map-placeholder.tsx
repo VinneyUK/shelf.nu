@@ -3,7 +3,7 @@ import Icon from "../icons/icon";
 
 export const MapPlaceholder = ({
   title = "Unable to generate map",
-  description = "Scanner did not grant location permissions. You can see other data related to the last scan below.",
+  description = "Scanner did not grant place permissions. You can see other data related to the last scan below.",
 }: {
   title?: string;
   description?: string;

@@ -273,8 +273,8 @@ export default function ManagePlacementsRoute() {
         <h4>Manage placements</h4>
         <p className="text-sm text-gray-600">
           {isQty
-            ? "Spread this asset across one or more locations. Units not placed anywhere stay in the unplaced pool."
-            : "Set the single location this asset sits at."}
+            ? "Spread this asset across one or more places. Units not placed anywhere stay in the unplaced pool."
+            : "Set the single place this asset sits at."}
         </p>
       </div>
       <ManagePlacementsForm

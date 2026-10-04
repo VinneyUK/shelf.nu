@@ -158,7 +158,7 @@ export function StartAuditFromContextDialog({
       case "location":
         return `Start an audit for ${assetText} in "${contextName}".`;
       case "kit":
-        return `Start an audit for ${assetText} in kit "${contextName}".`;
+        return `Start an audit for ${assetText} in box "${contextName}".`;
       case "user":
         return `Start an audit for ${assetText} in custody of ${contextName}.`;
       default:
@@ -259,7 +259,7 @@ export function StartAuditFromContextDialog({
                         disabled={isSubmitting}
                         className="rounded-sm checked:bg-primary focus-within:ring-primary checked:hover:bg-primary checked:focus:bg-primary"
                       />
-                      <span>Include assets from child locations</span>
+                      <span>Include assets from child places</span>
                     </label>
                   </div>
                 )}

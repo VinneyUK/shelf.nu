@@ -57,12 +57,12 @@ function makeRefs() {
 }
 
 describe("useAuditScanPersistence", () => {
-  it("does not submit a kit's id as assetId", () => {
+  it("does not submit a box's id as assetId", () => {
     const fetcher = makeFetcher();
     const refs = makeRefs();
     const scannedItems: ScanListItems = {
       "qr-kit": {
-        data: { id: "kit-1", name: "Kit A" } as unknown as KitFromQr,
+        data: { id: "kit-1", name: "Box A" } as unknown as KitFromQr,
         type: "kit",
       },
     };
@@ -106,12 +106,12 @@ describe("useAuditScanPersistence", () => {
     expect(formData.get("assetId")).toBe("asset-1");
   });
 
-  it("skips a kit but still submits a co-scanned asset in the same batch", () => {
+  it("skips a box but still submits a co-scanned asset in the same batch", () => {
     const fetcher = makeFetcher();
     const refs = makeRefs();
     const scannedItems: ScanListItems = {
       "qr-kit": {
-        data: { id: "kit-1", name: "Kit A" } as unknown as KitFromQr,
+        data: { id: "kit-1", name: "Box A" } as unknown as KitFromQr,
         type: "kit",
       },
       "qr-asset": {

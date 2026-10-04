@@ -158,7 +158,7 @@ describe("releaseCustody kit-derived custody guard", () => {
     });
   });
 
-  it("aborts before the status write when a kit holds custody of the asset", async () => {
+  it("aborts before the status write when a box holds custody of the asset", async () => {
     // why the name is about ORDERING, not rollback: `db.$transaction` is mocked
     // as `(cb) => cb(db)`, so there is no transaction here and nothing to roll
     // back. What this can prove — and what actually matters — is that the guard
@@ -175,7 +175,7 @@ describe("releaseCustody kit-derived custody guard", () => {
         userId: "user-1",
         role: OrganizationRoles.ADMIN,
       })
-    ).rejects.toThrow(/release the kit/i);
+    ).rejects.toThrow(/release the box/i);
 
     // The delete may run first, but only ever against operator rows...
     expect(db.custody.deleteMany).toHaveBeenCalledWith({
@@ -190,7 +190,7 @@ describe("releaseCustody kit-derived custody guard", () => {
     expect(db.asset.updateMany).not.toHaveBeenCalled();
   });
 
-  it("releases operator-assigned custody untouched by any kit", async () => {
+  it("releases operator-assigned custody untouched by any box", async () => {
     // why: the guard reads through the same mocked findFirst; null models an
     // asset whose custody rows are all operator-assigned. The beforeEach
     // already sets this — restated so the case under test is readable here.

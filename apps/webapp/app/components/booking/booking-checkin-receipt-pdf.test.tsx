@@ -349,7 +349,7 @@ describe("booking check-in receipt — the sheet", () => {
     expect(cellsFor("Tripod")[4]).toHaveTextContent("SAM-0001");
   });
 
-  it("explains a row still filed under a kit it has left", () => {
+  it("explains a row still filed under a box it has left", () => {
     // why: paper has no tooltip, so a detached row is otherwise
     // indistinguishable from a live kit member.
     renderReceipt({
@@ -357,7 +357,7 @@ describe("booking check-in receipt — the sheet", () => {
     });
 
     expect(
-      within(cellsFor("Tripod")[3] as HTMLElement).getByText(/Removed from kit/)
+      within(cellsFor("Tripod")[3] as HTMLElement).getByText(/Removed from box/)
     ).toBeInTheDocument();
   });
 });

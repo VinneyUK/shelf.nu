@@ -342,8 +342,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         }
 
         sendNotification({
-          title: "Kit deleted",
-          message: "Your kit has been deleted successfully",
+          title: "Box deleted",
+          message: "Your box has been deleted successfully",
           icon: { name: "trash", variant: "error" },
           senderId: authSession.userId,
         });
@@ -505,7 +505,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
         sendNotification({
           title: "Asset removed",
-          message: "Your asset has been removed from the kit",
+          message: "Your asset has been removed from the box",
           icon: { name: "success", variant: "success" },
           senderId: authSession.userId,
         });
@@ -547,7 +547,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
           sendNotification({
             title: "Barcode added",
-            message: "Barcode has been added to your kit successfully",
+            message: "Barcode has been added to your box successfully",
             icon: { name: "success", variant: "success" },
             senderId: authSession.userId,
           });
@@ -590,7 +590,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
         sendNotification({
           title: "QR Relinked",
-          message: "A new qr code has been linked to your kit.",
+          message: "A new qr code has been linked to your box.",
           icon: { name: "success", variant: "success" },
           senderId: authSession.userId,
         });

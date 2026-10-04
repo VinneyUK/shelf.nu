@@ -120,7 +120,7 @@ function createLoaderArgs(
   } as LoaderFunctionArgs;
 }
 
-describe("qr+/_private+/$qrId_.link.kit loader", () => {
+describe("qr+/_private+/$qrId_.link.box loader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -158,7 +158,7 @@ describe("QrLinkExisting component", () => {
 
   it("renders (no SSR crash) and shows the Custodian filter when canManageQrLink is true", () => {
     useLoaderDataMock.mockReturnValue({
-      header: { title: "Link with existing asset", subHeading: "Choose a kit" },
+      header: { title: "Link with existing asset", subHeading: "Choose a box" },
       qrId: "qr-1",
       canManageQrLink: true,
       items: [],
@@ -184,7 +184,7 @@ describe("QrLinkExisting component", () => {
 
   it("hides the Custodian filter when canManageQrLink is false", () => {
     useLoaderDataMock.mockReturnValue({
-      header: { title: "Link with existing asset", subHeading: "Choose a kit" },
+      header: { title: "Link with existing asset", subHeading: "Choose a box" },
       qrId: "qr-1",
       canManageQrLink: false,
       items: [],

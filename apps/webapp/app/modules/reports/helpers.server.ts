@@ -2686,9 +2686,9 @@ export async function topBookedKitsReport(
     return {
       report: {
         id: "top-booked-kits",
-        title: "Top Booked Kits",
+        title: "Top Booked Boxes",
         description:
-          "Identify your most frequently booked kits and their utilization patterns.",
+          "Identify your most frequently booked boxes and their utilization patterns.",
       },
       filters: {
         timeframe,
@@ -2706,7 +2706,7 @@ export async function topBookedKitsReport(
     throw new ShelfError({
       cause,
       label: "Report",
-      message: "Failed to generate Top Booked Kits report",
+      message: "Failed to generate Top Booked Boxes report",
       additionalData: { organizationId, timeframe: timeframe.preset },
     });
   }
@@ -2943,7 +2943,7 @@ function buildTopBookedKitsKpis({
     },
     {
       id: "unique_kits_booked",
-      label: "Kits Booked",
+      label: "Boxes Booked",
       value: uniqueKitsBooked.toLocaleString(),
       rawValue: uniqueKitsBooked,
       format: "number",
@@ -2952,7 +2952,7 @@ function buildTopBookedKitsKpis({
     },
     {
       id: "avg_bookings_per_kit",
-      label: "Avg. per Kit",
+      label: "Avg. per Box",
       value: avgBookingsPerKit > 0 ? `${avgBookingsPerKit}x` : "—",
       rawValue: avgBookingsPerKit,
       format: "number",
@@ -3040,7 +3040,7 @@ export async function assetDistributionReport(
         id: "distribution",
         title: "Asset Distribution",
         description:
-          "Breakdown of assets by category, location, and status for inventory planning.",
+          "Breakdown of assets by category, place, and status for inventory planning.",
       },
       filters: {
         timeframe,
@@ -3190,7 +3190,7 @@ function computeDistributionByLocation(
     if (asset.assetLocations.length === 0) {
       addToBucket(
         "without-location",
-        "No Location",
+        "No Place",
         asset.valuation === null
           ? null
           : asset.valuation * (asset.quantity ?? 1)
@@ -4574,7 +4574,7 @@ function buildActivityDescription(event: {
     ASSET_DESCRIPTION_CHANGED: "Description updated",
     ASSET_CATEGORY_CHANGED: "Category changed",
     ASSET_MODEL_CHANGED: "Asset model changed",
-    ASSET_LOCATION_CHANGED: "Location changed",
+    ASSET_LOCATION_CHANGED: "Place changed",
     ASSET_STATUS_CHANGED: "Status changed",
     ASSET_VALUATION_CHANGED: "Valuation changed",
     ASSET_QUANTITY_CHANGED: "Quantity changed",

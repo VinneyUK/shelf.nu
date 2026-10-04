@@ -81,7 +81,7 @@ const sanitizeMarkdocTags = (
           if (!Number.isFinite(count) || count <= 0) {
             return "kits";
           }
-          const unit = count === 1 ? "kit" : "kits";
+          const unit = count === 1 ? "box" : "boxes";
           return `${count} ${unit}`;
         }
         case "booking_status": {

@@ -45,10 +45,11 @@ export default function RemoveAssetFromLocation({
             </span>
           </div>
           <AlertDialogTitle>
-            Remove "{asset.title}" from location
+            Remove "{asset.title}" from place
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to remove this asset from the location?
+            
+            Are you sure you want to remove this asset from the place?
           </AlertDialogDescription>
         </AlertDialogHeader>
 

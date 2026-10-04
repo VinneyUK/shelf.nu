@@ -58,7 +58,7 @@ const ASSET_ACTIVITY_COLUMNS: ColumnDef<AssetActivityRow>[] = [
         CUSTODY_RELEASED: "Returned from team member",
         BOOKING_CHECKED_OUT: "Checked out",
         BOOKING_CHECKED_IN: "Checked in",
-        LOCATION_CHANGED: "Location changed",
+        LOCATION_CHANGED: "Place changed",
         CATEGORY_CHANGED: "Category changed",
       };
       // Semantic colors for activity types

@@ -1773,7 +1773,7 @@ describe("assertAssetQuantityNotBelowReservations", () => {
     };
   }
 
-  it("allows any newTotal >= 0 when there are no commitments (custody, kits, or bookings)", async () => {
+  it("allows any newTotal >= 0 when there are no commitments (custody, boxes, or bookings)", async () => {
     const tx = createMockTx();
 
     await expect(
@@ -1797,7 +1797,7 @@ describe("assertAssetQuantityNotBelowReservations", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("rejects a newTotal below the committed peak (custody + kits + reserved)", async () => {
+  it("rejects a newTotal below the committed peak (custody + boxes + reserved)", async () => {
     const tx = createMockTx();
     tx.custody.groupBy.mockResolvedValue([
       { assetId: ASSET_ID, _sum: { quantity: 3 } },
@@ -1824,7 +1824,7 @@ describe("assertAssetQuantityNotBelowReservations", () => {
       shouldBeCaptured: false,
       message:
         'Cannot reduce "Widget" to 9 boards — 10 boards are committed ' +
-        "(custody, kits, or overlapping bookings). Release or reduce those first.",
+        "(custody, boxes, or overlapping bookings). Release or reduce those first.",
       additionalData: expect.objectContaining({
         inCustody: 3,
         inKits: 2,
@@ -2009,7 +2009,7 @@ describe("assertAssetQuantityNotBelowReservations", () => {
     expect(tx.consumptionLog.groupBy).not.toHaveBeenCalled();
   });
 
-  it("scopes the custody and kit queries to the caller's organization", async () => {
+  it("scopes the custody and box queries to the caller's organization", async () => {
     const tx = createMockTx();
 
     await assertAssetQuantityNotBelowReservations({
@@ -2053,7 +2053,7 @@ describe("assertAssetQuantityNotBelowReservations", () => {
     ).rejects.toMatchObject({
       message:
         'Cannot reduce "This asset" to 1 units — 5 units are committed ' +
-        "(custody, kits, or overlapping bookings). Release or reduce those first.",
+        "(custody, boxes, or overlapping bookings). Release or reduce those first.",
     });
   });
 });

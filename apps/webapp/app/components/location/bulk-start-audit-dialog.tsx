@@ -96,7 +96,7 @@ function SelectedLocationsSummary({
       <p className="text-sm text-gray-700">
         Auditing assets in{" "}
         <span className="font-medium">
-          all {count} location{plural}
+          all {count}  place{plural}
         </span>
         {search ? (
           <>
@@ -114,7 +114,7 @@ function SelectedLocationsSummary({
       <span>
         Auditing assets in{" "}
         <span className="font-medium">
-          {count} location{plural}
+          {count}  place{plural}
         </span>
         .
       </span>
@@ -134,7 +134,8 @@ function SelectedLocationsSummary({
             className="z-[999999] mt-2 max-h-[300px] w-[260px] overflow-y-auto rounded-md border border-gray-200 bg-white shadow-md"
           >
             <p className="border-b border-gray-100 px-3 py-2 text-xs font-medium text-gray-500">
-              Selected locations ({count})
+              
+              Selected places ({count})
             </p>
             <ul className="py-1">
               {locations.map((location) => {
@@ -199,7 +200,7 @@ export default function LocationsBulkStartAuditDialog() {
       type="start-audit"
       className="md:w-[800px]"
       title="Start an audit"
-      description="Set up an audit for the assets in the locations you selected."
+      description="Set up an audit for the assets in the places you selected."
       actionUrl="/api/audits/start"
       arrayFieldId="locationIds"
       formClassName="px-0"
@@ -222,9 +223,10 @@ export default function LocationsBulkStartAuditDialog() {
             <div className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-gray-400" />
               <p>
+                
                 The audit will include every asset directly assigned to the
-                selected location{displayCount === 1 ? "" : "s"}. Assets in
-                sub-locations aren&apos;t included.
+                selected place{displayCount === 1 ? "" : "s"}. Assets in
+                sub-places aren&apos;t included.
               </p>
             </div>
           </div>

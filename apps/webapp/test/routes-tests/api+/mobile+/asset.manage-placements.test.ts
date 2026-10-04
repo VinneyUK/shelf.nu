@@ -100,7 +100,7 @@ beforeEach(() => {
         quantity: 5,
         assetKitId: "ak-1",
         location: { id: "loc-van", name: "Van" },
-        assetKit: { kit: { id: "kit-1", name: "Site kit" } },
+        assetKit: { kit: { id: "kit-1", name: "Site box" } },
       },
       {
         quantity: 4,
@@ -138,7 +138,7 @@ describe("POST /api/mobile/asset/manage-placements", () => {
         locationId: "loc-van",
         locationName: "Van",
         quantity: 5,
-        viaKit: { id: "kit-1", name: "Site kit" },
+        viaKit: { id: "kit-1", name: "Site box" },
       },
     ]);
   });

@@ -147,7 +147,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     const totalPages = Math.ceil(bookingCount / perPage);
 
     const header: HeaderData = {
-      title: kit ? `${kit.name}'s bookings` : "Kit Bookings",
+      title: kit ? `${kit.name}'s bookings` : "Box Bookings",
     };
 
     const modelName = {

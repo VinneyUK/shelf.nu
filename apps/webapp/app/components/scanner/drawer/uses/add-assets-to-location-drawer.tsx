@@ -141,7 +141,8 @@ export default function AddAssetsKitsToLocationDrawer({
       message: (count: number) => (
         <>
           <strong>{`${count} asset${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          already added to this location.
+          
+          already added to this place.
         </>
       ),
       onResolve: () => removeAssetsFromList(assetsAlreadyAddedIds),
@@ -151,8 +152,9 @@ export default function AddAssetsKitsToLocationDrawer({
       count: kitsAlreadyAddedIds.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          already added to this location.
+          <strong>{`${count} box${count > 1 ? "s are" : " is"}`}</strong>{" "}
+          
+          already added to this place.
         </>
       ),
       onResolve: () => removeItemsFromList([...qrIdsOfAlreadyAddedKits]),
@@ -279,18 +281,19 @@ export function AssetRow({
       condition: location.assetLocations.some(
         (al) => al?.asset?.id === asset.id
       ),
-      badgeText: "Already added to this location",
-      tooltipTitle: "Asset is part of location",
-      tooltipContent: "This asset is already added to the current location.",
+      badgeText: "Already added to this place",
+      tooltipTitle: "Asset is part of place",
+      tooltipContent: "This asset is already added to the current place.",
       priority: 70,
     },
     {
       condition: !!primaryLocation && primaryLocation.id !== location.id,
-      badgeText: "Part of another location",
-      tooltipTitle: "Asset is part of another location",
+      badgeText: "Part of another place",
+      tooltipTitle: "Asset is part of another place",
       tooltipContent: (
         <>
-          This asset is currently part of another kit
+          
+          This asset is currently part of another box
           {primaryLocation ? (
             <>
               :{" "}
@@ -305,8 +308,9 @@ export function AssetRow({
               <br />
             </>
           ) : undefined}
+          
           You will still be able to add this asset to replace it's current
-          location.
+          place.
         </>
       ),
       priority: 70,
@@ -391,18 +395,19 @@ export function KitRow({
     // Custom preset for "already in this kit"
     {
       condition: location.kits.some((a: any) => a?.id === kit.id),
-      badgeText: "Already added to this location",
-      tooltipTitle: "Kit is part of location",
-      tooltipContent: "This kit is already added to the current location.",
+      badgeText: "Already added to this place",
+      tooltipTitle: "Box is part of place",
+      tooltipContent: "This box is already added to the current place.",
       priority: 70,
     },
     {
       condition: !!kit.locationId && kit.locationId !== location.id,
-      badgeText: "Part of another location",
-      tooltipTitle: "Kit is part of another location",
+      badgeText: "Part of another place",
+      tooltipTitle: "Box is part of another place",
       tooltipContent: (
         <>
-          This kit is currently part of another location
+          
+          This box is currently part of another place
           {kit?.location ? (
             <>
               :{" "}
@@ -417,8 +422,9 @@ export function KitRow({
               <br />
             </>
           ) : undefined}
-          You will still be able to add this kit to replace it's current
-          location.
+          
+          You will still be able to add this box to replace it's current
+          place.
         </>
       ),
       priority: 70,
@@ -448,7 +454,8 @@ export function KitRow({
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>

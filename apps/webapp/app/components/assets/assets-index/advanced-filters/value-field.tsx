@@ -1339,13 +1339,13 @@ function LocationEnumField({
       ...item,
       id: item.id === "without-location" ? "without-location" : item.id,
     }),
-    renderItem: (item: any) => (item.name ? item.name : "Without location"),
+    renderItem: (item: any) => (item.name ? item.name : "Without place"),
     initialDataKey: "locations",
     countKey: "totalLocations",
-    label: "Filter by location",
+    label: "Filter by place",
     hideLabel: true,
     hideCounter: true,
-    placeholder: "Search locations",
+    placeholder: "Search places",
     withValueItem: {
       id: "in-location",
       name: "In a location",
@@ -1382,10 +1382,10 @@ function LocationEnumField({
                   ? selectedIds
                       .map((id) => {
                         if (id === "in-location") {
-                          return "In a location";
+                          return "In a place";
                         }
                         if (id === "without-location") {
-                          return "Without location";
+                          return "Without place";
                         }
                         const location = data.locations?.find(
                           (loc) => loc.id === id
@@ -1393,7 +1393,7 @@ function LocationEnumField({
                         return location?.name || "";
                       })
                       .join(", ")
-                  : "Select location"}
+                  : "Select place"}
               </span>
               <ChevronRight className="mr-1 inline-block rotate-90" />
             </div>
@@ -1423,7 +1423,7 @@ function LocationEnumField({
     <DynamicSelect
       {...commonProps}
       fieldName={name}
-      placeholder={disabled ? "Select a column first" : "Select location"}
+      placeholder={disabled ? "Select a column first" : "Select place"}
       defaultValue={value as string}
       onChange={(selectedId) => {
         if (selectedId !== undefined) {
@@ -1468,13 +1468,13 @@ function KitEnumField({
       ...item,
       id: item.id === "without-kit" ? "without-kit" : item.id,
     }),
-    renderItem: (item: any) => (item.name ? item.name : "Without kit"),
+    renderItem: (item: any) => (item.name ? item.name : "Without box"),
     initialDataKey: "kits",
     countKey: "totalKits",
-    label: "Filter by kit",
+    label: "Filter by box",
     hideLabel: true,
     hideCounter: true,
-    placeholder: "Search kits",
+    placeholder: "Search boxes",
     withValueItem: {
       id: "in-kit",
       name: "In a kit",
@@ -1511,16 +1511,16 @@ function KitEnumField({
                   ? selectedIds
                       .map((id) => {
                         if (id === "in-kit") {
-                          return "In a kit";
+                          return "In a box";
                         }
                         if (id === "without-kit") {
-                          return "Without kit";
+                          return "Without box";
                         }
                         const kit = data.kits?.find((kit) => kit.id === id);
                         return kit?.name || "";
                       })
                       .join(", ")
-                  : "Select kit"}
+                  : "Select box"}
               </span>
               <ChevronRight className="mr-1 inline-block rotate-90" />
             </div>
@@ -1550,7 +1550,7 @@ function KitEnumField({
     <DynamicSelect
       {...commonProps}
       fieldName={name}
-      placeholder={disabled ? "Select a column first" : "Select kit"}
+      placeholder={disabled ? "Select a column first" : "Select box"}
       defaultValue={value as string}
       onChange={(selectedId) => {
         if (selectedId !== undefined) {

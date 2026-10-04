@@ -336,7 +336,7 @@ describe("compareCoreField", () => {
   });
 
   describe("location", () => {
-    it("detects location change", () => {
+    it("detects place change", () => {
       const asset = makeAsset({
         location: { id: "loc-1", name: "Office A" },
       });
@@ -350,7 +350,7 @@ describe("compareCoreField", () => {
       expect(result?.currentValue).toBe("Office A");
     });
 
-    it('shows "(none)" for null location', () => {
+    it('shows "(none)" for null place', () => {
       const asset = makeAsset({ location: null });
       const result = compareCoreField("location", "Office", asset, "Location");
       expect(result?.currentValue).toBe("(none)");
@@ -374,7 +374,7 @@ describe("compareCoreField", () => {
           asset,
           "Location"
         );
-        expect(result?.warning).toMatch(/multiple locations/i);
+        expect(result?.warning).toMatch(/multiple places/i);
         expect(result?.newValue).toBe("Mithril Dragons");
       });
 
@@ -1544,7 +1544,7 @@ describe("computeAssetDiffs", () => {
     });
   });
 
-  describe("multi-placement location guard (Bug 2 fix)", () => {
+  describe("multi-placement place guard (Bug 2 fix)", () => {
     // Reproduces the "Gloves" scenario: a QUANTITY_TRACKED asset with
     // units split across three AssetLocation rows (Christmas Event,
     // Mithril Dragons, God Wars Dungeon). Any `location` cell on such a
@@ -1571,7 +1571,7 @@ describe("computeAssetDiffs", () => {
       });
     }
 
-    it("warns and skips when a location cell names a different location on a multi-placement asset", () => {
+    it("warns and skips when a place cell names a different place on a multi-placement asset", () => {
       const assets = new Map<string, AssetForUpdate>();
       assets.set(
         "SAM-0001",
@@ -1594,11 +1594,11 @@ describe("computeAssetDiffs", () => {
 
       expect(result.assetsToUpdate).toHaveLength(1);
       const change = result.assetsToUpdate[0].changes[0];
-      expect(change.warning).toMatch(/multiple locations/i);
+      expect(change.warning).toMatch(/multiple places/i);
       expect(change.newValue).toBe("Christmas Event");
     });
 
-    it("warns and skips on an EMPTY location cell on a multi-placement asset (does not wipe placements)", () => {
+    it("warns and skips on an EMPTY place cell on a multi-placement asset (does not wipe placements)", () => {
       const assets = new Map<string, AssetForUpdate>();
       assets.set(
         "SAM-0001",
@@ -1621,13 +1621,13 @@ describe("computeAssetDiffs", () => {
 
       expect(result.assetsToUpdate).toHaveLength(1);
       const change = result.assetsToUpdate[0].changes[0];
-      expect(change.warning).toMatch(/multiple locations/i);
+      expect(change.warning).toMatch(/multiple places/i);
       // Must NOT be routed through the clearing path (which would signal
       // "wipe the location" to the apply layer).
       expect(change.clearing).toBeUndefined();
     });
 
-    it("still updates location normally for a single-placement asset (regression guard)", () => {
+    it("still updates place normally for a single-placement asset (regression guard)", () => {
       const assets = new Map<string, AssetForUpdate>();
       assets.set(
         "SAM-0001",
@@ -1870,7 +1870,7 @@ describe("analyzeUpdateHeaders — content-importer vocabulary (Task 2)", () => 
     expect(result.updatableColumns[0].cfDef?.type).toBe("TEXT");
   });
 
-  it("classifies description as updatable, and kit / custodian as ignored (not updatable)", () => {
+  it("classifies description as updatable, and box / custodian as ignored (not updatable)", () => {
     const result = analyzeUpdateHeaders(
       ["ID", "description", "kit", "custodian"],
       []

@@ -71,45 +71,45 @@ function makeKit(id: string, name: string): AdvancedIndexAsset["kits"][number] {
 }
 
 describe("KitColumn", () => {
-  it("renders the empty placeholder when kits is an empty array", () => {
+  it("renders the empty placeholder when boxes is an empty array", () => {
     renderCell([]);
 
     expect(screen.getByLabelText("No data")).toBeInTheDocument();
     expect(screen.queryByTestId("kit-more-chip")).not.toBeInTheDocument();
   });
 
-  it("renders a single kit link with no +N chip", () => {
-    renderCell([makeKit("kit-1", "Photography Kit")]);
+  it("renders a single box link with no +N chip", () => {
+    renderCell([makeKit("kit-1", "Photography Box")]);
 
-    const link = screen.getByRole("link", { name: "Photography Kit" });
+    const link = screen.getByRole("link", { name: "Photography Box" });
     expect(link).toHaveAttribute("href", "/kits/kit-1");
     expect(screen.queryByTestId("kit-more-chip")).not.toBeInTheDocument();
   });
 
-  it("renders the primary kit link plus a +N chip for multiple kits", () => {
+  it("renders the primary box link plus a +N chip for multiple boxes", () => {
     renderCell([
-      makeKit("kit-1", "Photography Kit"),
-      makeKit("kit-2", "Studio Kit"),
-      makeKit("kit-3", "Field Kit"),
+      makeKit("kit-1", "Photography Box"),
+      makeKit("kit-2", "Studio Box"),
+      makeKit("kit-3", "Field Box"),
     ]);
 
     // Primary kit gets the visible link.
-    const primary = screen.getByRole("link", { name: "Photography Kit" });
+    const primary = screen.getByRole("link", { name: "Photography Box" });
     expect(primary).toHaveAttribute("href", "/kits/kit-1");
 
     // Chip indicates 2 additional kits.
     const chip = screen.getByTestId("kit-more-chip");
     expect(chip).toHaveTextContent(/^\+2$/);
-    expect(chip).toHaveAttribute("aria-label", "+2 more kits");
+    expect(chip).toHaveAttribute("aria-label", "+2 more boxes");
   });
 
-  it("lists every kit name in the tooltip on hover", async () => {
+  it("lists every box name in the tooltip on hover", async () => {
     const user = userEvent.setup();
 
     renderCell([
-      makeKit("kit-1", "Photography Kit"),
-      makeKit("kit-2", "Studio Kit"),
-      makeKit("kit-3", "Field Kit"),
+      makeKit("kit-1", "Photography Box"),
+      makeKit("kit-2", "Studio Box"),
+      makeKit("kit-3", "Field Box"),
     ]);
 
     const chip = screen.getByTestId("kit-more-chip");
@@ -117,8 +117,8 @@ describe("KitColumn", () => {
 
     // The tooltip is portalled; assert via findBy which polls.
     const tooltip = await screen.findByTestId("kit-more-tooltip");
-    expect(tooltip).toHaveTextContent("Photography Kit");
-    expect(tooltip).toHaveTextContent("Studio Kit");
-    expect(tooltip).toHaveTextContent("Field Kit");
+    expect(tooltip).toHaveTextContent("Photography Box");
+    expect(tooltip).toHaveTextContent("Studio Box");
+    expect(tooltip).toHaveTextContent("Field Box");
   });
 });

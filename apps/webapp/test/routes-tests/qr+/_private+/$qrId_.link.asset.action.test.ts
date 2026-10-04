@@ -133,7 +133,7 @@ describe("qr+/_private+/$qrId_.link.asset action", () => {
     expect(db.qr.update).not.toHaveBeenCalled();
   });
 
-  it("refuses a QR that is already linked to a kit", async () => {
+  it("refuses a QR that is already linked to a box", async () => {
     qrMocks.getQr.mockResolvedValue({
       id: "qr-target",
       organizationId: "org-1",

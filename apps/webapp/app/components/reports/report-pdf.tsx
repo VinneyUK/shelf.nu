@@ -580,7 +580,7 @@ function AssetInventoryPreview({
               <th className="border-b border-gray-200 p-2">Asset</th>
               <th className="border-b border-gray-200 p-2">Status</th>
               <th className="border-b border-gray-200 p-2">Category</th>
-              <th className="border-b border-gray-200 p-2">Location</th>
+              <th className="border-b border-gray-200 p-2">Place</th>
               <th className="border-b border-gray-200 p-2">Assigned To</th>
               <th className="border-b border-gray-200 p-2 text-right">Value</th>
             </tr>

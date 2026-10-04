@@ -49,12 +49,12 @@ describe("attachKitNamesToBookingAssets", () => {
     findManyMock.mockReset();
   });
 
-  it("resolves kit names on kit slices, leaves standalone slices untouched, and dedupes the read", async () => {
+  it("resolves box names on box slices, leaves standalone slices untouched, and dedupes the read", async () => {
     findManyMock.mockResolvedValue([
       // why: Prisma's typed return is richer than the helper reads; only
       // `id` + `kit` matter, so a narrow object cast keeps the fixture small.
-      { id: "ak1", kit: { id: "k1", name: "Kit One" } },
-      { id: "ak2", kit: { id: "k2", name: "Kit Two" } },
+      { id: "ak1", kit: { id: "k1", name: "Box One" } },
+      { id: "ak2", kit: { id: "k2", name: "Box Two" } },
     ] as never);
 
     // `ak1` appears on both assets — it must collapse to ONE id in the read.
@@ -93,15 +93,15 @@ describe("attachKitNamesToBookingAssets", () => {
 
     // Kit slices carry the resolved name/id.
     const kitSliceA = assets[0].bookingAssets[1] as Slice;
-    expect(kitSliceA.kitName).toBe("Kit One");
+    expect(kitSliceA.kitName).toBe("Box One");
     expect(kitSliceA.kitId).toBe("k1");
 
     const kitSliceB = assets[1].bookingAssets[1] as Slice;
-    expect(kitSliceB.kitName).toBe("Kit Two");
+    expect(kitSliceB.kitName).toBe("Box Two");
     expect(kitSliceB.kitId).toBe("k2");
   });
 
-  it("yields kitName: null for a kit outside the caller's org (not leaked)", async () => {
+  it("yields kitName: null for a box outside the caller's org (not leaked)", async () => {
     // The org-scoped read returns nothing for a kit that belongs to another
     // org, so the slice resolves to null rather than surfacing a foreign name.
     findManyMock.mockResolvedValue([] as never);
@@ -120,7 +120,7 @@ describe("attachKitNamesToBookingAssets", () => {
     expect(slice.kitId).toBeNull();
   });
 
-  it("early-returns without a DB read when there are no kit slices", async () => {
+  it("early-returns without a DB read when there are no box slices", async () => {
     const assets = [
       { bookingAssets: [{ assetKitId: null } satisfies Slice] },
       { bookingAssets: [] },

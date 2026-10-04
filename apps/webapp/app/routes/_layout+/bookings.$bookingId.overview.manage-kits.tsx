@@ -98,7 +98,7 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 import { tw } from "~/utils/tw";
 
-export const meta = () => [{ title: appendToMetaTitle("Manage kits") }];
+export const meta = () => [{ title: appendToMetaTitle("Manage boxes") }];
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: styles }];
 
@@ -197,8 +197,8 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         cause: null,
         label: "Booking",
         message: isSelfServiceOrBase
-          ? "You are unable to manage kits at this point because the booking is already reserved. Cancel this booking and create another one if you need to make changes."
-          : "Changing of kits is not allowed for current status of booking.",
+          ? "You are unable to manage boxes at this point because the booking is already reserved. Cancel this booking and create another one if you need to make changes."
+          : "Changing of boxes is not allowed for current status of booking.",
         shouldBeCaptured: false,
       });
     }
@@ -323,13 +323,13 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 
     return payload({
       header: {
-        title: `Manage kits for '${booking?.name}'`,
-        subHeading: "Fill up the booking with the kits of your choice",
+        title: `Manage boxes for '${booking?.name}'`,
+        subHeading: "Fill up the booking with the boxes of your choice",
       },
-      searchFieldLabel: "Search kits",
+      searchFieldLabel: "Search boxes",
       searchFieldTooltip: {
-        title: "Search your kit database",
-        text: "Search kits based on name or description",
+        title: "Search your box database",
+        text: "Search boxes based on name or description",
       },
       showSidebar: true,
       noScroll: true,
@@ -430,8 +430,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         cause: null,
         label: "Booking",
         message: isSelfServiceOrBase
-          ? "You are unable to manage kits at this point because the booking is already reserved. Cancel this booking and create another one if you need to make changes."
-          : "Changing of kits is not allowed for current status of booking.",
+          ? "You are unable to manage boxes at this point because the booking is already reserved. Cancel this booking and create another one if you need to make changes."
+          : "Changing of boxes is not allowed for current status of booking.",
         shouldBeCaptured: false,
       });
     }
@@ -558,7 +558,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         label: "Kit",
         title: "Not allowed. Assets already checked out",
 
-        message: `You cannot add checked out kits to a ongoing booking. Please check the status of the following kits: ${checkedOutKits
+        message: `You cannot add checked out boxes to a ongoing booking. Please check the status of the following boxes: ${checkedOutKits
           .map((k) => k.name)
           .join(", ")}`,
         additionalData: {
@@ -693,10 +693,10 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     // Send email to custodian about kit changes
     const kitChanges: string[] = [];
     if (newAssetIds.length > 0) {
-      kitChanges.push("Kits were added to the booking");
+      kitChanges.push("Boxes were added to the booking");
     }
     if (removedKitIds.length > 0) {
-      kitChanges.push("Kits were removed from the booking");
+      kitChanges.push("Boxes were removed from the booking");
     }
     if (kitChanges.length > 0) {
       kitChanges.push("View booking activity for full details");
@@ -859,7 +859,8 @@ export default function AddKitsToBooking() {
             ) : null}
           </TabsTrigger>
           <TabsTrigger className="flex-1 gap-x-2" value="kits">
-            Kits
+            
+            Boxes
             {selectedBulkItemsCount > 0 ? (
               <GrayBadge className="size-[20px] border border-primary-200 bg-primary-50 text-[10px] leading-[10px] text-primary-700">
                 {selectedBulkItemsCount}
@@ -894,7 +895,7 @@ export default function AddKitsToBooking() {
        */}
       {activeTab === "kits" ? (
         <Filters
-          slots={{ "right-of-search": <AvailabilitySelect label="kits" /> }}
+          slots={{ "right-of-search": <AvailabilitySelect label="boxes" /> }}
           innerWrapperClassName="justify-between"
           className="justify-between !border-t-0 border-b px-6 md:flex"
         />
@@ -916,10 +917,10 @@ export default function AddKitsToBooking() {
           }}
           emptyStateClassName="py-10"
           customEmptyStateContent={{
-            title: "You haven't created any kits yet.",
-            text: "What are you waiting for? Create your first kit now!",
+            title: "You haven't created any boxes yet.",
+            text: "What are you waiting for? Create your first box now!",
             newButtonRoute: "/kits/new",
-            newButtonContent: "New kit",
+            newButtonContent: "New box",
           }}
           hideFirstHeaderColumn
           bulkActions={<> </>}
@@ -928,7 +929,7 @@ export default function AddKitsToBooking() {
             <>
               <Th></Th>
               <Th>Description</Th>
-              <Th>Location</Th>
+              <Th>Place</Th>
               <Th>Assets</Th>
             </>
           }
@@ -966,7 +967,7 @@ export default function AddKitsToBooking() {
       >
         {activeTab === "kits" ? (
           <div className="flex flex-col justify-center gap-1">
-            {selectedBulkItems.length} kits selected
+            {selectedBulkItems.length}  boxes selected
           </div>
         ) : null}
         <div className="flex gap-3">
@@ -1021,8 +1022,9 @@ export default function AddKitsToBooking() {
           void submit(formRef.current);
         }}
       >
-        You have added some kits to the booking but haven't saved it yet. Do you
-        want to confirm adding those kits?
+        
+        You have added some boxes to the booking but haven't saved it yet. Do you
+        want to confirm adding those boxes?
       </UnsavedChangesAlert>
     </Tabs>
   );

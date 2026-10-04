@@ -468,7 +468,7 @@ describe("getAssetAvailabilityBatch vs computeCheckedOutForAsset (real implement
   // #2790 ③: a QT asset with BOTH a standalone free-pool slice and a kit-driven
   // slice on the same booking. Only the standalone checked-out units feed
   // `physicalAvailable`; the displayed `checkedOut` is still the full sum.
-  it("mixed standalone + kit: only standalone checked-out feeds physicalAvailable", async () => {
+  it("mixed standalone + box: only standalone checked-out feeds physicalAvailable", async () => {
     const client = createFakeClient({
       // total 20, kit membership qty 5 (inKits = 5).
       assets: [{ id: "a1", quantity: 20 }],

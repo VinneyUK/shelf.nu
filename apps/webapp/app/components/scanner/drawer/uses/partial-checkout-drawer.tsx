@@ -824,11 +824,11 @@ export default function PartialCheckoutDrawer({
       count: alreadyCheckedOutKits.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s have" : " has"}`}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s have" : " has"}`}</strong>{" "}
           already been checked out for this booking.
         </>
       ),
-      description: "All assets from these kits have already been checked out",
+      description: "All assets from these boxes have already been checked out",
       onResolve: () => removeItemsFromList(qrIdsOfAlreadyCheckedOutKits),
     },
     {
@@ -837,10 +837,11 @@ export default function PartialCheckoutDrawer({
       message: (count: number) => (
         <>
           <strong>{`${count} asset${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          already covered by scanned kit QR codes.
+          
+          already covered by scanned box QR codes.
         </>
       ),
-      description: "Kit QR codes include all kit assets automatically",
+      description: "Box QR codes include all box assets automatically",
       onResolve: () => removeItemsFromList(qrIdsOfRedundantAssets),
     },
     {
@@ -848,7 +849,7 @@ export default function PartialCheckoutDrawer({
       count: kitsNotInBooking.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong> not
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong> not
           part of this booking.
         </>
       ),
@@ -1088,7 +1089,7 @@ export default function PartialCheckoutDrawer({
               scanned
               <InfoTooltip
                 iconClassName="size-4"
-                content={<p>All assets inside kits are counted individually</p>}
+                content={<p>All assets inside boxes are counted individually</p>}
               />
             </span>
             <span className="flex h-5 flex-col justify-center font-medium text-gray-900">
@@ -1200,10 +1201,10 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
     // Custom preset for redundant assets (highest priority - blocking issue)
     {
       condition: isRedundant && isInBooking,
-      badgeText: "Already covered by kit QR",
+      badgeText: "Already covered by box QR",
       tooltipTitle: "Asset already covered",
       tooltipContent:
-        "This asset is already covered by the scanned kit QR code. Remove this individual asset scan.",
+        "This asset is already covered by the scanned box QR code. Remove this individual asset scan.",
       priority: 90, // Highest priority - blocking issue
     },
     // Custom preset for QUANTITY_TRACKED assets with zero remaining units —
@@ -1258,11 +1259,11 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
     // Custom preset for kit assets - different message based on whether it's the last one
     {
       condition: !!assetKitId && !isRedundant, // Only show if not redundant
-      badgeText: "Part of kit",
-      tooltipTitle: "Asset is part of a kit",
+      badgeText: "Part of box",
+      tooltipTitle: "Asset is part of a box",
       tooltipContent: isLastKitAssetInBooking
-        ? "This is the last asset from this kit in the booking. Checking it out will also mark the entire kit as checked out."
-        : "This asset belongs to a kit. Checking out this asset individually will not affect the kit status or other kit assets.",
+        ? "This is the last asset from this box in the booking. Checking it out will also mark the entire box as checked out."
+        : "This asset belongs to a box. Checking out this asset individually will not affect the box status or other box assets.",
       priority: 60, // Lower priority than blocking issues
       className: "bg-blue-50 border-blue-200 text-blue-700", // Informational blue
     },
@@ -1504,9 +1505,9 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: allKitAssetsInBookingAreCheckedOut,
       badgeText: "Already checked out",
-      tooltipTitle: "Kit already checked out",
+      tooltipTitle: "Box already checked out",
       tooltipContent:
-        "All assets from this kit have already been checked out for this booking and cannot be checked out again.",
+        "All assets from this box have already been checked out for this booking and cannot be checked out again.",
       priority: 85, // High priority - blocking issue
     },
     kitLabelPresets.inCustody(kit.status === AssetStatus.IN_CUSTODY),
@@ -1517,18 +1518,18 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: noKitAssetsInBooking,
       badgeText: "Not in this booking",
-      tooltipTitle: "Kit not part of booking",
+      tooltipTitle: "Box not part of booking",
       tooltipContent:
-        "None of this kit's assets are part of the current booking.",
+        "None of this box's assets are part of the current booking.",
       priority: 80,
     },
     // Custom preset for "partially in booking" - informational only
     {
       condition: !allKitAssetsInBooking && !noKitAssetsInBooking,
       badgeText: `${kitAssetsInBooking.length}/${kitAssetsAll.length} assets in booking`,
-      tooltipTitle: "Kit partially in booking",
+      tooltipTitle: "Box partially in booking",
       tooltipContent:
-        "Only some of this kit's assets are part of the current booking.",
+        "Only some of this box's assets are part of the current booking.",
       priority: 70,
       className: "bg-blue-50 border-blue-200 text-blue-700", // Informational blue
     },
@@ -1565,7 +1566,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>

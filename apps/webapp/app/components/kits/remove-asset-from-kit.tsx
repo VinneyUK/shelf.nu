@@ -54,14 +54,15 @@ export default function RemoveAssetFromKit({
               <Icon icon="trash" />
             </span>
           </div>
-          <AlertDialogTitle>Remove "{asset.title}" from kit</AlertDialogTitle>
+          <AlertDialogTitle>Remove "{asset.title}" from box</AlertDialogTitle>
           {/* The notice lives INSIDE the description (as a block-displayed
               span, so the markup stays valid inside Radix's <p>) — Radix wires
               the description into the dialog's `aria-describedby`, so it is
               announced on open rather than appearing silently. */}
           <AlertDialogDescription>
-            Are you sure you want to remove this asset from the kit? Asset will
-            lose any status that is inherited by the kit.
+            
+            Are you sure you want to remove this asset from the box? Asset will
+            lose any status that is inherited by the box.
             <BookingRemovalNotice
               // `text-left` because AlertDialogHeader centres its text on
               // mobile; a centred warning block reads as decoration.

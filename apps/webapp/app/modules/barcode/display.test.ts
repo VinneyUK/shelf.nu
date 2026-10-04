@@ -473,7 +473,7 @@ describe("describeCodeFallback", () => {
     });
   });
 
-  it("tells a kit on a SAM ID workspace that kits have none, and offers no fix", () => {
+  it("tells a box on a SAM ID workspace that boxes have none, and offers no fix", () => {
     // why: `Kit` has no `sequentialId` column and no UI to set one, so the
     // generic "this item has no SAM ID" would imply a fix nobody can make.
     expect(
@@ -484,12 +484,12 @@ describe("describeCodeFallback", () => {
         entityKind: "kit",
       })
     ).toEqual({
-      text: "Your workspace prefers SAM ID, which kits do not have. Showing the QR Code ID instead.",
+      text: "Your workspace prefers SAM ID, which boxes do not have. Showing the QR Code ID instead.",
       fixable: false,
     });
   });
 
-  it("words a kit's missing barcode the same as an asset's", () => {
+  it("words a box's missing barcode the same as an asset's", () => {
     // why: kits do carry barcodes, so only SAM ID earns the kit wording.
     expect(
       describeCodeFallback({

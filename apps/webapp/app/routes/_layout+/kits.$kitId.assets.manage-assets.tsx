@@ -77,14 +77,14 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 import { tw } from "~/utils/tw";
 
-export const meta = () => [{ title: appendToMetaTitle("Manage kit assets") }];
+export const meta = () => [{ title: appendToMetaTitle("Manage box assets") }];
 
 type LoaderData = typeof loader;
 
 const ASSET_KIT_FILTERS = [
   { label: "All assets", value: "ALL" },
-  { label: "Not in any kit", value: "NOT_IN_KIT" },
-  { label: "In other kits", value: "IN_OTHER_KITS" },
+  { label: "Not in any box", value: "NOT_IN_KIT" },
+  { label: "In other boxes", value: "IN_OTHER_KITS" },
 ];
 
 /**
@@ -169,9 +169,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         .catch((cause) => {
           throw new ShelfError({
             cause,
-            title: "Kit not found!",
+            title: "Box not found!",
             message:
-              "The kit you are trying to access does not exists or you do not have permission to asset it.",
+              "The box you are trying to access does not exists or you do not have permission to asset it.",
             status: 404,
             label: "Kit",
           });
@@ -232,12 +232,12 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     return payload({
       header: {
         title: `Add assets for ${kit.name}`,
-        subHeading: "Fill up the kit with the assets of your choice.",
+        subHeading: "Fill up the box with the assets of your choice.",
       },
       searchFieldLabel: "Search assets",
       searchFieldTooltip: {
         title: "Search your asset database",
-        text: "Search assets based on asset name or description, category, tag, location, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
+        text: "Search assets based on asset name or description, category, tag, place, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
       },
       showSidebar: true,
       noScroll: true,
@@ -498,7 +498,7 @@ export default function ManageAssetsInKit() {
                   name="assetKitFilter"
                   items={ASSET_KIT_FILTERS}
                   defaultValue="ALL"
-                  placeholder="Filter by kit"
+                  placeholder="Filter by box"
                 />
               </div>
             ),
@@ -531,11 +531,12 @@ export default function ManageAssetsInKit() {
         <DynamicDropdown
           trigger={
             <div className="flex h-6 cursor-pointer items-center gap-2">
-              Locations <ChevronRight className="hidden rotate-90 md:inline" />
+              
+              Places <ChevronRight className="hidden rotate-90 md:inline" />
             </div>
           }
           model={{ name: "location", queryKey: "name" }}
-          label="Filter by Location"
+          label="Filter by Place"
           initialDataKey="locations"
           countKey="totalLocations"
           renderItem={({ metadata }) => (
@@ -605,10 +606,10 @@ export default function ManageAssetsInKit() {
           bulkActions={<> </>}
           headerChildren={
             <>
-              <Th>Kit</Th>
+              <Th>Box</Th>
               <Th>Category</Th>
               <Th>Tags</Th>
-              <Th>Location</Th>
+              <Th>Place</Th>
             </>
           }
           disableSelectAllItems={true}
@@ -674,17 +675,19 @@ export default function ManageAssetsInKit() {
                     </div>
                   </div>
 
-                  <h3>Add Assets to kit?</h3>
+                  <h3>Add Assets to box?</h3>
                 </div>
 
                 <div>
                   {kitIsInCustody && (
                     <p className="mb-3">
-                      This kit is currently{" "}
+                      
+                      This box is currently{" "}
                       {kit.status === KitStatus.IN_CUSTODY
                         ? "in custody"
                         : "checked out"}
-                      . Any assets you add will automatically inherit the kit's
+                      
+                      . Any assets you add will automatically inherit the box's
                       status.
                     </p>
                   )}
@@ -700,21 +703,22 @@ export default function ManageAssetsInKit() {
                       {qtyEditedInExistingKitRows.length === 1
                         ? "1 asset"
                         : `${qtyEditedInExistingKitRows.length} assets`}{" "}
-                      already in this kit. The custodian's allocation will be
+                      
+                      already in this box. The custodian's allocation will be
                       adjusted by the same amount when you confirm.
                     </div>
                   )}
                   {kit.location ? (
                     <p className="mb-3">
-                      <strong>Location Update Notice:</strong> Adding assets to
-                      this kit will automatically update their location to{" "}
+                      <strong>Place Update Notice:</strong>  Adding assets to
+                      this box will automatically update their place to{" "}
                       <strong>{kit.location.name}</strong>.
                     </p>
                   ) : (
                     <p className="mb-3">
-                      <strong>Location Update Notice:</strong> Adding assets to
-                      this kit will remove their current location since this kit
-                      has no location assigned.
+                      <strong>Place Update Notice:</strong>  Adding assets to
+                      this box will remove their current place since this box
+                      has no place assigned.
                     </p>
                   )}
                   {/* Removal notice: deselecting a row is destructive even
@@ -917,8 +921,9 @@ const RowComponent = ({
                         </h2>
                         <div className="text-wrap text-xs font-medium text-gray-500">
                           Asset is currently in custody of a team member. <br />{" "}
+                          
                           Make sure the asset has an Available status in order
-                          to add it to this kit.
+                          to add it to this box.
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -945,8 +950,8 @@ const RowComponent = ({
                         </h2>
                         <div className="text-wrap text-xs font-medium text-gray-500">
                           Asset is currently in checked out via a booking.{" "}
-                          <br /> Make sure the asset has an Available status in
-                          order to add it to this kit.
+                          <br />  Make sure the asset has an Available status in
+                          order to add it to this box.
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -957,7 +962,8 @@ const RowComponent = ({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center justify-center rounded-md border border-success-200 bg-success-50 px-1.5 py-0.5 text-center text-xs text-success-700">
-                          Part of kit
+                          
+                          Part of box
                         </div>
                       </TooltipTrigger>
 
@@ -967,11 +973,13 @@ const RowComponent = ({
                         className="md:w-80"
                       >
                         <h2 className="mb-1 text-xs font-semibold text-gray-700">
-                          Asset is already part of this kit
+                          
+                          Asset is already part of this box
                         </h2>
                         <div className="text-wrap text-xs font-medium text-gray-500">
+                          
                           Asset is currently in checked out via a booking and is
-                          already part of this kit.
+                          already part of this box.
                         </div>
                       </TooltipContent>
                     </Tooltip>

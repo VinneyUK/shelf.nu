@@ -22,23 +22,23 @@ describe("describeBookingRows", () => {
     const rows = [...Array(18).fill(asset), kit, kit];
     // 20 rows, but 25 assets on the index — the two kits hold the other 7, and
     // each kit row states its own member count.
-    expect(describeBookingRows(rows)).toBe("18 assets and 2 kits");
+    expect(describeBookingRows(rows)).toBe("18 assets and 2 boxes");
   });
 
-  it("says only assets when the booking has no kits", () => {
+  it("says only assets when the booking has no boxes", () => {
     // The reported booking's shape. Must match the index verbatim: "7 assets".
     expect(describeBookingRows(Array(7).fill(asset))).toBe("7 assets");
   });
 
-  it("says only kits when every row is a kit", () => {
+  it("says only boxes when every row is a box", () => {
     // Not "0 assets and 2 kits" — a leading zero reads as a problem.
-    expect(describeBookingRows([kit, kit])).toBe("2 kits");
+    expect(describeBookingRows([kit, kit])).toBe("2 boxes");
   });
 
   it("uses singular for exactly one of each", () => {
     expect(describeBookingRows([asset])).toBe("1 asset");
-    expect(describeBookingRows([kit])).toBe("1 kit");
-    expect(describeBookingRows([asset, kit])).toBe("1 asset and 1 kit");
+    expect(describeBookingRows([kit])).toBe("1 box");
+    expect(describeBookingRows([asset, kit])).toBe("1 asset and 1 box");
   });
 
   it("describes an empty list as zero assets rather than saying nothing", () => {

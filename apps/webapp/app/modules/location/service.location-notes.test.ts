@@ -102,7 +102,7 @@ vi.mock("~/modules/activity-event/service.server", () => ({
 vi.mock("~/modules/asset/utils.server", () => ({
   getAssetsWhereInput: vi.fn(() => ({})),
   getLocationUpdateNoteContent: vi.fn(() => "asset note"),
-  getKitLocationUpdateNoteContent: vi.fn(() => "kit asset note"),
+  getKitLocationUpdateNoteContent: vi.fn(() => "box asset note"),
 }));
 
 vi.mock("~/modules/kit/utils.server", () => ({
@@ -158,7 +158,7 @@ const {
   createLocationChangeNote,
 } = await import("./service.server");
 
-describe("location service activity logging", () => {
+describe("place service activity logging", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -234,7 +234,7 @@ describe("location service activity logging", () => {
   });
 
   describe("createLocationChangeNote", () => {
-    it("creates an asset note for the location change", async () => {
+    it("creates an asset note for the place change", async () => {
       await createLocationChangeNote({
         currentLocation: { id: "loc-1", name: "Old" },
         newLocation: { id: "loc-2", name: "New" },
@@ -608,7 +608,7 @@ describe("location service activity logging", () => {
   });
 
   describe("updateLocationKits", () => {
-    it("records notes when kits are assigned", async () => {
+    it("records notes when boxes are assigned", async () => {
       dbMocks.location.findUniqueOrThrow.mockResolvedValueOnce({
         id: "loc-1",
         organizationId: "org-1",
@@ -629,7 +629,7 @@ describe("location service activity logging", () => {
       const kitRecords = [
         {
           id: "kit-1",
-          name: "Shoot Kit",
+          name: "Shoot Box",
           assetKits: kitAssets.map((asset) => ({ asset })),
         },
       ];
@@ -650,7 +650,7 @@ describe("location service activity logging", () => {
       expect(locationNoteMocks.createSystemLocationNote).toHaveBeenCalledWith(
         expect.objectContaining({
           locationId: "loc-1",
-          content: expect.stringContaining("Shoot Kit"),
+          content: expect.stringContaining("Shoot Box"),
         })
       );
     });
@@ -691,7 +691,7 @@ describe("location service activity logging", () => {
       expect(dbMocks.location.update).not.toHaveBeenCalled();
     });
 
-    it("skips the count query when no kit IDs are submitted", async () => {
+    it("skips the count query when no box IDs are submitted", async () => {
       await updateLocationKits({
         locationId: "loc-1",
         kitIds: [],

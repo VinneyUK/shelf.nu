@@ -38,7 +38,7 @@ export default function KpiCards() {
         to="/categories"
       />
       <KpiCard
-        label="Locations"
+        label="Places"
         value={locationsCount.toLocaleString()}
         to="/locations"
       />

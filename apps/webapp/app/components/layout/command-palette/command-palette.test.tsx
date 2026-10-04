@@ -57,7 +57,7 @@ describe("getAssetCommandValue", () => {
 describe("getKitCommandValue", () => {
   const baseKit: KitSearchResult = {
     id: "kit-456",
-    name: "Camera Kit",
+    name: "Camera Box",
     description: "Professional camera equipment",
     status: "AVAILABLE",
     assetCount: 5,
@@ -67,7 +67,7 @@ describe("getKitCommandValue", () => {
     const value = getKitCommandValue(baseKit);
 
     expect(value).toContain("kit-456");
-    expect(value).toContain("Camera Kit");
+    expect(value).toContain("Camera Box");
     expect(value).toContain("Professional camera equipment");
   });
 
@@ -78,7 +78,7 @@ describe("getKitCommandValue", () => {
     });
 
     expect(value).toContain("kit-456");
-    expect(value).toContain("Camera Kit");
+    expect(value).toContain("Camera Box");
     expect(value).not.toContain("null");
   });
 });

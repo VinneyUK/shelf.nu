@@ -124,12 +124,13 @@ export function AssetIndexFilters({
             <DynamicDropdown
               trigger={
                 <div className="flex cursor-pointer items-center gap-2">
-                  Locations{" "}
+                  
+                  Places{" "}
                   <ChevronRight className="hidden rotate-90 md:inline" />
                 </div>
               }
               model={{ name: "location", queryKey: "name" }}
-              label="Filter by location"
+              label="Filter by place"
               initialDataKey="locations"
               countKey="totalLocations"
               withoutValueItem={{

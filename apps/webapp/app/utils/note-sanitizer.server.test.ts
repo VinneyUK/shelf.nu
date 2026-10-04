@@ -48,11 +48,11 @@ describe("sanitizeNoteContent", () => {
     );
   });
 
-  it("converts assets and kits markdoc tags to readable counts", () => {
+  it("converts assets and boxes markdoc tags to readable counts", () => {
     const content =
       'Removed {% assets_list count=3 ids="1,2,3" action="removed" /%} and assigned {% kits_list count=1 ids="kit" action="added" /%}.';
 
-    expect(sanitize(content)).toBe("Removed 3 assets and assigned 1 kit.");
+    expect(sanitize(content)).toBe("Removed 3 assets and assigned 1 box.");
   });
 
   it("normalizes description markdoc tags", () => {

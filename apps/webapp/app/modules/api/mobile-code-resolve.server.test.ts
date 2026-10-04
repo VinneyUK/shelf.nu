@@ -302,14 +302,14 @@ describe("resolveMobileScannedCode SAM-shaped barcode fallback", () => {
     );
   });
 
-  it("resolves a kit-linked barcode with the kit shaped as the QR path shapes it", async () => {
+  it("resolves a kit-linked barcode with the box shaped as the QR path shapes it", async () => {
     assetFindFirst.mockResolvedValue(null);
     barcodeByValue.mockResolvedValue({
       value: SAM_SHAPED,
       assetId: null,
       kitId: "kit-1",
       asset: null,
-      kit: { id: "kit-1", name: "Kit one" },
+      kit: { id: "kit-1", name: "Box one" },
     });
 
     const result = await resolveMobileScannedCode(resolveArgs(SAM_SHAPED));
@@ -323,7 +323,7 @@ describe("resolveMobileScannedCode SAM-shaped barcode fallback", () => {
         kitId: "kit-1",
         organizationId: ORG_ID,
         asset: null,
-        kit: { id: "kit-1", name: "Kit one" },
+        kit: { id: "kit-1", name: "Box one" },
       },
     });
   });

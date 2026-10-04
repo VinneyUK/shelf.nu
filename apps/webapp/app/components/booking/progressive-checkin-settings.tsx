@@ -73,10 +73,11 @@ export function ProgressiveCheckinSettings({
           onChange={(e) => void fetcher.submit(e.currentTarget)}
         >
           <FormRow
-            rowLabel="Count each kit as a single unit"
+            rowLabel="Count each box as a single unit"
             subHeading={
               <div>
-                When visualising the state of a booking, treat each kit as one
+                
+                When visualising the state of a booking, treat each box as one
                 unit rather than counting the assets inside it.
               </div>
             }
@@ -88,10 +89,11 @@ export function ProgressiveCheckinSettings({
                 name={countKitsField}
                 disabled={disabled}
                 defaultChecked={defaultValue}
-                title="Count each kit as a single unit"
+                title="Count each box as a single unit"
               />
               <label htmlFor={countKitsFieldId} className="sr-only">
-                Count each kit as a single unit
+                
+                Count each box as a single unit
               </label>
             </div>
           </FormRow>

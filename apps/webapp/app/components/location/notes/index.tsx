@@ -100,7 +100,8 @@ export const LocationNotes = ({
             />
             <h4>No Notes</h4>
             <p>
-              Your location{" "}
+              
+              Your place{" "}
               <span className="font-semibold">{location?.name ?? "—"}</span> has
               no notes
               <br />

@@ -46,10 +46,10 @@ export default function BulkAddToKitDialog() {
     <BulkUpdateDialogContent
       ref={zo.ref}
       type="add-to-kit"
-      title="Add assets to a kit"
+      title="Add assets to a box"
       description={`${selectedAssets} asset${
         selectedAssets > 1 ? "s" : ""
-      } will be added to the kit. Please select a kit to add the assets to`}
+      } will be added to the box. Please select a box to add the assets to`}
       actionUrl="/api/assets/bulk-add-to-kit"
       arrayFieldId="assetIds"
     >
@@ -59,10 +59,10 @@ export default function BulkAddToKitDialog() {
             <div className="mb-4">
               <WarningBox>
                 <span>
-                  {quantityTrackedCount} quantity-tracked asset(s) in your
+                  {quantityTrackedCount}  quantity-tracked asset(s) in your
                   selection will be skipped. Quantity-tracked assets must be
-                  added to a kit individually with a specific quantity from the
-                  kit's manage-assets page.
+                  added to a box individually with a specific quantity from the
+                  box's manage-assets page.
                 </span>
               </WarningBox>
             </div>
@@ -71,7 +71,7 @@ export default function BulkAddToKitDialog() {
             <KitSelector
               name={zo.fields.kit()}
               kits={data?.kits || []}
-              placeholder={isLoading ? "Loading..." : "Select a kit"}
+              placeholder={isLoading ? "Loading..." : "Select a box"}
               isLoading={isLoading}
               error={zo.errors.kit()?.message || error || fetcherError}
             />

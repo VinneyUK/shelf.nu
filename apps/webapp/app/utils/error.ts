@@ -484,7 +484,7 @@ export function throwIfAssetQuantityOverAllocation(
  * errors (the sibling single-kit trigger uses different wording).
  */
 export const INDIVIDUAL_ASSET_ALREADY_PLACED_MARKER =
-  "already placed at a location";
+  "already placed at a place";
 
 /**
  * Detects the "INDIVIDUAL asset already placed at a location" DB-trigger
@@ -538,7 +538,7 @@ export function throwIfIndividualAssetAlreadyPlaced(
     cause,
     label,
     message:
-      "An individual asset can only be in one location at a time, and one of these assets is already placed at another location. Remove it from its current location first, then try again.",
+      "An individual asset can only be in one place at a time, and one of these assets is already placed at another place. Remove it from its current place first, then try again.",
     status: 400,
     shouldBeCaptured: false,
     additionalData,

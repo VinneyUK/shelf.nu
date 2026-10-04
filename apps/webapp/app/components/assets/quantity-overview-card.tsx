@@ -319,7 +319,7 @@ export function QuantityOverviewCard({
           to any kit. The detailed per-kit breakdown lives in the dedicated
           "Included in kits" card. */}
       {inKits > 0 ? (
-        <OverviewRow label="In kits" value={formatWithUnit(inKits, unit)} />
+        <OverviewRow label="In boxes" value={formatWithUnit(inKits, unit)} />
       ) : null}
       {/* "In locations" mirrors "In kits": only renders when > 0 so
           assets with no placements stay uncluttered. Always sits next
@@ -328,7 +328,7 @@ export function QuantityOverviewCard({
           "Placed at locations" card. */}
       {inLocations > 0 ? (
         <OverviewRow
-          label="In locations"
+          label="In places"
           value={formatWithUnit(inLocations, unit)}
         />
       ) : null}
@@ -344,10 +344,10 @@ export function QuantityOverviewCard({
           label="Over-placed"
           value={formatWithUnit(overPlacedBy, unit)}
           warning
-          warningMessage={`Locations claim ${formatWithUnit(
+          warningMessage={`Places claim ${formatWithUnit(
             overPlacedBy,
             unit
-          )} more than this asset's total. Open "Manage placements" and lower the location that lost them.`}
+          )} more than this asset's total. Open "Manage placements" and lower the place that lost them.`}
         />
       ) : null}
       <OverviewRow label="In custody" value={formatWithUnit(inCustody, unit)} />

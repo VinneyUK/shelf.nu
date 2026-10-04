@@ -85,7 +85,7 @@ const STANDALONE: AvailabilitySlice = {
 };
 const KIT_SLICE: AvailabilitySlice = {
   assetKitId: "ak1",
-  kitName: "Camera Kit",
+  kitName: "Camera Box",
   quantity: 3,
 };
 
@@ -111,7 +111,7 @@ describe("EventCardContent — per-slice breakdown gating", () => {
     expect(screen.queryByText("Reserved on this booking:")).toBeNull();
   });
 
-  it("renders an ordered, pluralized breakdown for standalone + kit slices", () => {
+  it("renders an ordered, pluralized breakdown for standalone + box slices", () => {
     // Pass kit-first to prove the component sorts standalone before kit.
     const { container } = render(
       <EventCardContent
@@ -126,7 +126,7 @@ describe("EventCardContent — per-slice breakdown gating", () => {
 
     expect(screen.getByText("Reserved on this booking:")).toBeInTheDocument();
     expect(screen.getByText("Standalone")).toBeInTheDocument();
-    expect(screen.getByText('via "Camera Kit"')).toBeInTheDocument();
+    expect(screen.getByText('via "Camera Box"')).toBeInTheDocument();
     expect(screen.getByText("Qty 2")).toBeInTheDocument();
     expect(screen.getByText("Qty 3")).toBeInTheDocument();
     // Plural "units" for a total > 1.
@@ -135,14 +135,14 @@ describe("EventCardContent — per-slice breakdown gating", () => {
     // Standalone row sorts first even though it was supplied last.
     const rows = container.querySelectorAll("li");
     expect(rows[0]).toHaveTextContent("Standalone");
-    expect(rows[1]).toHaveTextContent('via "Camera Kit"');
+    expect(rows[1]).toHaveTextContent('via "Camera Box"');
   });
 
   it("uses the singular unit label for a single-unit kit-only slice", () => {
     render(
       <EventCardContent
         booking={makeBooking({
-          slices: [{ assetKitId: "ak1", kitName: "Kit X", quantity: 1 }],
+          slices: [{ assetKitId: "ak1", kitName: "Box X", quantity: 1 }],
           sliceCount: 1,
           bookedTotal: 1,
           quantityTracked: true,
@@ -161,7 +161,7 @@ describe("EventCardContent — per-slice breakdown gating", () => {
           // INDIVIDUAL asset added to a booking via a kit: it is a single
           // physical unit, so `quantityTracked` is false and "Qty 1" would be
           // noise. Attribution ("via Kit") must still render.
-          slices: [{ assetKitId: "ak1", kitName: "Camera Kit", quantity: 1 }],
+          slices: [{ assetKitId: "ak1", kitName: "Camera Box", quantity: 1 }],
           sliceCount: 1,
           bookedTotal: 1,
           quantityTracked: false,
@@ -170,7 +170,7 @@ describe("EventCardContent — per-slice breakdown gating", () => {
     );
 
     // Kit attribution still shows...
-    expect(screen.getByText('via "Camera Kit"')).toBeInTheDocument();
+    expect(screen.getByText('via "Camera Box"')).toBeInTheDocument();
     // ...but the redundant per-slice Qty and the total are suppressed.
     expect(screen.queryByText(/^Qty /)).toBeNull();
     expect(screen.queryByText(/Total reserved/)).toBeNull();
@@ -258,12 +258,12 @@ describe("EventCardContent — returned asset", () => {
 // refactor silences it). `makeEventArg` returns the `{ event }` props shape.
 const RenderedEventCard = renderEventCard;
 
-describe("renderEventCard — kit glyph gating", () => {
+describe("renderEventCard — box glyph gating", () => {
   it("hides the glyph for the booking-calendar shape (no slices)", () => {
     render(<RenderedEventCard {...makeEventArg(makeBooking())} />);
 
     expect(screen.queryByTitle(/Reserved .* times on this booking/)).toBeNull();
-    expect(screen.queryByTitle("Booked via a kit")).toBeNull();
+    expect(screen.queryByTitle("Booked via a box")).toBeNull();
   });
 
   it("hides the glyph for a single standalone slice", () => {
@@ -279,11 +279,11 @@ describe("renderEventCard — kit glyph gating", () => {
       />
     );
 
-    expect(screen.queryByTitle("Booked via a kit")).toBeNull();
+    expect(screen.queryByTitle("Booked via a box")).toBeNull();
     expect(screen.queryByTitle(/Reserved .* times on this booking/)).toBeNull();
   });
 
-  it("renders the glyph with a slice count for standalone + kit slices", () => {
+  it("renders the glyph with a slice count for standalone + box slices", () => {
     render(
       <RenderedEventCard
         {...makeEventArg(

@@ -27,8 +27,8 @@ export default function BulkDeleteDialog() {
     <BulkUpdateDialogContent
       ref={zo.ref}
       type="trash"
-      title={`Delete ${totalSelected} kits`}
-      description={`Are you sure you want to delete all ${totalSelected} kits? This action cannot be undone.`}
+      title={`Delete ${totalSelected} boxes`}
+      description={`Are you sure you want to delete all ${totalSelected} boxes? This action cannot be undone.`}
       actionUrl="/api/kits/bulk-actions"
       arrayFieldId="kitIds"
     >

@@ -245,8 +245,8 @@ export function PreviewDisplay({
             but doesn't update through bulk import (click to see which)
           </summary>
           <p className="mt-1 text-xs text-gray-500">
-            {preview.ignoredColumns.join(", ")} — Shelf recognizes each of
-            these, but doesn't write to them here: some (e.g. Status, Kit,
+            {preview.ignoredColumns.join(", ")}  — Shelf recognizes each of
+            these, but doesn't write to them here: some (e.g. Status, Box,
             Custody) have their own dedicated workflows elsewhere in Shelf, some
             (e.g. Tracking method, QR ID, barcodes, or long-text custom fields)
             aren't supported for bulk update yet, and a duplicate identifier
@@ -285,7 +285,7 @@ export function PreviewDisplay({
             )}
             {preview.newEntities.locations.length > 0 && (
               <p>
-                <strong>New locations:</strong>{" "}
+                <strong>New places:</strong>{" "}
                 {preview.newEntities.locations.map((name, i) => (
                   <span key={name}>
                     {i > 0 && ", "}
@@ -435,7 +435,7 @@ export function PreviewDisplay({
                         preview.newEntities.locations.length > 0 &&
                           `${
                             preview.newEntities.locations.length
-                          } new location${
+                          } new place${
                             preview.newEntities.locations.length !== 1
                               ? "s"
                               : ""

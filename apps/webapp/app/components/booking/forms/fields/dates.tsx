@@ -277,7 +277,8 @@ export function WorkingHoursInfo({
             </p>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            Local hours of the physical location
+            
+            Local hours of the physical place
           </p>
           <div className="shrink-0">
             <WorkingHoursPreviewDialog workingHoursData={workingHoursData} />

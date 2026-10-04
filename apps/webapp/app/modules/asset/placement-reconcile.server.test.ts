@@ -316,7 +316,7 @@ describe("assertStockNotBelowManualPlacements", () => {
     await expect(
       assertStockNotBelowManualPlacements({ ...baseArgs, newTotal: 82, tx })
     ).rejects.toThrow(
-      'Cannot reduce "Nitrile Gloves" to 82 pcs — 87 pcs are assigned to locations. Lower the placements first, then reduce the total.'
+      'Cannot reduce "Nitrile Gloves" to 82 pcs — 87 pcs are assigned to places. Lower the placements first, then reduce the total.'
     );
   });
 
@@ -330,7 +330,7 @@ describe("assertStockNotBelowManualPlacements", () => {
 
     await expect(
       assertStockNotBelowManualPlacements({ ...baseArgs, newTotal: 90, tx })
-    ).rejects.toThrow("100 pcs are assigned to locations");
+    ).rejects.toThrow("100 pcs are assigned to places");
   });
 
   it("treats an asset with no placements as unconstrained", async () => {
@@ -341,7 +341,7 @@ describe("assertStockNotBelowManualPlacements", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("counts only manual rows, leaving the kit axis to its own constraint", async () => {
+  it("counts only manual rows, leaving the box axis to its own constraint", async () => {
     const { tx, findMany } = guardTxWith([]);
 
     await assertStockNotBelowManualPlacements({
@@ -368,7 +368,7 @@ describe("reportAmbiguousPlacementReconcile", () => {
     vi.clearAllMocks();
   });
 
-  it("logs the deficit and the contending locations", () => {
+  it("logs the deficit and the contending places", () => {
     // why: Logger is the observable output of this function; spying is the
     // only way to assert it without a real transport.
     const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});

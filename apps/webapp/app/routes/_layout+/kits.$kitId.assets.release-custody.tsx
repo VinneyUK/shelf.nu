@@ -22,7 +22,7 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 import { resolveTeamMemberName } from "~/utils/user";
 
-export const meta = () => [{ title: appendToMetaTitle("Release kit custody") }];
+export const meta = () => [{ title: appendToMetaTitle("Release box custody") }];
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
   const authSession = context.getSession();
@@ -123,7 +123,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
     sendNotification({
       title: `‘${kit.name}’ is no longer in custody of ‘${custodianName}’`,
-      message: "This kit is available again.",
+      message: "This box is available again.",
       icon: { name: "success", variant: "success" },
       senderId: userId,
     });
@@ -154,7 +154,7 @@ export default function ReleaseKitCustody() {
           <UserXIcon />
         </div>
         <div className="mb-5">
-          <h4>Release custody of kit</h4>
+          <h4>Release custody of box</h4>
           <p>
             Are you sure you want to release{" "}
             {isSelfService ? (

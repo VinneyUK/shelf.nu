@@ -25,7 +25,7 @@ const GenerateLocationSchema = z.object({
   numberOfLocations: z.coerce.number().min(1).max(500).default(100),
   image: z.instanceof(File, { message: "Image is required" }),
 });
-export const meta = () => [{ title: appendToMetaTitle("Generate locations") }];
+export const meta = () => [{ title: appendToMetaTitle("Generate places") }];
 
 export async function loader({ context }: LoaderFunctionArgs) {
   const { userId } = context.getSession();
@@ -92,8 +92,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
     });
 
     sendNotification({
-      title: "Locations created",
-      message: "Your locations have been created successfully",
+      title: "Places created",
+      message: "Your places have been created successfully",
       icon: { name: "success", variant: "success" },
       senderId: userId,
     });
@@ -112,9 +112,10 @@ export default function GenerateLocations() {
 
   return (
     <div className="rounded-md border bg-white p-4">
-      <h2>Generate locations</h2>
+      <h2>Generate places</h2>
       <p className="mb-4">
-        Generate locations for the given number of locations. This is useful for
+        
+        Generate places for the given number of places. This is useful for
         testing purposes.
       </p>
 
@@ -126,12 +127,12 @@ export default function GenerateLocations() {
       >
         <Input
           className="mb-4"
-          label="Number of location"
+          label="Number of place"
           type="number"
           min={1}
           max={500}
           required
-          placeholder="Enter the number of locations you want to create"
+          placeholder="Enter the number of places you want to create"
           name={zo.fields.numberOfLocations()}
           error={zo.errors.numberOfLocations()?.message}
         />

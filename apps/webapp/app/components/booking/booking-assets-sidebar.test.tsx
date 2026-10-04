@@ -243,7 +243,7 @@ describe("BookingAssetsSidebar QT stock badges", () => {
 
     // Kit groups start collapsed; the member row only exists once expanded.
     await userEvent.click(
-      await screen.findByRole("button", { name: "Toggle kit expand" })
+      await screen.findByRole("button", { name: "Toggle box expand" })
     );
 
     expect(await screen.findByText("Boards")).toBeInTheDocument();

@@ -374,7 +374,7 @@ describe("buildCsvExportDataFromAssets", () => {
     const assets = [
       {
         id: "asset-1",
-        title: "Camera Kit",
+        title: "Camera Box",
         status: "available",
         tags: [{ name: "photo" }, { name: "dslr" }],
         valuation: 1234.5,
@@ -488,7 +488,7 @@ describe("buildCsvExportDataFromAssets", () => {
     ]);
 
     expect(row).toEqual([
-      '"Camera Kit"',
+      '"Camera Box"',
       '"available"',
       '"photo, dslr"',
       '"$1,234.50"',

@@ -12,7 +12,7 @@ import { Button } from "../shared/button";
 export const BulkRemoveAssetsAndKitSchema = z.object({
   assetOrKitIds: z
     .array(z.string())
-    .min(1, "Please select at least one asset or kit."),
+    .min(1, "Please select at least one asset or box."),
   /**
    * Asset ids whose *standalone* booking row the user ticked directly.
    *

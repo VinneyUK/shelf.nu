@@ -37,7 +37,7 @@ describe("computeKitClaimablePool", () => {
     });
   });
 
-  it("subtracts other kits, operator custody and booked units", () => {
+  it("subtracts other boxes, operator custody and booked units", () => {
     const { spaceWithoutMe } = computeKitClaimablePool({
       ...UNCLAIMED,
       otherKitsQuantity: 30,
@@ -48,7 +48,7 @@ describe("computeKitClaimablePool", () => {
     expect(spaceWithoutMe).toBe(35);
   });
 
-  it("counts this kit's own units as still claimable by it", () => {
+  it("counts this box's own units as still claimable by it", () => {
     // `spaceWithoutMe` deliberately excludes this kit, so a kit holding 40 of
     // a pool with 20 free may keep all 40 — the ceiling is not 20.
     const { spaceWithoutMe, maxAllowedForThisKit } = computeKitClaimablePool({
@@ -61,7 +61,7 @@ describe("computeKitClaimablePool", () => {
     expect(maxAllowedForThisKit).toBe(40);
   });
 
-  it("lets an over-committed kit reduce its slice rather than locking it", () => {
+  it("lets an over-committed box reduce its slice rather than locking it", () => {
     // Growth elsewhere can push the pool below what this kit already holds.
     // Offering the smaller number would leave the user unable to submit the
     // form at all, including to fix it.
@@ -85,7 +85,7 @@ describe("computeKitClaimablePool", () => {
     expect(spaceWithoutMe).toBe(0);
   });
 
-  it("leaves a reservation checkable after a kit takes the rest", () => {
+  it("leaves a reservation checkable after a box takes the rest", () => {
     // 100 units with 40 promised to a standalone reservation leaves 60 for
     // the kit. Offering all 100 would leave the reservation unable to check
     // out, since a kit slice holds its units for good.

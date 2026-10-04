@@ -544,7 +544,8 @@ export const AuditPDFContent = ({
                   Category
                 </th>
                 <th className="w-20 border border-gray-300 p-2.5 text-left text-xs font-medium">
-                  Location
+                  
+                  Place
                 </th>
                 <th className="w-20 border border-gray-300 p-2.5 text-left text-xs font-medium">
                   Status

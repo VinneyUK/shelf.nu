@@ -81,7 +81,7 @@ const runAction = (request: Request) =>
     context: { getSession: () => ({ userId: "user-1" }) },
   } as unknown as ActionFunctionArgs) as unknown as Promise<Response>;
 
-describe("qr+/_private+/$qrId_.link.kit action", () => {
+describe("qr+/_private+/$qrId_.link.box action", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (db.kit.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -127,7 +127,7 @@ describe("qr+/_private+/$qrId_.link.kit action", () => {
     expect(db.kit.update).not.toHaveBeenCalled();
   });
 
-  it("refuses a QR that is already linked to a different kit", async () => {
+  it("refuses a QR that is already linked to a different box", async () => {
     // The symmetric case to the asset refusal above, and the one that would
     // move a label off the kit it currently identifies.
     qrMocks.getQr.mockResolvedValue({

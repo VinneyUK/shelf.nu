@@ -914,11 +914,11 @@ export default function PartialCheckinDrawer({
       count: alreadyCheckedInKits.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s have" : " has"}`}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s have" : " has"}`}</strong>{" "}
           already been checked in for this booking.
         </>
       ),
-      description: "All assets from these kits have already been checked in",
+      description: "All assets from these boxes have already been checked in",
       onResolve: () => removeItemsFromList(qrIdsOfAlreadyCheckedInKits),
     },
     {
@@ -927,10 +927,11 @@ export default function PartialCheckinDrawer({
       message: (count: number) => (
         <>
           <strong>{`${count} asset${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          already covered by scanned kit QR codes.
+          
+          already covered by scanned box QR codes.
         </>
       ),
-      description: "Kit QR codes include all kit assets automatically",
+      description: "Box QR codes include all box assets automatically",
       onResolve: () => removeItemsFromList(qrIdsOfRedundantAssets),
     },
     {
@@ -938,7 +939,7 @@ export default function PartialCheckinDrawer({
       count: kitsNotInBooking.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong> not
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong> not
           part of this booking.
         </>
       ),
@@ -1675,7 +1676,8 @@ function ReconciledKitGroup({
               ) : (
                 <div className="flex size-[54px] shrink-0 items-center justify-center rounded-[2px] border border-gray-200 bg-gray-50">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                    Kit
+                    
+                    Box
                   </span>
                 </div>
               )}
@@ -1687,11 +1689,11 @@ function ReconciledKitGroup({
                   </span>
                 </span>
                 <div className="flex flex-wrap items-center gap-1">
-                  <span className={assetTypePillClass}>kit</span>
+                  <span className={assetTypePillClass}>box</span>
                   <AvailabilityBadge
                     badgeText="Checked in"
                     tooltipTitle="Already checked in"
-                    tooltipContent="All of this kit's assets on the booking have been reconciled."
+                    tooltipContent="All of this box's assets on the booking have been reconciled."
                     className="border-green-200 bg-green-50 text-green-700"
                   />
                 </div>
@@ -1951,10 +1953,10 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
     // Custom preset for redundant assets (highest priority - blocking issue)
     {
       condition: isRedundant && isInBooking,
-      badgeText: "Already covered by kit QR",
+      badgeText: "Already covered by box QR",
       tooltipTitle: "Asset already covered",
       tooltipContent:
-        "This asset is already covered by the scanned kit QR code. Remove this individual asset scan.",
+        "This asset is already covered by the scanned box QR code. Remove this individual asset scan.",
       priority: 90, // Highest priority - blocking issue
     },
     // Custom preset for already checked in assets
@@ -1979,11 +1981,11 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
     // Custom preset for kit assets - different message based on whether it's the last one
     {
       condition: !!assetKitId && !isRedundant, // Only show if not redundant
-      badgeText: "Part of kit",
-      tooltipTitle: "Asset is part of a kit",
+      badgeText: "Part of box",
+      tooltipTitle: "Asset is part of a box",
       tooltipContent: isLastKitAssetInBooking
-        ? "This is the last asset from this kit in the booking. Checking it in will also mark the entire kit as available."
-        : "This asset belongs to a kit. Checking in this asset individually will not affect the kit status or other kit assets.",
+        ? "This is the last asset from this box in the booking. Checking it in will also mark the entire box as available."
+        : "This asset belongs to a box. Checking in this asset individually will not affect the box status or other box assets.",
       priority: 60, // Lower priority than blocking issues
       className: "bg-blue-50 border-blue-200 text-blue-700", // Informational blue
     },
@@ -2296,8 +2298,8 @@ function ScannedKitQtyMemberRow({ asset }: { asset: QtyExpectedAsset }) {
             <div className="flex flex-wrap items-center gap-1">
               <span className={assetTypePillClass}>asset</span>
               <AvailabilityBadge
-                badgeText="From kit"
-                tooltipTitle="Quantity-tracked kit member"
+                badgeText="From box"
+                tooltipTitle="Quantity-tracked box member"
                 tooltipContent="This quantity-tracked asset is part of the scanned kit. Enter how its units are being returned / consumed / lost / damaged."
                 className="border-indigo-200 bg-indigo-50 text-indigo-700"
               />
@@ -2367,9 +2369,9 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: allKitAssetsInBookingAreCheckedIn,
       badgeText: "Already checked in",
-      tooltipTitle: "Kit already checked in",
+      tooltipTitle: "Box already checked in",
       tooltipContent:
-        "All assets from this kit have already been checked in for this booking and cannot be checked in again.",
+        "All assets from this box have already been checked in for this booking and cannot be checked in again.",
       priority: 85, // High priority - blocking issue
     },
     kitLabelPresets.inCustody(kit.status === AssetStatus.IN_CUSTODY),
@@ -2381,18 +2383,18 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: noKitAssetsInBooking,
       badgeText: "Not in this booking",
-      tooltipTitle: "Kit not part of booking",
+      tooltipTitle: "Box not part of booking",
       tooltipContent:
-        "None of this kit's assets are part of the current booking.",
+        "None of this box's assets are part of the current booking.",
       priority: 80,
     },
     // Custom preset for "partially in booking" - informational only
     {
       condition: !allKitAssetsInBooking && !noKitAssetsInBooking,
       badgeText: `${kitAssetsInBooking.length}/${kitAssets.length} assets in booking`,
-      tooltipTitle: "Kit partially in booking",
+      tooltipTitle: "Box partially in booking",
       tooltipContent:
-        "Only some of this kit's assets are part of the current booking.",
+        "Only some of this box's assets are part of the current booking.",
       priority: 70,
       className: "bg-blue-50 border-blue-200 text-blue-700", // Informational blue
     },
@@ -2422,7 +2424,7 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
       </p>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className={assetTypePillClass}>kit</span>
+        <span className={assetTypePillClass}>box</span>
         <KitAvailabilityLabels />
       </div>
     </div>

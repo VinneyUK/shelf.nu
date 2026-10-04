@@ -60,7 +60,7 @@ const BulkReleaseCustodySchema = z
     kitIds: z.array(z.string()).optional().default([]),
   })
   .refine((data) => data.assetIds.length > 0 || data.kitIds.length > 0, {
-    message: "At least one asset or kit must be selected",
+    message: "At least one asset or box must be selected",
     path: ["assetIds"], // This will attach the error to the assetIds field
   });
 
@@ -161,11 +161,11 @@ export default function ReleaseCustodyDrawer({
       count: assetsArePartOfKit.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong> are part
-          of a kit.
+          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong>  are part
+          of a box.
         </>
       ),
-      description: "Note: Scan Kit QR to release the full kit from custody",
+      description: "Note: Scan Box QR to release the full box from custody",
       onResolve: () => removeAssetsFromList(assetsArePartOfKit),
     },
     {
@@ -173,11 +173,11 @@ export default function ReleaseCustodyDrawer({
       count: qrIdsOfKitsNotInCustody.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"} `}</strong> not
+          <strong>{`${count} box${count > 1 ? "s are" : " is"} `}</strong> not
           in custody.
         </>
       ),
-      description: "Only kits in custody can be released.",
+      description: "Only boxes in custody can be released.",
       onResolve: () => removeItemsFromList(qrIdsOfKitsNotInCustody),
     },
     {
@@ -463,8 +463,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: kit.status === AssetStatus.IN_CUSTODY,
       badgeText: `In custody of: ${kit.custody?.custodian?.name}`,
-      tooltipTitle: "Kit is in custody",
-      tooltipContent: `This kit is in custody of ${kit.custody?.custodian?.name}.`,
+      tooltipTitle: "Box is in custody",
+      tooltipContent: `This box is in custody of ${kit.custody?.custodian?.name}.`,
       priority: 110,
       className: "bg-gray-50 border-gray-200 text-gray-700",
     },
@@ -472,8 +472,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: kit.status !== AssetStatus.IN_CUSTODY,
       badgeText: "Not in custody",
-      tooltipTitle: "Kit is not in custody",
-      tooltipContent: "This kit is not in custody and cannot be released.",
+      tooltipTitle: "Box is not in custody",
+      tooltipContent: "This box is not in custody and cannot be released.",
       priority: 100,
     },
     kitLabelPresets.checkedOut(kit.status === AssetStatus.CHECKED_OUT),
@@ -504,7 +504,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>
@@ -592,7 +593,7 @@ function SubmissionState({
           <CheckmarkIcon />
         </span>
         <div className="font-mono">
-          {type === "asset" ? "Assets" : "Kits"} have been released from custody
+          {type === "asset" ? "Assets" : "Boxes"} have been released from custody
         </div>
       </div>
     );

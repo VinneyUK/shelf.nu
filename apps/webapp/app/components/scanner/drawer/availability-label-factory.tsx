@@ -117,11 +117,11 @@ export const assetLabelPresets = {
     isQuantityTracked: boolean = false
   ): AvailabilityLabelConfig => ({
     condition: isPartOfKit,
-    badgeText: "Part of kit",
-    tooltipTitle: "Asset is part of a kit",
+    badgeText: "Part of box",
+    tooltipTitle: "Asset is part of a box",
     tooltipContent: isQuantityTracked
-      ? "Part of this asset's quantity is allocated to a kit. The remaining free pool is still available to add individually."
-      : "Remove the asset from the kit to add it individually.",
+      ? "Part of this asset's quantity is allocated to a box. The remaining free pool is still available to add individually."
+      : "Remove the asset from the box to add it individually.",
     priority: 80,
   }),
 
@@ -151,18 +151,18 @@ export const kitLabelPresets = {
   inCustody: (isInCustody: boolean = false): AvailabilityLabelConfig => ({
     condition: isInCustody,
     badgeText: "In custody",
-    tooltipTitle: "Kit is in custody",
+    tooltipTitle: "Box is in custody",
     tooltipContent:
-      "This kit is already in custody. You need to release it before assigning it again.",
+      "This box is already in custody. You need to release it before assigning it again.",
     priority: 100,
   }),
 
   checkedOut: (isCheckedOut: boolean = false): AvailabilityLabelConfig => ({
     condition: isCheckedOut,
     badgeText: "Checked out",
-    tooltipTitle: "Kit is checked out",
+    tooltipTitle: "Box is checked out",
     tooltipContent:
-      "This kit is already checked out. You need to check it in before assigning it custody.",
+      "This box is already checked out. You need to check it in before assigning it custody.",
     priority: 90,
   }),
 
@@ -171,9 +171,9 @@ export const kitLabelPresets = {
   ): AvailabilityLabelConfig => ({
     condition: hasInCustody,
     badgeText: "Contains assets in custody",
-    tooltipTitle: "Kit contains assets in custody",
+    tooltipTitle: "Box contains assets in custody",
     tooltipContent:
-      "Some assets in this kit are already in custody. Release them first before assigning the kit.",
+      "Some assets in this box are already in custody. Release them first before assigning the box.",
     priority: 85,
   }),
 
@@ -182,9 +182,9 @@ export const kitLabelPresets = {
   ): AvailabilityLabelConfig => ({
     condition: hasUnavailable,
     badgeText: "Contains unavailable assets",
-    tooltipTitle: "Kit contains unavailable assets",
+    tooltipTitle: "Box contains unavailable assets",
     tooltipContent:
-      "Some assets in this kit are marked as unavailable. Address this before proceeding.",
+      "Some assets in this box are marked as unavailable. Address this before proceeding.",
     priority: 110,
   }),
 };

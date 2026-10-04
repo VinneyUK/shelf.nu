@@ -103,7 +103,7 @@ const mockRequest = {
   url: "http://localhost",
 } as any;
 
-describe("adding a kit to a booking from the kit page", () => {
+describe("adding a box to a booking from the box page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -127,11 +127,11 @@ describe("adding a kit to a booking from the kit page", () => {
     } as any);
 
     vi.mocked(db.kit.findMany).mockResolvedValue([
-      { id: "kit123", name: "Lighting Kit" },
+      { id: "kit123", name: "Lighting Box" },
     ] as any);
   });
 
-  it("records the kit add in the booking's activity feed", async () => {
+  it("records the box add in the booking's activity feed", async () => {
     expect.assertions(2);
 
     await action(
@@ -159,7 +159,7 @@ describe("adding a kit to a booking from the kit page", () => {
     // read differently from the booking-page door's for the same action.
     expect(
       vi.mocked(bookingService.createKitBookingNote).mock.calls[0][0].kits
-    ).toEqual([{ id: "kit123", name: "Lighting Kit" }]);
+    ).toEqual([{ id: "kit123", name: "Lighting Box" }]);
   });
 
   it("scopes the kit-name lookup to the caller's organization", async () => {

@@ -109,7 +109,7 @@ function ConditionalDropdown() {
             >
               <BulkUpdateDialogTrigger
                 type="trash"
-                label="Remove kits"
+                label="Remove boxes"
                 onClick={closeMenu}
               />
             </DropdownMenuItem>

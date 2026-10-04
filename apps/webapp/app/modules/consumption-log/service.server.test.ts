@@ -152,7 +152,7 @@ describe("adjustQuantity — stock-lowering guard wiring", () => {
         cause: null,
         message:
           'Cannot reduce "Widget" to 2 boards — 5 boards are committed ' +
-          "(custody, kits, or overlapping bookings). Release or reduce those first.",
+          "(custody, boxes, or overlapping bookings). Release or reduce those first.",
         label: "Assets",
         status: 400,
         shouldBeCaptured: false,
@@ -178,7 +178,7 @@ describe("adjustQuantity — stock-lowering guard wiring", () => {
     expect(db.consumptionLog.create).not.toHaveBeenCalled();
   });
 
-  it("refuses a subtraction that would strand units already placed at locations", async () => {
+  it("refuses a subtraction that would strand units already placed at places", async () => {
     // The location axis has its own `sum <= Asset.quantity` invariant and no
     // trigger fires on an `Asset` write, so this is the only thing standing
     // between a typed-down total and a silently over-allocated location.
@@ -199,7 +199,7 @@ describe("adjustQuantity — stock-lowering guard wiring", () => {
       })
     ).rejects.toMatchObject({
       status: 400,
-      message: expect.stringContaining("assigned to locations"),
+      message: expect.stringContaining("assigned to places"),
     });
 
     expect(db.asset.update).not.toHaveBeenCalled();

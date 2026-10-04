@@ -118,7 +118,7 @@ const UnableToDeleteMemberContent = ({
       <AlertDialogTitle>Unable to delete team member</AlertDialogTitle>
       <AlertDialogDescription>
         The team member you are trying to delete has custody over{" "}
-        {custodiesCount} assets or kits. Please release custody or check-in
+        {custodiesCount}  assets or boxes. Please release custody or check-in
         those items before deleting the user.
       </AlertDialogDescription>
       <AlertDialogCancel

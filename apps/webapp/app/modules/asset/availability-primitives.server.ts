@@ -538,7 +538,7 @@ export async function assertAssetQuantityNotBelowReservations({
     throw new ShelfError({
       cause: null,
       title: "Cannot reduce quantity below commitments",
-      message: `Cannot reduce "${title}" to ${newTotal} ${unit} — ${committed} ${unit} are committed (custody, kits, or overlapping bookings). Release or reduce those first.`,
+      message: `Cannot reduce "${title}" to ${newTotal} ${unit} — ${committed} ${unit} are committed (custody, boxes, or overlapping bookings). Release or reduce those first.`,
       additionalData: {
         assetId,
         organizationId,

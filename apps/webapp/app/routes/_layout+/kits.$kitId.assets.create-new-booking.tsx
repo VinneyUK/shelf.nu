@@ -24,7 +24,7 @@ import {
 } from "~/utils/permissions/permission.data";
 import { requirePermission } from "~/utils/roles.server";
 
-export const meta = () => [{ title: appendToMetaTitle("Create kit booking") }];
+export const meta = () => [{ title: appendToMetaTitle("Create box booking") }];
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
   const searchParams = getCurrentSearchParams(request);

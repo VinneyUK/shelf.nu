@@ -141,7 +141,8 @@ export default function AddAssetsToKitDrawer({
       message: (count: number) => (
         <>
           <strong>{`${count} asset${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          already added to this kit.
+          
+          already added to this box.
         </>
       ),
       onResolve: () => removeAssetsFromList(assetsAlreadyAddedIds),
@@ -152,11 +153,12 @@ export default function AddAssetsToKitDrawer({
       message: (count: number) => (
         <>
           <strong>{`${count} asset${count > 1 ? "s are" : " is"}`}</strong>{" "}
-          unavailable for kit assignment.
+          
+          unavailable for box assignment.
         </>
       ),
       description:
-        "Assets with custody cannot be added to kits. Please release custody first.",
+        "Assets with custody cannot be added to boxes. Please release custody first.",
       onResolve: () => removeAssetsFromList(assetsWithCustodyIds),
     },
     {
@@ -169,7 +171,7 @@ export default function AddAssetsToKitDrawer({
         </>
       ),
       description:
-        "Checked out assets cannot be added to kits. Please check them in first.",
+        "Checked out assets cannot be added to boxes. Please check them in first.",
       onResolve: () => removeAssetsFromList(assetsCheckedOutIds),
     },
     {
@@ -177,11 +179,11 @@ export default function AddAssetsToKitDrawer({
       count: kitQrIds.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s" : ""}`}</strong> detected.
-          Kits cannot be added to other kits.
+          <strong>{`${count} box${count > 1 ? "es" : ""}`}</strong>  detected.
+          Boxes cannot be added to other boxes.
         </>
       ),
-      description: "Note: Only individual assets can be added to kits.",
+      description: "Note: Only individual assets can be added to boxes.",
       onResolve: () => removeItemsFromList(kitQrIds),
     },
     {
@@ -297,24 +299,25 @@ export function AssetRow({
       badgeText: "Has custody",
       tooltipTitle: "Asset has custody",
       tooltipContent:
-        "Assets with custody cannot be added to kits. Please release custody first.",
+        "Assets with custody cannot be added to boxes. Please release custody first.",
       priority: 80,
     },
     // Custom preset for "already in this kit"
     {
       condition: kit.assetKits.some((ak) => ak.asset.id === asset.id),
-      badgeText: "Already added to this kit",
-      tooltipTitle: "Asset is part of kit",
-      tooltipContent: "This asset is already added to the current kit.",
+      badgeText: "Already added to this box",
+      tooltipTitle: "Asset is part of box",
+      tooltipContent: "This asset is already added to the current box.",
       priority: 70,
     },
     {
       condition: !!assetKitId && assetKitId !== kit.id,
-      badgeText: "Part of another kit",
-      tooltipTitle: "Asset is part of another kit",
+      badgeText: "Part of another box",
+      tooltipTitle: "Asset is part of another box",
       tooltipContent: (
         <>
-          This asset is currently part of another kit
+          
+          This asset is currently part of another box
           {assetKit ? (
             <>
               :{" "}
@@ -329,7 +332,8 @@ export function AssetRow({
               <br />
             </>
           ) : undefined}
-          You will still be able to add this asset to replace its current kit.
+          
+          You will still be able to add this asset to replace its current box.
         </>
       ),
       priority: 70,
@@ -403,9 +407,9 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
   const availabilityConfigs = [
     {
       condition: true, // Always show this label for kits
-      badgeText: "Cannot add to kit",
-      tooltipTitle: "Kits cannot be added to other kits",
-      tooltipContent: "Only individual assets can be added to kits.",
+      badgeText: "Cannot add to box",
+      tooltipTitle: "Boxes cannot be added to other boxes",
+      tooltipContent: "Only individual assets can be added to boxes.",
       priority: 100,
     },
     kitLabelPresets.inCustody(kit.status === AssetStatus.IN_CUSTODY),
@@ -433,7 +437,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>

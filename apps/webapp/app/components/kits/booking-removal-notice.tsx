@@ -125,12 +125,13 @@ function ReservedGroup({ bookings, assetCount }: BookingRemovalNoticeGroup) {
       />
       <strong>Reserved booking notice:</strong>{" "}
       {assetCount <= 1
-        ? "Removing this asset from the kit also removes it from"
-        : `Removing these ${assetCount} assets from the kit also removes them from`}{" "}
+        ? "Removing this asset from the box also removes it from"
+        : `Removing these ${assetCount} assets from the box also removes them from`}{" "}
       {bookings.length} reserved booking{bookingPlural}:{" "}
       {formatBookingNames(bookings)}. Nothing has been checked out yet, so{" "}
       {bookings.length === 1 ? "that booking follows" : "those bookings follow"}{" "}
-      the kit's contents.
+      
+      the box's contents.
     </span>
   );
 }
@@ -161,7 +162,7 @@ function CheckedOutGroup({ bookings, assetCount }: BookingRemovalNoticeGroup) {
       {bookings.length} booking{bookingPlural} already in progress:{" "}
       {formatBookingNames(bookings)}. {isSingleAsset ? "It stays" : "They stay"}{" "}
       on {bookings.length === 1 ? "that booking" : "those bookings"}, marked as
-      removed from the kit, so the record of what was booked is preserved.
+      removed from the box, so the record of what was booked is preserved.
     </span>
   );
 }

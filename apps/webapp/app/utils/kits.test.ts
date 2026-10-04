@@ -39,7 +39,7 @@ describe("someKitMemberBlocksCustodyAssignment", () => {
     ).toBe(true);
   });
 
-  it("blocks when only one of several selected kits has a blocked member", () => {
+  it("blocks when only one of several selected boxes has a blocked member", () => {
     expect(
       someKitMemberBlocksCustodyAssignment([
         kitRow("AVAILABLE"),
@@ -61,7 +61,7 @@ describe("someKitMemberBlocksCustodyAssignment", () => {
     expect(someKitMemberBlocksCustodyAssignment([])).toBe(false);
   });
 
-  it("allows a kit with no members", () => {
+  it("allows a box with no members", () => {
     expect(someKitMemberBlocksCustodyAssignment([kitRow()])).toBe(false);
   });
 

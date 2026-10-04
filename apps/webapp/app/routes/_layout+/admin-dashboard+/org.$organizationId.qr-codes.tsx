@@ -213,7 +213,8 @@ export default function AdminOrgQrCodes() {
                 Asset
               </th>
               <th className="border-b p-4 text-left text-gray-600 md:px-6">
-                Kit
+                
+                Box
               </th>
               <th className="border-b p-4 text-left text-gray-600 md:px-6">
                 Created At

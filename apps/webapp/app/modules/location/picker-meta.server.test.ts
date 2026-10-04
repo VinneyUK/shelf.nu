@@ -151,7 +151,7 @@ describe("getLocationPickerMeta", () => {
     });
   });
 
-  it("max = Asset.quantity − sum(other locations) + currentAtThisLocation (orthogonal MAX)", async () => {
+  it("max = Asset.quantity − sum(other places) + currentAtThisLocation (orthogonal MAX)", async () => {
     // Pens (80 total): 30 at Office (this location), 25 at Warehouse, 10 at Field.
     // spaceWithoutMe = 80 − 25 − 10 = 45.
     // max = max(30, 45) = 45.
@@ -230,7 +230,7 @@ describe("getLocationPickerMeta", () => {
     expect(result.get("pens")?.maxAllowedForThisLocation).toBe(60);
   });
 
-  it("spaceWithoutMe floors at 0 when other locations alone exceed Asset.quantity", async () => {
+  it("spaceWithoutMe floors at 0 when other places alone exceed Asset.quantity", async () => {
     // Asset.quantity = 50, but other locations hold 60. spaceWithoutMe
     // would be negative; the helper floors it at 0. max stays at
     // currentAtThisLocation (5).

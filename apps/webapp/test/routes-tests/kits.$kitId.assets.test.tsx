@@ -82,10 +82,10 @@ function createLoaderArgs(): LoaderFunctionArgs {
   } as unknown as LoaderFunctionArgs;
 }
 
-describe("kits.$kitId.assets loader — booking-removal notice gate", () => {
+describe("boxes.$kitId.assets loader — booking-removal notice gate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    dbMocks.kit.findFirst.mockResolvedValue({ name: "Rack Kit" });
+    dbMocks.kit.findFirst.mockResolvedValue({ name: "Rack Box" });
     getAssetsForKitsMock.mockResolvedValue({
       items: [KIT_MEMBER],
     } as unknown as Awaited<ReturnType<typeof getAssetsForKits>>);
@@ -98,7 +98,7 @@ describe("kits.$kitId.assets loader — booking-removal notice gate", () => {
   });
 
   it.each([OrganizationRoles.SELF_SERVICE, OrganizationRoles.BASE])(
-    "never ships booking names to %s, which cannot remove kit assets",
+    "never ships booking names to %s, which cannot remove box assets",
     async (role) => {
       // why: booking names routinely carry customer / project identifiers, and
       // these roles normally see only bookings they created or hold. The route

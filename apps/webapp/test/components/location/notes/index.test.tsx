@@ -86,7 +86,7 @@ describe("LocationNotes", () => {
     expect(screen.getByTestId("note-date")).toBeInTheDocument();
   });
 
-  it("renders a CSV export button for the active location", () => {
+  it("renders a CSV export button for the active place", () => {
     render(<LocationNotes />);
 
     expect(useFetcherMock).toHaveBeenCalled();

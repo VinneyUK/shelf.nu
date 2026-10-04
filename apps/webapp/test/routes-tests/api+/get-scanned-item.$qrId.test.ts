@@ -155,7 +155,7 @@ describe("GET /api/get-scanned-item/:qrId — SAM-shaped barcode fallback", () =
     mockAssetFindFirst.mockResolvedValue(null);
     mockGetBarcodeByValue.mockResolvedValue({
       asset: null,
-      kit: { id: "kit-1", name: "A kit" },
+      kit: { id: "kit-1", name: "A box" },
     });
 
     const { status, body } = await scan(SAM_SHAPED);

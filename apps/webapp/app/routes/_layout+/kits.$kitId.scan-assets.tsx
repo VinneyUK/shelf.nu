@@ -61,16 +61,16 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       .catch((cause) => {
         throw new ShelfError({
           cause,
-          title: "Kit not found!",
+          title: "Box not found!",
           message:
-            "The kit you are trying to access does not exists or you do not have permission to asset it.",
+            "The box you are trying to access does not exists or you do not have permission to asset it.",
           status: 404,
           label: "Kit",
         });
       });
 
     /** We get the userPrefs cookie so we can see if there is already a default camera */
-    const title = `Scan assets for kit | ${kit.name}`;
+    const title = `Scan assets for box | ${kit.name}`;
     const header: HeaderData = {
       title,
     };

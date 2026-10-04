@@ -201,8 +201,8 @@ describe("manage-kits route validation", () => {
     vi.mocked(noteService.createNotes).mockResolvedValue({ count: 0 });
   });
 
-  describe("validation scope - only newly added kits", () => {
-    it("should only validate kits whose AssetKits aren't already in the booking", async () => {
+  describe("validation scope - only newly added boxes", () => {
+    it("should only validate boxes whose AssetKits aren't already in the booking", async () => {
       // Default mockBooking has TWO standalone slices (assetKitId=null)
       // for asset1+asset2. Kit1's AssetKits are brand new → adds slices
       // → must be validated. Kit2's AssetKits map to asset1+asset2 but
@@ -214,7 +214,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [
             { id: "ak-kit1-asset1", quantity: 1, asset: { id: "asset1" } },
@@ -226,7 +226,7 @@ describe("manage-kits route validation", () => {
         },
         {
           id: "kit2",
-          name: "Kit 2",
+          name: "Box 2",
           status: KitStatus.CHECKED_OUT,
           assetKits: [
             { id: "ak-kit2-asset1", quantity: 1, asset: { id: "asset1" } },
@@ -282,7 +282,7 @@ describe("manage-kits route validation", () => {
       );
     });
 
-    it("passes two kit slices for a shared asset belonging to two kits", async () => {
+    it("passes two box slices for a shared asset belonging to two boxes", async () => {
       // Data-integrity fix: when the SAME asset belongs to TWO selected
       // kits, the action must hand `updateBookingAssets` TWO kit slices
       // (one per AssetKit, distinct assetKitId) so both kit-driven rows
@@ -296,7 +296,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.AVAILABLE,
           assetKits: [
             {
@@ -311,7 +311,7 @@ describe("manage-kits route validation", () => {
         },
         {
           id: "kit2",
-          name: "Kit 2",
+          name: "Box 2",
           status: KitStatus.AVAILABLE,
           assetKits: [
             {
@@ -368,7 +368,7 @@ describe("manage-kits route validation", () => {
       );
     });
 
-    it("should not validate kits whose AssetKit ids are already kit-driven in the booking", async () => {
+    it("should not validate boxes whose AssetKit ids are already kit-driven in the booking", async () => {
       // Override the default mockBooking with one that already holds
       // kit1's kit-driven slices.
       vi.mocked(db.booking.findUniqueOrThrow).mockResolvedValue({
@@ -394,7 +394,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [
             { id: "ak-kit1-asset1", quantity: 1, asset: { id: "asset1" } },
@@ -435,11 +435,11 @@ describe("manage-kits route validation", () => {
   });
 
   describe("context-aware validation", () => {
-    it("should allow kits that are partially checked in within booking context", async () => {
+    it("should allow boxes that are partially checked in within booking context", async () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [{ asset: { id: "asset3" } }], // new asset
           organizationId: "org123",
@@ -501,11 +501,11 @@ describe("manage-kits route validation", () => {
       );
     });
 
-    it("should block kits that are truly checked out (not partially checked in)", async () => {
+    it("should block boxes that are truly checked out (not partially checked in)", async () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [{ asset: { id: "asset3" } }], // new asset
           organizationId: "org123",
@@ -542,11 +542,11 @@ describe("manage-kits route validation", () => {
       expect(response.init?.status).toBe(500);
     });
 
-    it("should allow available kits regardless of partial check-in status", async () => {
+    it("should allow available boxes regardless of partial check-in status", async () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.AVAILABLE,
           assetKits: [{ asset: { id: "asset3" } }], // new asset
           organizationId: "org123",
@@ -588,7 +588,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [{ asset: { id: "asset3" } }], // new asset
           organizationId: "org123",
@@ -628,7 +628,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.CHECKED_OUT,
           assetKits: [{ asset: { id: "asset3" } }], // new asset
           organizationId: "org123",
@@ -684,7 +684,7 @@ describe("manage-kits route validation", () => {
   });
 
   describe("updateBookingAssets call scope", () => {
-    it("should forward only the newly-added kit id, not the full submitted selection", async () => {
+    it("should forward only the newly-added box id, not the full submitted selection", async () => {
       // Booking already contains asset1 + asset2 as kit-driven slices for
       // kit2 (the pre-existing kit). kit1 is newly added: it brings asset3
       // which is not yet in the booking. Submitting kitIds: ["kit2", "kit1"]
@@ -716,7 +716,7 @@ describe("manage-kits route validation", () => {
       const mockKits = [
         {
           id: "kit2",
-          name: "Kit 2",
+          name: "Box 2",
           status: KitStatus.AVAILABLE, // AVAILABLE so the checked-out guard is not tripped
           assetKits: [
             { id: "ak-kit2-asset1", quantity: 1, asset: { id: "asset1" } },
@@ -728,7 +728,7 @@ describe("manage-kits route validation", () => {
         },
         {
           id: "kit1",
-          name: "Kit 1",
+          name: "Box 1",
           status: KitStatus.AVAILABLE, // AVAILABLE so the checked-out guard is not tripped
           assetKits: [
             { id: "ak-kit1-asset3", quantity: 1, asset: { id: "asset3" } },
@@ -787,7 +787,7 @@ describe("manage-kits route validation", () => {
     const availableKit = [
       {
         id: "kit1",
-        name: "Kit 1",
+        name: "Box 1",
         status: KitStatus.AVAILABLE,
         assetKits: [
           { id: "ak-kit1-asset3", quantity: 1, asset: { id: "asset3" } },
@@ -1057,7 +1057,7 @@ describe("manage-kits loader — Models tab payload", () => {
       kits: [
         {
           id: "kit1",
-          name: "Camera Kit",
+          name: "Camera Box",
           custody: {
             custodian: {
               name: "Colleague Name",
@@ -1167,7 +1167,7 @@ describe("manage-kits loader — Models tab payload", () => {
       const args = vi.mocked(kitService.getPaginatedAndFilterableKits).mock
         .calls[0]?.[0];
       if (!args?.extraInclude) {
-        throw new Error("Expected the loader to query kits with an include");
+        throw new Error("Expected the loader to query boxes with an include");
       }
 
       // `extraInclude` is typed as the generic `Prisma.KitInclude`, whose
@@ -1241,7 +1241,7 @@ describe("manage-kits loader — Models tab payload", () => {
     });
   });
 
-  describe("kit query selects assetKits.id and keeps bookingAssets as an include", () => {
+  describe("box query selects assetKits.id and keeps bookingAssets as an include", () => {
     /** The path from the kit include down to the `assetKits` relation. */
     type AssetKitsInclude = {
       select: {
@@ -1274,7 +1274,7 @@ describe("manage-kits loader — Models tab payload", () => {
       const args = vi.mocked(kitService.getPaginatedAndFilterableKits).mock
         .calls[0]?.[0];
       if (!args?.extraInclude) {
-        throw new Error("Expected the loader to query kits with an include");
+        throw new Error("Expected the loader to query boxes with an include");
       }
 
       // `extraInclude` is typed as the generic `Prisma.KitInclude`, whose

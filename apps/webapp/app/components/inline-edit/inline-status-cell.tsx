@@ -20,24 +20,19 @@ export function InlineStatusCell({
 }) {
   const sale = useSale(assetId);
   if (sale) {
+    // The pen reopens the Sold box, prefilled with the date and price
     return (
-      <span className="flex flex-col items-start">
-        <InlineCell
-          assetId={assetId}
-          current={{ field: "status", value: "SOLD" }}
-        >
-          {children}
-        </InlineCell>
-        <InlineCell
-          assetId={assetId}
-          current={{ field: "soldPrice", value: sale.price }}
-          className="mt-0.5"
-        >
-          <span className="text-xs text-gray-500">
-            {sale.price === null ? "Add sold price" : "Edit sold price"}
-          </span>
-        </InlineCell>
-      </span>
+      <InlineCell
+        assetId={assetId}
+        current={{
+          field: "status",
+          value: "SOLD",
+          soldOn: sale.soldOn,
+          price: sale.price,
+        }}
+      >
+        {children}
+      </InlineCell>
     );
   }
   return (

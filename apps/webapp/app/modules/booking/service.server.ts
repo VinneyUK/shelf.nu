@@ -996,7 +996,7 @@ async function updateBookingKitStates({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating the booking kit states.",
+      message: "Something went wrong while updating the booking box states.",
       additionalData: { kitIds, status },
       label,
     });
@@ -1897,7 +1897,7 @@ async function assertKitsNotBookedElsewhere(
     status: 400,
     label,
     title: "Booking conflict",
-    message: `Cannot ${action}. Some kits are already booked or checked out for an overlapping period: ${names}${more}. Please remove them and try again.`,
+    message: `Cannot ${action}. Some boxes are already booked or checked out for an overlapping period: ${names}${more}. Please remove them and try again.`,
     additionalData: { bookingId, kitIds: conflicting.map((k) => k.id) },
     shouldBeCaptured: false,
   });
@@ -6219,7 +6219,7 @@ function buildQtyPerAssetCheckoutFragment(
           // so a kit named e.g. `X{% link to="javascript:..." /%}` cannot inject
           // a live tag (stored XSS). Sanitize-at-write — see
           // .claude/rules/sanitize-note-content-markdoc.md.
-          `in kit ${stripMarkdocDelimiters(s.kitName ?? "kit") || "kit"}`
+          `in box ${stripMarkdocDelimiters(s.kitName ?? "kit") || "kit"}`
         : "standalone";
       // The unit rides on the slice total via `formatUnitCount` ("22 boxes");
       // the checked-out count stays a bare number so the phrase reads
@@ -9727,7 +9727,7 @@ export async function buildKitSlicesForBooking({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while resolving kit contents for the booking.",
+        "Something went wrong while resolving box contents for the booking.",
       additionalData: { kitIds, organizationId },
       label,
     });
@@ -15444,7 +15444,7 @@ export async function getAvailableAssetsIdsForBooking(
       // SHELF-WEBAPP-21Y.
       throw new ShelfError({
         cause: null,
-        message: "Cannot add assets that belong to a kit.",
+        message: "Cannot add assets that belong to a box.",
         label: "Booking",
         status: 400,
         shouldBeCaptured: false,
@@ -15673,8 +15673,8 @@ export async function assertKitsAddableToActiveBooking({
   if (checkedOutKits.length > 0) {
     throw new ShelfError({
       cause: null,
-      title: "Not allowed. Kits already checked out",
-      message: `The following kits are already checked out and cannot be added to the booking: ${checkedOutKits
+      title: "Not allowed. Boxes already checked out",
+      message: `The following boxes are already checked out and cannot be added to the booking: ${checkedOutKits
         .map((kit) => kit.name)
         .join(", ")}`,
       additionalData: { checkedOutKits, bookingId },
@@ -16055,7 +16055,7 @@ export async function computeBookingKitDrift({
       cause,
       message: isLikeShelfError(cause)
         ? cause.message
-        : "Something went wrong while computing booking kit drift.",
+        : "Something went wrong while computing booking box drift.",
       label,
       additionalData: { bookingId, organizationId },
     });

@@ -687,7 +687,7 @@ describe("partialCheckoutBooking", () => {
     );
   });
 
-  it("names an individual kit asset in the activity-log note when only part of its kit is checked out", async () => {
+  it("names an individual box asset in the activity-log note when only part of its box is checked out", async () => {
     expect.assertions(2);
 
     // Booking holds a 2-asset kit (kit-1). Checking out only ONE of its assets
@@ -707,14 +707,14 @@ describe("partialCheckoutBooking", () => {
           asset: {
             id: "asset-k1",
             status: AssetStatus.AVAILABLE,
-            assetKits: [{ kit: { id: "kit-1", name: "Camera Kit" } }],
+            assetKits: [{ kit: { id: "kit-1", name: "Camera Box" } }],
           },
         },
         {
           asset: {
             id: "asset-k2",
             status: AssetStatus.AVAILABLE,
-            assetKits: [{ kit: { id: "kit-1", name: "Camera Kit" } }],
+            assetKits: [{ kit: { id: "kit-1", name: "Camera Box" } }],
           },
         },
       ],
@@ -737,7 +737,7 @@ describe("partialCheckoutBooking", () => {
                 title: `Asset ${id}`,
                 status: AssetStatus.AVAILABLE,
                 bookingAssets: [],
-                assetKits: [{ kit: { id: "kit-1", name: "Camera Kit" } }],
+                assetKits: [{ kit: { id: "kit-1", name: "Camera Box" } }],
               }))
             : []
         );
@@ -1624,7 +1624,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
     });
   });
 
-  it("records BOTH slices of a same-asset multi-slice checkout positionally (standalone + kit in one session)", async () => {
+  it("records BOTH slices of a same-asset multi-slice checkout positionally (standalone + box in one session)", async () => {
     expect.assertions(2);
 
     // The canonical "batteries" case the whole feature exists for: ONE
@@ -1935,7 +1935,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       });
     };
 
-    it("checks out a kit of INDIVIDUAL members once all of them are scanned", async () => {
+    it("checks out a box of INDIVIDUAL members once all of them are scanned", async () => {
       expect.assertions(1);
       // Regression: the kit decision must count INDIVIDUAL departures. Reading
       // only the quantity-tracked disposition ledger leaves this kit unstamped
@@ -1959,7 +1959,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       );
     });
 
-    it("leaves a kit alone while one of its members is still unscanned", async () => {
+    it("leaves a box alone while one of its members is still unscanned", async () => {
       expect.assertions(1);
       // The other member's slice is absent from this batch. Its remaining must
       // come from its own booked quantity, not from a missing map entry read as
@@ -1982,7 +1982,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       );
     });
 
-    it("does not check out a kit when only the asset's free-pool slice left", async () => {
+    it("does not check out a box when only the asset's free-pool slice left", async () => {
       expect.assertions(1);
       // Gloves holds two slices on this booking: 22 boxes standalone and 100
       // inside Kittington. Sending the standalone units out takes none of the
@@ -2013,7 +2013,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       );
     });
 
-    it("checks out the kit once its own slice has wholly left", async () => {
+    it("checks out the box once its own slice has wholly left", async () => {
       expect.assertions(1);
       (
         db.booking.findUniqueOrThrow as ReturnType<typeof vitest.fn>
@@ -2081,7 +2081,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       // Redundancy fix: no duplicated "{asset} — qty: {asset} ·" phrasing.
       expect(note).not.toContain("— qty:");
       // Standalone slice is not labelled as a kit member.
-      expect(note).not.toContain("in kit");
+      expect(note).not.toContain("in box");
     });
 
     it("labels a kit-driven qty slice and omits 'still booked' when the slice is fully out", async () => {
@@ -2118,7 +2118,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       const note = partialCheckoutNoteContent();
       // Kit slice labelled + slice-level totals; fully out → no "still booked".
       expect(note).toContain(
-        "· in kit Kittington (100 of 100 boxes checked out)"
+        "· in box Kittington (100 of 100 boxes checked out)"
       );
       expect(note).not.toContain("still booked");
     });
@@ -2157,7 +2157,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       // Asset-level fallback: unit-labelled on BOTH counts, no slice label.
       expect(note).toContain("(5 boxes checked out, 45 boxes still booked)");
       expect(note).not.toContain("· standalone");
-      expect(note).not.toContain("· in kit");
+      expect(note).not.toContain("· in box");
     });
 
     it("rejects (and persists nothing) a checkout tagged with a bookingAssetId that is not a slice of the asset on this booking", async () => {
@@ -2266,7 +2266,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       expect(db.partialBookingCheckout.create).not.toHaveBeenCalled();
     });
 
-    it("strips Markdoc delimiters from a malicious Kit.name so it cannot inject a live tag into the checkout note (stored XSS guard)", async () => {
+    it("strips Markdoc delimiters from a malicious Box.name so it cannot inject a live tag into the checkout note (stored XSS guard)", async () => {
       // Kit.name is free-form user input and the note is rendered through
       // Markdoc; an unsanitized name could smuggle a `{% link %}` tag (stored
       // XSS). The per-slice label must strip Markdoc delimiters.
@@ -2313,7 +2313,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
       // sequence could only come from the injected, unsanitized kit name.
       expect(note).not.toContain('{% link to="javascript');
       // Still labelled as a kit slice (with the sanitized name).
-      expect(note).toContain("in kit");
+      expect(note).toContain("in box");
     });
 
     /**
@@ -2321,7 +2321,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
      * rule exempts, so any refusal can only come from the kit rule. Each scan
      * sends the kit's own slice out, leaving the standalone slice booked.
      */
-    describe("kit held by another overlapping booking", () => {
+    describe("box held by another overlapping booking", () => {
       const takeKitSlice = {
         ...baseParams,
         checkouts: [
@@ -2394,7 +2394,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
         );
       }
 
-      it("refuses a kit another booking has reserved while this booking has not started", async () => {
+      it("refuses a box another booking has reserved while this booking has not started", async () => {
         expect.assertions(2);
 
         (
@@ -2410,12 +2410,12 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
         });
 
         await expect(partialCheckoutBooking(takeKitSlice)).rejects.toThrow(
-          "Cannot check out. Some kits are already booked or checked out for an overlapping period: Kittington. Please remove them and try again."
+          "Cannot check out. Some boxes are already booked or checked out for an overlapping period: Kittington. Please remove them and try again."
         );
         expect(db.partialBookingCheckout.create).not.toHaveBeenCalled();
       });
 
-      it("lets a booking already in flight take a kit a reservation also holds", async () => {
+      it("lets a booking already in flight take a box a reservation also holds", async () => {
         expect.assertions(2);
 
         (
@@ -2440,7 +2440,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
         );
       });
 
-      it("refuses a kit another in-flight booking still has out", async () => {
+      it("refuses a box another in-flight booking still has out", async () => {
         expect.assertions(2);
 
         (
@@ -2453,7 +2453,7 @@ describe("partialCheckoutBooking - quantity-tracked dispositions", () => {
         });
 
         await expect(partialCheckoutBooking(takeKitSlice)).rejects.toThrow(
-          "Cannot check out. Some kits are already booked or checked out for an overlapping period: Kittington. Please remove them and try again."
+          "Cannot check out. Some boxes are already booked or checked out for an overlapping period: Kittington. Please remove them and try again."
         );
         expect(db.partialBookingCheckout.create).not.toHaveBeenCalled();
       });
@@ -3300,7 +3300,7 @@ describe("computeBookingAssetSliceRemainingToCheckOut", () => {
     expect(kitSliceRemaining).toBe(20);
   });
 
-  it("credits a checkout TAGGED to the standalone slice's bookingAssetId to that exact slice (kit row stays 0)", async () => {
+  it("credits a checkout TAGGED to the standalone slice's bookingAssetId to that exact slice (box row stays 0)", async () => {
     expect.assertions(2);
 
     // The batteries case: a QUANTITY_TRACKED asset booked BOTH inside a kit
@@ -3372,7 +3372,7 @@ describe("computeBookingAssetSliceRemainingToCheckOut", () => {
     expect(kitRemaining).toBe(20);
   });
 
-  it("credits a checkout TAGGED to the kit slice to the kit exactly, beating the standalone-first greedy default", async () => {
+  it("credits a checkout TAGGED to the box slice to the box exactly, beating the standalone-first greedy default", async () => {
     expect.assertions(2);
 
     // Disambiguates exact-tagging from greedy coincidence: an UNTAGGED pool of

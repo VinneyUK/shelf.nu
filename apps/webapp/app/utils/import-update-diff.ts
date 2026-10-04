@@ -400,11 +400,11 @@ export function buildMultiPlacementLocationWarning(
   }
   return {
     field: displayName,
-    currentValue: "(multiple locations)",
+    currentValue: "(multiple places)",
     newValue: csvValue || "(empty)",
     warning:
-      "This asset has units in multiple locations — bulk location update " +
-      "isn't supported. Move units from the asset's location panel instead.",
+      "This asset has units in multiple places — bulk place update " +
+      "isn't supported. Move units from the asset's place panel instead.",
   };
 }
 

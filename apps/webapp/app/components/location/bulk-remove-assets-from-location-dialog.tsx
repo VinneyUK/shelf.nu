@@ -24,7 +24,7 @@ export default function BulkRemoveAssetsFromLocationDialog() {
       type="trash"
       title={`Remove selected assets (${totalSelectedItems})`}
       arrayFieldId="assetIds"
-      description={`Are you sure you want to remove ${totalSelectedItems} selected asset(s) from this location?`}
+      description={`Are you sure you want to remove ${totalSelectedItems} selected asset(s) from this place?`}
       actionUrl={`/locations/${locationId}/assets`}
     >
       {({ fetcherError, disabled, handleCloseDialog }) => (

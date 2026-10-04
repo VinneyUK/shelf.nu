@@ -29,8 +29,8 @@ export default function BulkDeleteDialog() {
       type="trash"
       arrayFieldId="locationIds"
       actionUrl="/api/locations/bulk-actions"
-      title={`Delete ${totalSelected} locations`}
-      description={`Are your sure you want to delete all (${totalSelected}) locations. This action cannot be undone.`}
+      title={`Delete ${totalSelected} places`}
+      description={`Are your sure you want to delete all (${totalSelected}) places. This action cannot be undone.`}
     >
       {({ fetcherError, disabled, handleCloseDialog }) => (
         <>

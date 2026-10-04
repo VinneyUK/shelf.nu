@@ -25,7 +25,7 @@ export function LocationDescriptionColumn({
             </TooltipTrigger>
 
             <TooltipContent side="top" className="max-w-[400px]">
-              <h5>Location description</h5>
+              <h5>Place description</h5>
               <p className="text-sm">{value}</p>
             </TooltipContent>
           </Tooltip>

@@ -108,8 +108,8 @@ function buildRouteError(overrides?: {
     data: {
       error: {
         message:
-          overrides?.message ?? "Something went wrong while fetching the kit",
-        title: "Kit error",
+          overrides?.message ?? "Something went wrong while fetching the box",
+        title: "Box error",
         traceId: "trace_789",
         label: overrides?.label ?? "Kit",
         ...(overrides?.additionalData !== undefined
@@ -234,15 +234,15 @@ describe("ErrorContent report-an-issue", () => {
     expect(props?.errorContext).toMatchObject({
       traceId: "trace_789",
       errorStatus: "500",
-      errorTitle: "Kit error",
-      errorMessage: "Something went wrong while fetching the kit",
+      errorTitle: "Box error",
+      errorMessage: "Something went wrong while fetching the box",
     });
   });
 
   it("still renders the error message and trace id", () => {
     renderErrorContent();
     expect(
-      screen.getByText(/Something went wrong while fetching the kit/)
+      screen.getByText(/Something went wrong while fetching the box/)
     ).toBeTruthy();
     expect(screen.getByText(/trace_789/)).toBeTruthy();
   });
@@ -268,7 +268,7 @@ describe("ErrorContent report-an-issue", () => {
     );
     // The error page itself survives
     expect(
-      screen.getByText(/Something went wrong while fetching the kit/)
+      screen.getByText(/Something went wrong while fetching the box/)
     ).toBeTruthy();
 
     consoleError.mockRestore();
@@ -468,7 +468,7 @@ describe("ErrorContent capturing route-error boundary failures to Sentry", () =>
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Something went wrong while fetching the kit/)
+        screen.getByText(/Something went wrong while fetching the box/)
       ).toBeTruthy()
     );
     expect(mockCaptureException).not.toHaveBeenCalled();

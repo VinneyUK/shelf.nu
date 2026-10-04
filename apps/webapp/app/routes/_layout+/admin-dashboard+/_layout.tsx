@@ -42,8 +42,8 @@ const items = [
   { to: "qrs", content: "QR codes" },
   { to: "announcements", content: "Announcements" },
   { to: "updates", content: "Updates" },
-  { to: "move-location-images", content: "Move location images" },
-  { to: "generate-locations", content: "Generate locations" },
+  { to: "move-location-images", content: "Move place images" },
+  { to: "generate-locations", content: "Generate places" },
   { to: "test-supabase-rls", content: "Test Supabase RLS" },
 ];
 

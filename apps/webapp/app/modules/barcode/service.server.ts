@@ -77,7 +77,7 @@ export async function createBarcode({
 
       if (target && target.includes("value")) {
         // Use existing validation function for detailed error messages
-        const relationshipType = assetId ? "asset" : "kit";
+        const relationshipType = assetId ? "asset" : "box";
         await validateBarcodeUniqueness(
           [{ type, value }],
           organizationId,
@@ -156,7 +156,7 @@ export async function createBarcodes({
 
       if (target && target.includes("value")) {
         // Use existing validation function for detailed error messages
-        const relationshipType = assetId ? "asset" : "kit";
+        const relationshipType = assetId ? "asset" : "box";
         await validateBarcodeUniqueness(
           barcodes,
           organizationId,
@@ -222,7 +222,7 @@ export async function updateBarcode({
       const target = prismaError.meta?.target;
 
       if (target && target.includes("value") && value !== undefined) {
-        const relationshipType = assetId ? "asset" : "kit";
+        const relationshipType = assetId ? "asset" : "box";
         const currentItemId = assetId || kitId;
 
         await validateBarcodeUniqueness(
@@ -392,7 +392,7 @@ export async function getKitBarcodes({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Failed to get kit barcodes",
+      message: "Failed to get box barcodes",
       additionalData: { kitId, organizationId },
       label,
     });
@@ -666,7 +666,7 @@ export async function updateBarcodes({
       if (target && target.includes("value")) {
         // Use existing validation function for detailed error messages
         const currentItemId = assetId || kitId;
-        const relationshipType = assetId ? "asset" : "kit";
+        const relationshipType = assetId ? "asset" : "box";
         await validateBarcodeUniqueness(
           barcodes,
           organizationId,
@@ -884,7 +884,7 @@ export async function parseBarcodesFromImportData({
 
       throw new ShelfError({
         cause: null,
-        message: `Some barcodes are already linked to other assets or kits in your organization. Please use unlinked barcodes: ${linkedDetails.join(
+        message: `Some barcodes are already linked to other assets or boxes in your organization. Please use unlinked barcodes: ${linkedDetails.join(
           ", "
         )}`,
         additionalData: { linkedBarcodes: linkedDetails },

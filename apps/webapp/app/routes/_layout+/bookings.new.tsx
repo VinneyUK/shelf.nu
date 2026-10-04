@@ -295,9 +295,9 @@ export async function action({ context, request }: ActionFunctionArgs) {
       if (kitSlices.length === 0) {
         throw new ShelfError({
           cause: null,
-          title: "Kit not found",
+          title: "Box not found",
           message:
-            "The selected kit could not be resolved. Please reload and try again.",
+            "The selected box could not be resolved. Please reload and try again.",
           label: "Booking",
           status: 409,
           shouldBeCaptured: false,

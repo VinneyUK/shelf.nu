@@ -84,7 +84,7 @@ const FAKE_ORG_ID = "org-xyz";
 function buildKitFixture(assetKits: unknown[]) {
   return {
     id: "kit-1",
-    name: "Camera Kit",
+    name: "Camera Box",
     description: null,
     status: "AVAILABLE",
     image: null,
@@ -139,7 +139,7 @@ beforeEach(() => {
 });
 
 describe("GET /api/mobile/kits/:kitId", () => {
-  it("carries per-membership kitQuantity/unitOfMeasure/type and values by kit units, not workspace stock", async () => {
+  it("carries per-membership kitQuantity/unitOfMeasure/type and values by box units, not workspace stock", async () => {
     // QUANTITY_TRACKED member: 5 units held by this kit, but 100 units of
     // workspace stock — the kit-surface multiplier must be the kit slice
     // quantity (5), not the workspace stock (100).
@@ -263,8 +263,8 @@ describe("GET /api/mobile/kits/:kitId", () => {
   });
 });
 
-describe("GET /api/mobile/kits/:kitId — kit image", () => {
-  it("sends a lapsed kit image re-signed, with its new expiry", async () => {
+describe("GET /api/mobile/kits/:kitId — box image", () => {
+  it("sends a lapsed box image re-signed, with its new expiry", async () => {
     const storedKit = {
       ...buildKitFixture([]),
       organizationId: FAKE_ORG_ID,
@@ -429,7 +429,7 @@ describe("GET /api/mobile/kits/:kitId — display code", () => {
     ]);
   });
 
-  it("falls back to the QR for a SAM ID preference, since kits have no SAM ID", async () => {
+  it("falls back to the QR for a SAM ID preference, since boxes have no SAM ID", async () => {
     // why: `Kit` has no `sequentialId` column. The fallback must be MARKED so
     // the screen can explain itself rather than appearing to ignore the
     // workspace setting, and in words that do not ask for a SAM ID a kit can
@@ -446,7 +446,7 @@ describe("GET /api/mobile/kits/:kitId — display code", () => {
       type: "QR_ID",
       isFallback: true,
       fallbackNote:
-        "Your workspace prefers SAM ID, which kits do not have. Showing the QR Code ID instead.",
+        "Your workspace prefers SAM ID, which boxes do not have. Showing the QR Code ID instead.",
     });
   });
 
@@ -506,7 +506,7 @@ describe("GET /api/mobile/kits/:kitId — display code", () => {
     expect(kit.organization).toEqual({ currency: "USD" });
   });
 
-  it("reads the kit's QR codes in a fixed order, so one code wins on every load", async () => {
+  it("reads the box's QR codes in a fixed order, so one code wins on every load", async () => {
     // why: `Qr.kitId` is not unique, and both the resolver and the app take
     // the first QR. An unordered read could show a different code on each
     // load — something a mocked database cannot exhibit, so the query is what

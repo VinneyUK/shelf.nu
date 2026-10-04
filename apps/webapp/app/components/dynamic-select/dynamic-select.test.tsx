@@ -290,7 +290,7 @@ describe("DynamicSelect", () => {
       const items = createTestItems(2);
       const withoutValueItem = {
         id: "without-kit",
-        name: "Without kit",
+        name: "Without box",
       };
       mockUseModelFilters.mockReturnValue(
         createMockUseModelFiltersReturn(items)
@@ -321,7 +321,7 @@ describe("DynamicSelect", () => {
       const textContent = popoverContent.textContent || "";
 
       // Without kit should appear before Item 1 in the text content
-      const withoutKitPos = textContent.indexOf("Without kit");
+      const withoutKitPos = textContent.indexOf("Without box");
       const item1Pos = textContent.indexOf("Item 1");
 
       expect(withoutKitPos).toBeGreaterThan(-1); // Should exist
@@ -379,7 +379,7 @@ describe("DynamicSelect", () => {
       const items = createTestItems(2);
       const withoutValueItem = {
         id: "without-location",
-        name: "Without location",
+        name: "Without place",
       };
       mockUseModelFilters.mockReturnValue(
         createMockUseModelFiltersReturn(items)
@@ -397,7 +397,7 @@ describe("DynamicSelect", () => {
       );
 
       const trigger = screen.getByRole("button");
-      expect(trigger).toHaveTextContent("Without location");
+      expect(trigger).toHaveTextContent("Without place");
     });
 
     it("shows checkmark when withoutValueItem is selected", async () => {
@@ -534,7 +534,7 @@ describe("DynamicSelect", () => {
       const items = createTestItems(3);
       const withoutValueItem = {
         id: "without-kit",
-        name: "Without kit",
+        name: "Without box",
       };
 
       // Start with active search
@@ -559,7 +559,7 @@ describe("DynamicSelect", () => {
 
       // WithoutValueItem should be hidden during search
       await waitFor(() => {
-        expect(screen.queryByText("Without kit")).not.toBeInTheDocument();
+        expect(screen.queryByText("Without box")).not.toBeInTheDocument();
       });
 
       // Clear search
@@ -578,7 +578,7 @@ describe("DynamicSelect", () => {
       );
 
       // WithoutValueItem should reappear
-      expect(screen.getByText("Without kit")).toBeInTheDocument();
+      expect(screen.getByText("Without box")).toBeInTheDocument();
     });
 
     it("still allows searching regular items when withoutValueItem is provided", async () => {

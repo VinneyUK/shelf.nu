@@ -43,7 +43,7 @@ vi.mock("~/utils/cookies.server", () => ({
 
 vi.mock("~/utils/markdoc-wrappers", () => ({
   // why: These are formatting utilities, we just need them to return formatted strings
-  wrapKitsWithDataForNote: vi.fn((kit) => `kit:${kit?.name || "unknown"}`),
+  wrapKitsWithDataForNote: vi.fn((kit) => `box:${kit?.name || "unknown"}`),
   wrapUserLinkForNote: vi.fn((user) => `@${user.firstName}`),
   wrapTagForNote: vi.fn((tag) => `#${tag.name}`),
   wrapLinkForNote: vi.fn((to, text) => `[${text}](${to})`),
@@ -354,7 +354,7 @@ describe("note service", () => {
   });
 
   describe("createBulkKitChangeNotes", () => {
-    it("creates notes for newly added assets to kit", async () => {
+    it("creates notes for newly added assets to box", async () => {
       vi.mocked(db.user.findFirstOrThrow).mockResolvedValue({
         firstName: "John",
         lastName: "Doe",
@@ -363,7 +363,7 @@ describe("note service", () => {
 
       const kit = {
         id: "kit-1",
-        name: "Camera Kit",
+        name: "Camera Box",
       };
 
       const result = await createBulkKitChangeNotes({
@@ -399,7 +399,7 @@ describe("note service", () => {
 
       const kit = {
         id: "kit-1",
-        name: "Camera Kit",
+        name: "Camera Box",
       };
 
       await createBulkKitChangeNotes({
@@ -428,7 +428,7 @@ describe("note service", () => {
       expect(call.data.content).not.toContain("added asset to");
     });
 
-    it("creates notes for assets removed from kit", async () => {
+    it("creates notes for assets removed from box", async () => {
       vi.mocked(db.user.findFirstOrThrow).mockResolvedValue({
         firstName: "John",
         lastName: "Doe",
@@ -437,7 +437,7 @@ describe("note service", () => {
 
       const kit = {
         id: "kit-1",
-        name: "Camera Kit",
+        name: "Camera Box",
       };
 
       await createBulkKitChangeNotes({
@@ -471,7 +471,7 @@ describe("note service", () => {
 
       const kit = {
         id: "kit-1",
-        name: "Camera Kit",
+        name: "Camera Box",
       };
 
       await createBulkKitChangeNotes({
@@ -498,7 +498,7 @@ describe("note service", () => {
       } as any);
       const kit = {
         id: "kit-1",
-        name: "Camera Kit",
+        name: "Camera Box",
       };
 
       await createBulkKitChangeNotes({

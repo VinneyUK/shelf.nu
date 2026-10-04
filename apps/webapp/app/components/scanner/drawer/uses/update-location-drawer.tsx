@@ -150,7 +150,7 @@ function AddToLocationForm({ disableSubmit }: { disableSubmit: boolean }) {
       if (assetIds.length === 0 && kitIds.length === 0) {
         setLocationState({
           status: "error",
-          errorMessage: "No assets or kits selected to update location",
+          errorMessage: "No assets or boxes selected to update place",
         });
         return;
       }
@@ -245,11 +245,11 @@ function AddToLocationForm({ disableSubmit }: { disableSubmit: boolean }) {
 
         <div className="px-4 md:pl-0">
           <div className="relative z-50 my-8">
-            <h5 className="mb-1">Update location:</h5>
+            <h5 className="mb-1">Update place:</h5>
             <LocationSelect
               isBulk
               hideClearButton
-              placeholder="Select location"
+              placeholder="Select place"
             />
             {zo.errors.newLocationId()?.message ? (
               <p className="text-sm text-error-500">
@@ -265,7 +265,8 @@ function AddToLocationForm({ disableSubmit }: { disableSubmit: boolean }) {
               width="full"
               disabled={disabled || disableSubmit || idsTotalCount === 0}
             >
-              Update location
+              
+              Update place
             </Button>
           </div>
         </div>
@@ -285,7 +286,7 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
           {
             condition: true,
             badgeText: `Currently in: ${primaryLocation.name}`,
-            tooltipTitle: "Current Location",
+            tooltipTitle: "Current Place",
             tooltipContent: `Asset is currently located in ${primaryLocation.name}`,
             priority: 60,
             className: "bg-gray-50 border-gray-200 text-gray-700",
@@ -342,7 +343,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
       </div>
     </div>
@@ -370,7 +372,7 @@ function SubmittingDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Adding to location</AlertDialogTitle>
+          <AlertDialogTitle>Adding to place</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="flex flex-col gap-4">
               <SubmissionState
@@ -416,7 +418,8 @@ function SubmissionState({
           <CheckmarkIcon />
         </span>
         <div className="font-mono">
-          Assets/kit successfully added to location
+          
+          Assets/box successfully added to place
         </div>
       </div>
     );
@@ -425,7 +428,7 @@ function SubmissionState({
       <div>
         <div className="flex flex-row items-center gap-2 text-left">
           <CircleX className="size-[18px] text-error-500" />
-          <div className="font-mono">Failed to add assets/kit to location</div>
+          <div className="font-mono">Failed to add assets/box to place</div>
         </div>
         {errorMessage && (
           <span className="text-[12px] text-error-500">

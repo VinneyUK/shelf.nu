@@ -166,7 +166,7 @@ describe("POST /api/mobile/asset/update-location", () => {
     });
   });
 
-  it("should update asset location and create a note", async () => {
+  it("should update asset place and create a note", async () => {
     // Phase 4b: the route reads previous placement via `assetLocations` pivot
     // (singular `location` was removed from Asset).
     (db.asset.findUnique as any).mockResolvedValue({
@@ -282,7 +282,7 @@ describe("POST /api/mobile/asset/update-location", () => {
     });
   });
 
-  it("should short-circuit (no update, no event, no note) when location is unchanged", async () => {
+  it("should short-circuit (no update, no event, no note) when place is unchanged", async () => {
     // why: codified by `.claude/rules/bulk-event-parity.md` — the singular
     // mobile path must filter out no-op location moves the same way
     // `bulkUpdateAssetLocation` does, so reports don't count phantom
@@ -340,16 +340,16 @@ describe("POST /api/mobile/asset/update-location", () => {
     expect(body.error.message).toContain("not found");
   });
 
-  it("should return 400 when asset belongs to a kit", async () => {
+  it("should return 400 when asset belongs to a box", async () => {
     (db.asset.findUnique as any).mockResolvedValue({
       id: "asset-1",
-      title: "Kit Asset",
+      title: "Box Asset",
       type: "INDIVIDUAL",
       quantity: 1,
       // Phase 4b: placement comes from the AssetLocation pivot — empty array
       // means no current placement.
       assetLocations: [],
-      assetKits: [{ kit: { id: "kit-1", name: "Server Kit" } }],
+      assetKits: [{ kit: { id: "kit-1", name: "Server Box" } }],
     });
 
     const request = createRequest({
@@ -361,7 +361,7 @@ describe("POST /api/mobile/asset/update-location", () => {
     expect(result instanceof Response).toBe(true);
     expect((result as unknown as Response).status).toBe(400);
     const body = await (result as unknown as Response).json();
-    expect(body.error.message).toContain("kit");
+    expect(body.error.message).toContain("box");
   });
 
   it("should return 403 when permission is denied", async () => {

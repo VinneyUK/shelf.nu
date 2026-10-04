@@ -145,7 +145,7 @@ const NAVIGATION_COMMANDS: QuickCommand[] = [
   {
     id: "kits",
     label: "Kits",
-    description: "Browse and manage asset kits",
+    description: "Browse and manage asset boxes",
     href: "/kits",
     keywords: ["packages", "bundles", "collections"],
     icon: PackageIcon,
@@ -211,8 +211,8 @@ const ACTION_COMMANDS: QuickAction[] = [
   },
   {
     id: "create-kit",
-    label: "Create kit",
-    description: "Bundle assets into a new kit",
+    label: "Create box",
+    description: "Bundle assets into a new box",
     href: "/kits/new",
     keywords: ["new", "kit", "inventory", "collection"],
     icon: PackageIcon,
@@ -684,7 +684,7 @@ export function CommandPalette() {
         ref={inputRef}
         value={query}
         onValueChange={setQuery}
-        placeholder="Search assets, audits, kits, bookings, locations, team members..."
+        placeholder="Search assets, audits, boxes, bookings, places, team members..."
         className="my-4 rounded border-gray-100"
       />
       <CommandList className="divide-y divide-gray-100">
@@ -758,7 +758,7 @@ export function CommandPalette() {
         ) : null}
 
         {kitResults.length > 0 ? (
-          <CommandGroup heading="Kits">
+          <CommandGroup heading="Boxes">
             {kitResults.map((kit) => (
               <CommandItem
                 key={kit.id}
@@ -811,7 +811,7 @@ export function CommandPalette() {
         ) : null}
 
         {locationResults.length > 0 ? (
-          <CommandGroup heading="Locations">
+          <CommandGroup heading="Places">
             {locationResults.map((location) => (
               <CommandItem
                 key={location.id}
@@ -938,8 +938,8 @@ export function CommandPalette() {
         <div className="flex items-center gap-2">
           <SearchIcon className="size-4" />
           {isPersonalOrg(layoutData?.currentOrganization)
-            ? "Search across all assets, audits, kits, and locations"
-            : "Search across all assets, audits, kits, bookings, locations, and team members"}
+            ? "Search across all assets, audits, boxes, and places"
+            : "Search across all assets, audits, boxes, bookings, places, and team members"}
         </div>
         <CommandShortcut className={tw("bg-white")}>
           {shortcutLabel}

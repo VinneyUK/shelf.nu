@@ -208,9 +208,9 @@ export async function assertAssetKitsBelongToOrg(
   if (found.length !== uniqueIds.length) {
     throw new ShelfError({
       cause: null,
-      title: "Invalid asset kits",
+      title: "Invalid asset boxes",
       message:
-        "Some of the selected kit memberships do not exist in your workspace. Please reload and try again.",
+        "Some of the selected box memberships do not exist in your workspace. Please reload and try again.",
       label,
       status: 400,
       shouldBeCaptured: false,
@@ -252,9 +252,9 @@ export async function assertKitsBelongToOrg(
   if (found.length !== uniqueIds.length) {
     throw new ShelfError({
       cause: null,
-      title: "Invalid kits",
+      title: "Invalid boxes",
       message:
-        "Some of the selected kits do not exist in your workspace. Please reload and try again.",
+        "Some of the selected boxes do not exist in your workspace. Please reload and try again.",
       label,
       status: 400,
       shouldBeCaptured: false,
@@ -296,9 +296,9 @@ export async function assertLocationsBelongToOrg(
   if (found.length !== uniqueIds.length) {
     throw new ShelfError({
       cause: null,
-      title: "Invalid locations",
+      title: "Invalid places",
       message:
-        "Some of the selected locations do not exist in your workspace. Please reload and try again.",
+        "Some of the selected places do not exist in your workspace. Please reload and try again.",
       label,
       status: 400,
       shouldBeCaptured: false,
@@ -535,9 +535,9 @@ export async function assertLocationBelongsToOrg(
   if (!found) {
     throw new ShelfError({
       cause: null,
-      title: "Invalid location",
+      title: "Invalid place",
       message:
-        "The selected location could not be found in your workspace. Please reload and try again.",
+        "The selected place could not be found in your workspace. Please reload and try again.",
       label,
       status: 400,
       shouldBeCaptured: false,

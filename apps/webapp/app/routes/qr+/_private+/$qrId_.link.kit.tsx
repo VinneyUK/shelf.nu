@@ -75,7 +75,7 @@ export const loader = async ({
     const qr = await getQr({ id: qrId });
     if (qr?.assetId || qr?.kitId) {
       throw new ShelfError({
-        message: "This QR code is already linked to an asset or a kit.",
+        message: "This QR code is already linked to an asset or a box.",
         title: "QR already linked",
         label: "QR",
         status: 403,
@@ -173,10 +173,10 @@ export const loader = async ({
       perPage,
       totalPages,
       modelName,
-      searchFieldLabel: "Search kits",
+      searchFieldLabel: "Search boxes",
       searchFieldTooltip: {
-        title: "Search your kits database",
-        text: "Search kits based on name or description.",
+        title: "Search your boxes database",
+        text: "Search boxes based on name or description.",
       },
       teamMembers,
       totalTeamMembers,
@@ -303,10 +303,10 @@ export default function QrLinkExisting() {
           /** Clicking on the row will add the current asset to the atom of selected assets */
           navigate={handleSelectKit}
           customEmptyStateContent={{
-            title: "You haven't added any kits yet.",
-            text: "What are you waiting for? Create your first kit now!",
+            title: "You haven't added any boxes yet.",
+            text: "What are you waiting for? Create your first box now!",
             newButtonRoute: `/kits/new?qrId=${qrId}`,
-            newButtonContent: "Create new kit and link",
+            newButtonContent: "Create new box and link",
           }}
           className="h-full border-t-0"
         />
@@ -397,8 +397,9 @@ export const ConfirmLinkingKitModal = ({
             Link QR code with ‘{kit.name}’
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
+            
             Are you sure that you want to do this? The current QR code that is
-            linked to this kit will be unlinked. You can always re-link it with
+            linked to this box will be unlinked. You can always re-link it with
             the old QR code.
           </AlertDialogDescription>
         </AlertDialogHeader>

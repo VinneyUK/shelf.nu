@@ -23,8 +23,8 @@ export default function BulkRemoveFromKits() {
     <BulkUpdateDialogContent
       ref={zo.ref}
       type="remove-from-kit"
-      title="Remove assets from kits"
-      description="This action will remove the selected assets from their kits. Are you sure you want to remove them?"
+      title="Remove assets from boxes"
+      description="This action will remove the selected assets from their boxes. Are you sure you want to remove them?"
       actionUrl="/api/assets/bulk-remove-from-kits"
       arrayFieldId="assetIds"
     >

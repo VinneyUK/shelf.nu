@@ -115,7 +115,7 @@ describe("bookings/$bookingId/overview/scan-assets action", () => {
     addScannedAssetsToBookingMock.mockResolvedValue(undefined as any);
   });
 
-  it("allows submitting only asset IDs without kit IDs", async () => {
+  it("allows submitting only asset IDs without box IDs", async () => {
     const formData = new FormData();
     formData.append("assetIds[0]", "asset-123");
 

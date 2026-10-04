@@ -275,7 +275,7 @@ describe("redactCustodianForViewer — booking-derived custody", () => {
     expect(row.custody.custodian.name).toBe("");
   });
 
-  it("descends into the kits index nesting (assetKits[].asset.bookingAssets)", () => {
+  it("descends into the boxes index nesting (assetKits[].asset.bookingAssets)", () => {
     // A kit's holder comes from its MEMBER assets' bookings, so the same
     // custodian sits one level deeper than on the asset index. A top-level
     // probe alone misses every one of them.

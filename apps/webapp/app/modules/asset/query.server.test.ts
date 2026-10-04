@@ -476,7 +476,7 @@ describe("generateWhereClause - special filter values", () => {
     });
   });
 
-  describe("location filter with special values", () => {
+  describe("place filter with special values", () => {
     it("handles 'in-location' with is operator", () => {
       const filter: Filter = {
         name: "location",
@@ -494,7 +494,7 @@ describe("generateWhereClause - special filter values", () => {
       );
     });
 
-    it("handles 'in-location' with isNot operator (inverts to no location)", () => {
+    it("handles 'in-location' with isNot operator (inverts to no place)", () => {
       const filter: Filter = {
         name: "location",
         type: "enum",
@@ -597,7 +597,7 @@ describe("generateWhereClause - special filter values", () => {
       expect(sql).toContain("1=0");
     });
 
-    it("handles containsAny with an empty string (no location ids) without throwing", () => {
+    it("handles containsAny with an empty string (no place ids) without throwing", () => {
       const filter: Filter = {
         name: "location",
         type: "enum",
@@ -612,7 +612,7 @@ describe("generateWhereClause - special filter values", () => {
     });
   });
 
-  describe("kit filter with special values", () => {
+  describe("box filter with special values", () => {
     it("handles 'in-kit' with is operator", () => {
       const filter: Filter = {
         name: "kit",
@@ -629,7 +629,7 @@ describe("generateWhereClause - special filter values", () => {
       expect(sql).not.toContain("NOT EXISTS");
     });
 
-    it("handles 'in-kit' with isNot operator (inverts to not in kit)", () => {
+    it("handles 'in-kit' with isNot operator (inverts to not in box)", () => {
       const filter: Filter = {
         name: "kit",
         type: "enum",
@@ -1086,7 +1086,7 @@ describe("assetQueryFragment", () => {
      * (No @map trap here: BookingAsset.quantity/assetKitId and Kit.name are
      * unmapped, so the Prisma field names equal the DB column names.)
      */
-    it("projects per-slice pivot columns and resolves kit name via joins", () => {
+    it("projects per-slice pivot columns and resolves box name via joins", () => {
       const fragment = assetQueryFragment({ withBookings: true });
       const sql = getFragmentSqlString(fragment);
 

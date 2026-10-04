@@ -144,7 +144,7 @@ export function QuantityTooltipContent({ data }: { data: QuantityBreakdown }) {
         {kitTotal > 0 && (
           <>
             <p className="pl-2 text-gray-700">
-              <span className="font-medium">{kitTotal}</span> via kits
+              <span className="font-medium">{kitTotal}</span>  via boxes
             </p>
             {buckets.kitDriven.map((b) => (
               <p

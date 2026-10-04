@@ -29,7 +29,7 @@ vi.mock("~/hooks/use-controlled-dropdown-menu", () => ({
 /** A booking that started an hour ago, so no early-check-out prompt applies. */
 const booking = {
   id: "booking-1",
-  name: "Field kit",
+  name: "Field box",
   from: new Date(Date.now() - 60 * 60 * 1000),
 };
 

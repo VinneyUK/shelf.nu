@@ -766,7 +766,7 @@ export default function AuditOverview() {
               {showAuditStatusColumn && (
                 <Th className="whitespace-nowrap">Audit Status</Th>
               )}
-              <Th>Location</Th>
+              <Th>Place</Th>
               <CustodianHeader />
               <Th>Category</Th>
               <Th>Tags</Th>

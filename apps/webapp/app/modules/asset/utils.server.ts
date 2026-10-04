@@ -100,7 +100,7 @@ export function getLocationUpdateNoteContent({
     );
     message = count
       ? `${userLink} moved ${count} from ${currentLocationLink} to ${newLocationLink}.`
-      : `${userLink} updated the location from ${currentLocationLink} to ${newLocationLink}.`; // updating location
+      : `${userLink} updated the place from ${currentLocationLink} to ${newLocationLink}.`; // updating location
   }
 
   if (newLocation && !currentLocation) {
@@ -110,7 +110,7 @@ export function getLocationUpdateNoteContent({
     );
     message = count
       ? `${userLink} placed ${count} at ${newLocationLink}.`
-      : `${userLink} set the location to ${newLocationLink}.`; // setting to first location
+      : `${userLink} set the place to ${newLocationLink}.`; // setting to first location
   }
 
   if (isRemoving || !newLocation) {
@@ -120,7 +120,7 @@ export function getLocationUpdateNoteContent({
     );
     message = count
       ? `${userLink} removed ${count} from ${currentLocationLink}.`
-      : `${userLink} removed the asset from location ${currentLocationLink}.`; // removing location
+      : `${userLink} removed the asset from place ${currentLocationLink}.`; // removing location
   }
 
   return message;
@@ -573,9 +573,9 @@ export function getKitLocationUpdateNoteContent({
   });
 
   if (isRemoving) {
-    return `${baseMessage.replace(/\.$/, "")} via parent kit removal.`;
+    return `${baseMessage.replace(/\.$/, "")} via parent box removal.`;
   } else {
-    return `${baseMessage.replace(/\.$/, "")} via parent kit assignment.`;
+    return `${baseMessage.replace(/\.$/, "")} via parent box assignment.`;
   }
 }
 

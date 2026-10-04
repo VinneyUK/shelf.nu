@@ -86,7 +86,7 @@ export function BookingStatistics({
         </div>
         <Separator />
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">Kits</span>
+          <span className="text-sm text-gray-500">Boxes</span>
           <span className="text-right font-medium">{kitsCount}</span>
         </div>
         <Separator />
@@ -97,8 +97,9 @@ export function BookingStatistics({
               iconClassName="size-4"
               content={
                 <p>
+                  
                   The total number of assets in this booking including assets
-                  inside kits.
+                  inside boxes.
                 </p>
               }
             />

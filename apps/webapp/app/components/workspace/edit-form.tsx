@@ -238,8 +238,9 @@ const WorkspaceGeneralEditForms = ({
             subHeading={
               <div className="space-y-2 text-gray-600">
                 <p>
-                  Pick which code is shown next to every asset and kit on list
-                  views (assets, kits, bookings, audits, locations) — so a Sony
+                  
+                  Pick which code is shown next to every asset and box on list
+                  views (assets, boxes, bookings, audits, places) — so a Sony
                   A7-III can be told apart from 19 others at a glance.
                 </p>
                 <p>
@@ -433,8 +434,8 @@ const WorkspacePermissionsEditForm = ({ className }: Props) => {
           rowLabel={`View custody`}
           subHeading={
             <div>
-              Allow <b>self service</b> users to <b>see</b> custody of assets
-              and kits which are not assigned to them. By default they can only
+              Allow <b>self service</b> users to <b>see</b>  custody of assets
+              and boxes which are not assigned to them. By default they can only
               see custodian for assets that they are the custodian of.
             </div>
           }
@@ -490,7 +491,7 @@ const WorkspacePermissionsEditForm = ({ className }: Props) => {
           rowLabel={`View custody`}
           subHeading={
             <div>
-              Allow <b>base</b> users to <b>see</b> custody of assets and kits
+              Allow <b>base</b> users to <b>see</b>  custody of assets and boxes
               which are not assigned to them. By default they can only see
               custodian for assets that they are the custodian of.
             </div>

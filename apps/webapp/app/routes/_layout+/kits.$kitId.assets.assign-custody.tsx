@@ -59,7 +59,7 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 import { resolveTeamMemberName } from "~/utils/user";
 
-export const meta = () => [{ title: appendToMetaTitle("Assign kit custody") }];
+export const meta = () => [{ title: appendToMetaTitle("Assign box custody") }];
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
   const authSession = context.getSession();
@@ -139,7 +139,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     if (someUnavailableAsset) {
       sendNotification({
         title: "Cannot assign custody at this time.",
-        message: "One of the asset in kit is not available",
+        message: "One of the asset in box is not available",
         icon: { name: "trash", variant: "error" },
         senderId: userId,
       });
@@ -313,7 +313,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
       if (!updatedKit.custody) {
         throw new ShelfError({
           cause: null,
-          message: "Failed to create kit custody record.",
+          message: "Failed to create box custody record.",
           additionalData: { userId, kitId, custodianId },
           label: "Kit",
         });
@@ -419,7 +419,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     sendNotification({
       title: `‘${kit.name}’ is now in custody of ${custodianName}`,
       message:
-        "Remember, this kit will be unavailable until it is manually checked in.",
+        "Remember, this box will be unavailable until it is manually checked in.",
       icon: { name: "success", variant: "success" },
       senderId: userId,
     });
@@ -457,11 +457,12 @@ export default function GiveKitCustody() {
         </div>
 
         <div className="mb-5">
-          <h4>{isSelfService ? "Take" : "Assign"} custody of kit</h4>
+          <h4>{isSelfService ? "Take" : "Assign"}  custody of box</h4>
           <p>
-            This kit is currently available. You're about to assign custody to{" "}
+            
+            This box is currently available. You're about to assign custody to{" "}
             {isSelfService ? "yourself" : "one of your team members"}. All the
-            assets in this kit will also be assigned the same custody.
+            assets in this box will also be assigned the same custody.
           </p>
         </div>
 
@@ -510,7 +511,8 @@ export default function GiveKitCustody() {
         {hasBookings ? (
           <WarningBox className="-mt-4 mb-8">
             <>
-              Kit is part of an{" "}
+              
+              Box is part of an{" "}
               <Link
                 to={`/bookings/${kit.assetKits[0]?.asset.bookingAssets[0]?.booking.id}`}
                 className="underline"
@@ -518,7 +520,8 @@ export default function GiveKitCustody() {
               >
                 upcoming booking
               </Link>
-              . You will not be able to check-out your booking if this kit has
+              
+              . You will not be able to check-out your booking if this box has
               custody.
             </>
           </WarningBox>

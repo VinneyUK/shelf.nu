@@ -7,7 +7,7 @@ import { BulkUpdateDialogContent } from "../bulk-update-dialog/bulk-update-dialo
 import { Button } from "../shared/button";
 
 export const BulkRemoveKitsFromLocationSchema = z.object({
-  kitIds: z.array(z.string()).min(1, "Please select at least one kit."),
+  kitIds: z.array(z.string()).min(1, "Please select at least one box."),
 });
 
 export default function BulkRemoveKitsFromLocationDialog() {
@@ -22,9 +22,9 @@ export default function BulkRemoveKitsFromLocationDialog() {
     <BulkUpdateDialogContent
       ref={zo.ref}
       type="trash"
-      title={`Remove selected kits (${totalSelectedItems})`}
+      title={`Remove selected boxes (${totalSelectedItems})`}
       arrayFieldId="kitIds"
-      description={`Are you sure you want to remove ${totalSelectedItems} selected kit(s) from this location? All assets within the kits will also be removed.`}
+      description={`Are you sure you want to remove ${totalSelectedItems} selected box(s) from this place? All assets within the boxes will also be removed.`}
       actionUrl={`/locations/${locationId}/kits`}
     >
       {({ fetcherError, disabled, handleCloseDialog }) => (

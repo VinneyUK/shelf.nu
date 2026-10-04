@@ -132,7 +132,7 @@ describe("reports", () => {
   });
 });
 
-describe("locations, kits and asset models", () => {
+describe("places, boxes and asset models", () => {
   it("drop their columns", () => {
     expect(names({ ...on, locationsEnabled: false })).not.toContain("location");
     expect(names({ ...on, locationsEnabled: false })).toContain("custody");

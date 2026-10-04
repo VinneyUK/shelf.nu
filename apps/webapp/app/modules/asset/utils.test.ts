@@ -44,25 +44,25 @@ describe("getPrimaryKit / getPrimaryLocation", () => {
 
 describe("isDirectBookingBlockedByKit", () => {
   describe("INDIVIDUAL assets", () => {
-    it("blocks direct booking when the asset belongs to a kit", () => {
+    it("blocks direct booking when the asset belongs to a box", () => {
       expect(
         isDirectBookingBlockedByKit({
           type: "INDIVIDUAL",
-          assetKits: [{ kit: { id: "kit-1", name: "Camera kit" } }],
+          assetKits: [{ kit: { id: "kit-1", name: "Camera box" } }],
         })
       ).toBe(true);
     });
 
-    it("blocks direct booking on the index projection (`kit` scalar)", () => {
+    it("blocks direct booking on the index projection (`box` scalar)", () => {
       expect(
         isDirectBookingBlockedByKit({
           type: "INDIVIDUAL",
-          kit: { id: "kit-1", name: "Camera kit" },
+          kit: { id: "kit-1", name: "Camera box" },
         })
       ).toBe(true);
     });
 
-    it("allows direct booking when the asset belongs to no kit", () => {
+    it("allows direct booking when the asset belongs to no box", () => {
       expect(
         isDirectBookingBlockedByKit({ type: "INDIVIDUAL", assetKits: [] })
       ).toBe(false);
@@ -73,36 +73,36 @@ describe("isDirectBookingBlockedByKit", () => {
   });
 
   describe("QUANTITY_TRACKED assets", () => {
-    it("allows direct booking even when the asset belongs to a kit", () => {
+    it("allows direct booking even when the asset belongs to a box", () => {
       expect(
         isDirectBookingBlockedByKit({
           type: "QUANTITY_TRACKED",
-          assetKits: [{ kit: { id: "kit-1", name: "Camera kit" } }],
+          assetKits: [{ kit: { id: "kit-1", name: "Camera box" } }],
         })
       ).toBe(false);
     });
 
-    it("allows direct booking when the asset is spread across several kits", () => {
+    it("allows direct booking when the asset is spread across several boxes", () => {
       // A QT asset legitimately allocates a slice to each of N kits while
       // keeping a free pool — the exact shape the customer report hit.
       expect(
         isDirectBookingBlockedByKit({
           type: "QUANTITY_TRACKED",
           assetKits: [
-            { kit: { id: "kit-1", name: "Kit A" } },
-            { kit: { id: "kit-2", name: "Kit B" } },
-            { kit: { id: "kit-3", name: "Kit C" } },
-            { kit: { id: "kit-4", name: "Kit D" } },
+            { kit: { id: "kit-1", name: "Box A" } },
+            { kit: { id: "kit-2", name: "Box B" } },
+            { kit: { id: "kit-3", name: "Box C" } },
+            { kit: { id: "kit-4", name: "Box D" } },
           ],
         })
       ).toBe(false);
     });
 
-    it("allows direct booking on the index projection (`kit` scalar)", () => {
+    it("allows direct booking on the index projection (`box` scalar)", () => {
       expect(
         isDirectBookingBlockedByKit({
           type: "QUANTITY_TRACKED",
-          kit: { id: "kit-1", name: "Camera kit" },
+          kit: { id: "kit-1", name: "Camera box" },
         })
       ).toBe(false);
     });

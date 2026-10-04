@@ -80,17 +80,17 @@ export const markdocConfig: Config = {
     kits_list: {
       render: "KitsListComponent",
       description:
-        "Renders an interactive kit count with popover showing kit names",
+        "Renders an interactive box count with popover showing box names",
       attributes: {
         count: {
           type: Number,
           required: true,
-          description: "Number of kits in the list",
+          description: "Number of boxes in the list",
         },
         ids: {
           type: String,
           required: true,
-          description: "Comma-separated list of kit IDs",
+          description: "Comma-separated list of box IDs",
         },
         action: {
           type: String,

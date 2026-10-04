@@ -95,8 +95,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: "Kits deleted",
-          message: "Your kits has been deleted successfully",
+          title: "Boxes deleted",
+          message: "Your boxes has been deleted successfully",
           icon: { name: "success", variant: "success" },
           senderId: authSession.userId,
         });
@@ -155,9 +155,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: `Kits are now in custody of ${custodian.name}`,
+          title: `Boxes are now in custody of ${custodian.name}`,
           message:
-            "Remember, these kits will be unavailable until it is manually checked in.",
+            "Remember, these boxes will be unavailable until it is manually checked in.",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -184,8 +184,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: "Kits are no longer in custody",
-          message: "These kits are available again.",
+          title: "Boxes are no longer in custody",
+          message: "These boxes are available again.",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -208,8 +208,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: "Kits location updated",
-          message: "These kits location has been updated successfully.",
+          title: "Boxes place updated",
+          message: "These boxes place has been updated successfully.",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });

@@ -27,7 +27,7 @@ import {
   PermissionEntity,
 } from "~/utils/permissions/permission.data";
 import { requirePermission } from "~/utils/roles.server";
-const title = "New Location";
+const title = "New Place";
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const authSession = context.getSession();
@@ -130,8 +130,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
       })) ?? location;
 
     sendNotification({
-      title: "Location created",
-      message: "Your location has been created successfully",
+      title: "Place created",
+      message: "Your place has been created successfully",
       icon: { name: "success", variant: "success" },
       senderId: authSession.userId,
     });
@@ -157,7 +157,7 @@ export default function NewLocationPage() {
 
   return (
     <div className="relative">
-      <Header title={title ? title : "Untitled location"} />
+      <Header title={title ? title : "Untitled place"} />
       <div>
         <LocationForm />
       </div>

@@ -178,8 +178,8 @@ function successBody(response: unknown) {
   };
 }
 
-describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () => {
-  it("adds a scanned kit's members as kit-driven slices, not loose assets", async () => {
+describe("POST /api/mobile/bookings/add-scanned-assets — box provenance", () => {
+  it("adds a scanned box's members as kit-driven slices, not loose assets", async () => {
     assetKitFindManyMock.mockResolvedValue([
       { id: "ak1", assetId: "asset-1", quantity: 1, kitId: "kit-1" },
       { id: "ak2", assetId: "asset-2", quantity: 3, kitId: "kit-1" },
@@ -230,7 +230,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () =
     expect(assetKitFindManyMock).not.toHaveBeenCalled();
   });
 
-  it("lets the kit claim an asset scanned both on its own and via its kit", async () => {
+  it("lets the box claim an asset scanned both on its own and via its box", async () => {
     // Scanning the asset and then its kit must not book it twice. The kit
     // slice is the more specific of the two, so the loose scan drops.
     assetsExist(["asset-1"]);
@@ -262,7 +262,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () =
     expect(call.kitSlices).toHaveLength(1);
   });
 
-  it("will not book an individual asset a second time through its kit", async () => {
+  it("will not book an individual asset a second time through its box", async () => {
     // The asset is already on the booking loose. The two partial uniques would
     // happily accept a kit-driven row beside it, leaving the booking holding
     // one physical asset twice.
@@ -280,7 +280,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () =
     ]);
   });
 
-  it("still books a quantity-tracked asset through its kit alongside a loose row", async () => {
+  it("still books a quantity-tracked asset through its box alongside a loose row", async () => {
     // Units of a quantity-tracked asset can legitimately sit in the free pool
     // and in a kit at once, so the guard above must not catch it.
     bookingHoldsLoose([{ assetId: "asset-1", type: "QUANTITY_TRACKED" }]);
@@ -295,7 +295,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () =
     ]);
   });
 
-  it("does not claim a kit was added when every member was already there", async () => {
+  it("does not claim a box was added when every member was already there", async () => {
     // `kitIds` is what the note is written from, so naming a kit that put
     // nothing on the booking records an addition that never happened.
     bookingHoldsKitMemberships(["ak1"]);
@@ -310,7 +310,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — kit provenance", () =
     expect(call.kitIds).toEqual([]);
   });
 
-  it("adds only the members a partly-present kit is still missing", async () => {
+  it("adds only the members a partly-present box is still missing", async () => {
     // Re-adding a kit the booking already holds part of must top it up, not
     // collide with the rows already there.
     bookingHoldsKitMemberships(["ak1"]);
@@ -402,7 +402,7 @@ describe("POST /api/mobile/bookings/add-scanned-assets — what the response rep
     });
   });
 
-  it("does not count an asset a kit claimed as skipped", async () => {
+  it("does not count an asset a box claimed as skipped", async () => {
     // It reached the booking as a kit-driven slice, which is what the scan
     // asked for — reporting it as skipped would read as a failure.
     assetsExist(["asset-1"]);

@@ -32,7 +32,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 }
 
 export const handle = {
-  breadcrumb: () => <Link to="/locations">Locations</Link>,
+  breadcrumb: () => <Link to="/locations">Places</Link>,
 };
 
 export default function LocationsPage() {

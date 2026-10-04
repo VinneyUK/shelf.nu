@@ -157,33 +157,33 @@ function resolveCopy({
     case "location":
       return {
         title: `Move ${unitLabel} from ${fromLocation?.name ?? ""}`.trim(),
-        description: `Move units between manual location rows. Up to ${
+        description: `Move units between manual place rows. Up to ${
           fromLocation?.quantity ?? 0
         } ${unitLabel} available at the source.`,
-        destinationLabel: "Destination location",
-        destinationPlaceholder: "Select a location",
+        destinationLabel: "Destination place",
+        destinationPlaceholder: "Select a place",
         submitIdle: "Move",
         submitBusy: "Moving...",
       };
     case "kit":
       return {
         title: `Move ${unitLabel} from ${fromKit?.name ?? ""}`.trim(),
-        description: `Move units between kit allocations. Up to ${
+        description: `Move units between box allocations. Up to ${
           fromKit?.quantity ?? 0
-        } ${unitLabel} available at the source kit.`,
-        destinationLabel: "Destination kit",
-        destinationPlaceholder: "Select a kit",
+        } ${unitLabel} available at the source box.`,
+        destinationLabel: "Destination box",
+        destinationPlaceholder: "Select a box",
         submitIdle: "Move",
         submitBusy: "Moving...",
       };
     case "place-unplaced":
       return {
         title: `Place ${unplacedQuantity ?? 0} unplaced ${unitLabel}`,
-        description: `Place currently-unplaced units at a destination location. Up to ${
+        description: `Place currently-unplaced units at a destination place. Up to ${
           unplacedQuantity ?? 0
         } ${unitLabel} available.`,
-        destinationLabel: "Destination location",
-        destinationPlaceholder: "Select a location",
+        destinationLabel: "Destination place",
+        destinationPlaceholder: "Select a place",
         submitIdle: "Place",
         submitBusy: "Placing...",
       };

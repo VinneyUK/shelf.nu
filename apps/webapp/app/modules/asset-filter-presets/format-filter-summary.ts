@@ -223,10 +223,10 @@ function formatSingleValue(
   const specialValues: Record<string, string> = {
     "in-custody": "In custody",
     "without-custody": "Without custody",
-    "in-location": "In a location",
-    "without-location": "Without location",
-    "in-kit": "In a kit",
-    "without-kit": "Without kit",
+    "in-location": "In a place",
+    "without-location": "Without place",
+    "in-kit": "In a box",
+    "without-kit": "Without box",
   };
   if (specialValues[valueStr]) {
     return specialValues[valueStr];

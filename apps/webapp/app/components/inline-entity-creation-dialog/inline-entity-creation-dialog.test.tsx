@@ -44,7 +44,7 @@ vi.mock("../location/form", () => ({
           onSuccess?.({
             location: {
               id: "loc-456",
-              name: "Test Location",
+              name: "Test Place",
               thumbnailUrl: "https://example.com/thumb.jpg",
               imageUrl: "https://example.com/image.jpg",
             },
@@ -80,15 +80,15 @@ describe("InlineEntityCreationDialog", () => {
     it("opens dialog when trigger button is clicked", async () => {
       render(
         <InlineEntityCreationDialog
-          title="Create Location"
-          buttonLabel="+ New Location"
+          title="Create Place"
+          buttonLabel="+ New Place"
           type="location"
         />
       );
 
       const user = userEvent.setup();
       const triggerButton = screen.getByRole("button", {
-        name: "+ New Location",
+        name: "+ New Place",
       });
 
       await act(async () => {
@@ -96,7 +96,7 @@ describe("InlineEntityCreationDialog", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Create Location")).toBeInTheDocument();
+        expect(screen.getByText("Create Place")).toBeInTheDocument();
       });
     });
 
@@ -189,12 +189,12 @@ describe("InlineEntityCreationDialog", () => {
     });
   });
 
-  describe("Location creation flow", () => {
-    it("renders location form when type is location", async () => {
+  describe("Place creation flow", () => {
+    it("renders place form when type is place", async () => {
       render(
         <InlineEntityCreationDialog
-          title="Create Location"
-          buttonLabel="+ New Location"
+          title="Create Place"
+          buttonLabel="+ New Place"
           type="location"
         />
       );
@@ -202,7 +202,7 @@ describe("InlineEntityCreationDialog", () => {
       const user = userEvent.setup();
       await act(async () => {
         await user.click(
-          screen.getByRole("button", { name: "+ New Location" })
+          screen.getByRole("button", { name: "+ New Place" })
         );
       });
 
@@ -211,13 +211,13 @@ describe("InlineEntityCreationDialog", () => {
       });
     });
 
-    it("calls onCreated callback when location is successfully created", async () => {
+    it("calls onCreated callback when place is successfully created", async () => {
       const onCreated = vi.fn();
 
       render(
         <InlineEntityCreationDialog
-          title="Create Location"
-          buttonLabel="+ New Location"
+          title="Create Place"
+          buttonLabel="+ New Place"
           type="location"
           onCreated={onCreated}
         />
@@ -226,7 +226,7 @@ describe("InlineEntityCreationDialog", () => {
       const user = userEvent.setup();
       await act(async () => {
         await user.click(
-          screen.getByRole("button", { name: "+ New Location" })
+          screen.getByRole("button", { name: "+ New Place" })
         );
       });
 
@@ -240,7 +240,7 @@ describe("InlineEntityCreationDialog", () => {
           type: "location",
           entity: {
             id: "loc-456",
-            name: "Test Location",
+            name: "Test Place",
             thumbnailUrl: "https://example.com/thumb.jpg",
             imageUrl: "https://example.com/image.jpg",
           },
@@ -266,8 +266,8 @@ describe("InlineEntityCreationDialog", () => {
     it("has accessible dialog role and label", async () => {
       render(
         <InlineEntityCreationDialog
-          title="Create Location"
-          buttonLabel="+ New Location"
+          title="Create Place"
+          buttonLabel="+ New Place"
           type="location"
         />
       );
@@ -275,7 +275,7 @@ describe("InlineEntityCreationDialog", () => {
       const user = userEvent.setup();
       await act(async () => {
         await user.click(
-          screen.getByRole("button", { name: "+ New Location" })
+          screen.getByRole("button", { name: "+ New Place" })
         );
       });
 

@@ -64,7 +64,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const totalPages = Math.ceil(totalLocations / perPage);
 
     const header: HeaderData = {
-      title: "Locations",
+      title: "Places",
     };
     const modelName = {
       singular: "location",
@@ -106,10 +106,11 @@ export default function LocationsIndexPage() {
         <Button
           to="new"
           role="link"
-          aria-label={`new location`}
+          aria-label={`new place`}
           data-test-id="createNewLocation"
         >
-          New location
+          
+          New place
         </Button>
       </Header>
       <ListContentWrapper>
@@ -129,19 +130,19 @@ export default function LocationsIndexPage() {
             isBaseOrSelfService ? undefined : <BulkActionsDropdown />
           }
           customEmptyStateContent={{
-            title: "No locations yet",
-            text: "Locations help you track where your assets are. Create locations to organize assets by room, building, or site.",
+            title: "No places yet",
+            text: "Places help you track where your assets are. Create places to organize assets by room, building, or site.",
             newButtonRoute: "/locations/new",
-            newButtonContent: "Create your first location",
+            newButtonContent: "Create your first place",
           }}
           ItemComponent={ListItemContent}
           headerChildren={
             <>
               <Th>Description</Th>
-              <Th>Parent location</Th>
-              <Th className="whitespace-nowrap">Child locations</Th>
+              <Th>Parent place</Th>
+              <Th className="whitespace-nowrap">Child places</Th>
               <Th>Assets</Th>
-              <Th>Kits</Th>
+              <Th>Boxes</Th>
               <Th>Actions</Th>
             </>
           }

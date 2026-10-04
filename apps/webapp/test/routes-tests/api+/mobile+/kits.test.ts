@@ -74,7 +74,7 @@ function storedKit(overrides: {
 }) {
   return {
     organizationId: FAKE_ORG_ID,
-    name: `Kit ${overrides.id}`,
+    name: `Box ${overrides.id}`,
     status: "AVAILABLE",
     _count: { assetKits: 2 },
     category: null,
@@ -97,8 +97,8 @@ beforeEach(() => {
   } as Awaited<ReturnType<typeof getMobileUserContext>>);
 });
 
-describe("GET /api/mobile/kits — kit images", () => {
-  it("sends a lapsed kit image re-signed, with its new expiry", async () => {
+describe("GET /api/mobile/kits — box images", () => {
+  it("sends a lapsed box image re-signed, with its new expiry", async () => {
     const lapsedKit = storedKit({
       id: "kit-lapsed",
       image: "https://example.test/sign/kits/lapsed.png?token=lapsed",

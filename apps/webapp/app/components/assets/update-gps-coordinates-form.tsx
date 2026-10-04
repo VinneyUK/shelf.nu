@@ -35,7 +35,7 @@ export const UpdateGpsCoordinatesForm = ({
           // Error function
           () => {
             sendNotification({
-              title: "Location permissions blocked",
+              title: "Place permissions blocked",
               message:
                 "Please give your browser permission to access GPS coordinates.",
               icon: { name: "trash", variant: "error" },

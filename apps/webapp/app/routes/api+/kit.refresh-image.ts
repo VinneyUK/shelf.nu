@@ -43,7 +43,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
     if (!filename) {
       throw new ShelfError({
         cause: null,
-        message: "Cannot find kit filename",
+        message: "Cannot find box filename",
         additionalData: { userId, kitId, image },
         label: "Kit",
       });

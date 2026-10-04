@@ -220,7 +220,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
         sendNotification({
           title: "Asset removed",
-          message: "Asset has been removed from this location",
+          message: "Asset has been removed from this place",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -266,7 +266,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 
         sendNotification({
           title: "Assets removed",
-          message: `${resolvedAssetIds.length} asset(s) removed from this location`,
+          message: `${resolvedAssetIds.length} asset(s) removed from this place`,
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -409,8 +409,8 @@ export default function LocationAssets() {
             </>
           }
           customEmptyStateContent={{
-            title: "There are currently no assets at the location",
-            text: "Add assets in this location",
+            title: "There are currently no assets at the place",
+            text: "Add assets in this place",
             newButtonRoute: "manage-assets",
             newButtonContent: "Add asset",
           }}
@@ -571,7 +571,7 @@ const ListAssetContent = ({
                       const kitEntries = Array.from(kitRowsByKitId.values());
                       return (
                         <span className="ml-2 inline-flex items-center gap-2 text-xs font-normal text-gray-500">
-                          · {atLocation} {unit} at this location
+                          · {atLocation} {unit}  at this place
                           {kitEntries.length > 0 ? (
                             <TooltipProvider delayDuration={150}>
                               <Tooltip>
@@ -597,15 +597,15 @@ const ListAssetContent = ({
                                     }
                                   >
                                     {kitEntries.length === 1
-                                      ? "via kit"
-                                      : `via ${kitEntries.length} kits`}
+                                      ? "via box"
+                                      : `via ${kitEntries.length} boxes`}
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-xs">
                                   <p className="text-xs font-semibold text-gray-700">
                                     {kitEntries.length === 1
                                       ? kitEntries[0].kit.name
-                                      : "Placed via multiple kits"}
+                                      : "Placed via multiple boxes"}
                                   </p>
                                   <ul className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500">
                                     {kitEntries.map((e) => (
@@ -620,12 +620,14 @@ const ListAssetContent = ({
                                     ))}
                                   </ul>
                                   <p className="mt-1 text-xs text-gray-500">
-                                    These units are at this location because the
+                                    
+                                    These units are at this place because the
                                     asset is in {""}
                                     {kitEntries.length === 1
-                                      ? "this kit"
-                                      : "these kits"}
-                                    . Change the kit&apos;s location to move
+                                      ? "this box"
+                                      : "these boxes"}
+                                    
+                                    . Change the box&apos;s place to move
                                     them.
                                   </p>
                                 </TooltipContent>

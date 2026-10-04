@@ -229,7 +229,7 @@ describe("GET /api/mobile/assets", () => {
     });
   });
 
-  it("orders kit memberships oldest-first so a row always names the same kit", async () => {
+  it("orders box memberships oldest-first so a row always names the same box", async () => {
     // `shapeMobileAssetResponse` takes `assetKits[0]`, and only INDIVIDUAL
     // assets are capped at one membership — so an unordered relation lets a
     // quantity-tracked asset name a different kit on each refresh. Oldest
@@ -246,7 +246,7 @@ describe("GET /api/mobile/assets", () => {
     });
   });
 
-  it("reports how many kits an asset belongs to alongside the named one", async () => {
+  it("reports how many boxes an asset belongs to alongside the named one", async () => {
     // The row can only show one name, so `kitCount` is what stops it from
     // presenting the primary kit of three as the asset's only kit.
     findManyMock.mockResolvedValueOnce([
@@ -262,8 +262,8 @@ describe("GET /api/mobile/assets", () => {
         type: "QUANTITY_TRACKED",
         quantity: 30,
         assetKits: [
-          { kit: { id: "kit-1", name: "Camera Kit" } },
-          { kit: { id: "kit-2", name: "Audio Kit" } },
+          { kit: { id: "kit-1", name: "Camera Box" } },
+          { kit: { id: "kit-2", name: "Audio Box" } },
         ],
         assetLocations: [],
         custody: [],
@@ -277,7 +277,7 @@ describe("GET /api/mobile/assets", () => {
         thumbnailImage: null,
         availableToBook: true,
         category: null,
-        assetKits: [{ kit: { id: "kit-1", name: "Camera Kit" } }],
+        assetKits: [{ kit: { id: "kit-1", name: "Camera Box" } }],
         assetLocations: [],
         custody: [],
       },
@@ -313,7 +313,7 @@ describe("GET /api/mobile/assets", () => {
 
     // The named kit is the first membership the (ordered) select returned.
     expect(body.assets[0]).toMatchObject({
-      kit: { id: "kit-1", name: "Camera Kit" },
+      kit: { id: "kit-1", name: "Camera Box" },
       kitCount: 2,
     });
     expect(body.assets[1]).toMatchObject({ kitCount: 1 });

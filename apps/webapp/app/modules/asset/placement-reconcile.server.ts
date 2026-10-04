@@ -229,7 +229,7 @@ export function reportAmbiguousPlacementReconcile({
   Logger.error(
     new ShelfError({
       cause: null,
-      message: `${context} left the location axis over-allocated and the source location is ambiguous.`,
+      message: `${context} left the place axis over-allocated and the source place is ambiguous.`,
       additionalData: {
         ...additionalData,
         deficit: result.deficit,
@@ -324,7 +324,7 @@ export async function assertStockNotBelowManualPlacements({
   throw new ShelfError({
     cause: null,
     title: "Cannot reduce quantity below what is placed",
-    message: `Cannot reduce "${title}" to ${newTotal} ${unit} — ${placedSum} ${unit} are assigned to locations. Lower the placements first, then reduce the total.`,
+    message: `Cannot reduce "${title}" to ${newTotal} ${unit} — ${placedSum} ${unit} are assigned to places. Lower the placements first, then reduce the total.`,
     additionalData: { assetId, organizationId, newTotal, placedSum },
     label,
     status: 400,

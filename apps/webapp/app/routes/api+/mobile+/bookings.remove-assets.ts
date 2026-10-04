@@ -66,7 +66,7 @@ const BodySchema = z
     standaloneAssetIds: z.array(z.string().min(1)).optional(),
   })
   .refine((body) => body.assetIds.length > 0 || body.kitIds.length > 0, {
-    message: "Select at least one asset or kit to remove.",
+    message: "Select at least one asset or box to remove.",
   });
 
 export async function action({ request }: ActionFunctionArgs) {

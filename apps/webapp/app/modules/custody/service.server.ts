@@ -48,9 +48,9 @@ export async function assertNoKitDerivedCustody(
   if (kitDerived) {
     throw new ShelfError({
       cause: null,
-      title: "Custody is managed by the kit",
+      title: "Custody is managed by the box",
       message:
-        "This asset is in custody because its kit is. Release the kit's custody instead.",
+        "This asset is in custody because its box is. Release the box's custody instead.",
       additionalData: { assetId: kitDerived.assetId, organizationId },
       label: "Custody",
       status: 400,

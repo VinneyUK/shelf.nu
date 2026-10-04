@@ -164,7 +164,7 @@ async function checkOutScannedUnits(
       status: 400,
       label,
       message:
-        "Kits can't be checked out from the reservation scanner. Use Scan to check out for kits.",
+        "Boxes can't be checked out from the reservation scanner. Use Scan to check out for boxes.",
       shouldBeCaptured: false,
     });
   }

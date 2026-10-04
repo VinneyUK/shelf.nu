@@ -67,7 +67,7 @@ export function AddBarcodeDialog({
 
               <TabsContent value="input">
                 <AddBarcodeForm
-                  action={`/${item.type === "asset" ? "assets" : "kits"}/${
+                  action={`/${item.type === "asset" ? "assets" : "boxes"}/${
                     item.id
                   }`}
                   onCancel={handleCancel}
@@ -83,7 +83,7 @@ export function AddBarcodeDialog({
                 }
               >
                 <ScanBarcodeTab
-                  action={`/${item.type === "asset" ? "assets" : "kits"}/${
+                  action={`/${item.type === "asset" ? "assets" : "boxes"}/${
                     item.id
                   }`}
                   onCancel={handleCancel}

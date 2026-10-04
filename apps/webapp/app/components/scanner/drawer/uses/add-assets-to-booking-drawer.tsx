@@ -55,7 +55,7 @@ export const addScannedAssetsToBookingSchema = z
     kitSlices: z.string().optional().default("[]"),
   })
   .refine((data) => data.assetIds.length > 0, {
-    message: "At least one asset or kit must be selected",
+    message: "At least one asset or box must be selected",
     path: ["assetIds"],
   });
 
@@ -294,7 +294,7 @@ export default function AddAssetsToBookingDrawer({
       count: checkedOutKitsIds.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s are" : " is"}`}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s are" : " is"}`}</strong>{" "}
           already checked out.
         </>
       ),
@@ -327,11 +327,11 @@ export default function AddAssetsToBookingDrawer({
       count: assetsPartOfKitIds.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong> are part
-          of a kit.
+          <strong>{`${count} asset${count > 1 ? "s" : ""} `}</strong>  are part
+          of a box.
         </>
       ),
-      description: "Note: Scan Kit QR to add the full kit",
+      description: "Note: Scan Box QR to add the full box",
       onResolve: () => removeAssetsFromList(assetsPartOfKitIds),
     },
     {
@@ -339,7 +339,7 @@ export default function AddAssetsToBookingDrawer({
       count: kitsWithUnavailableAssets.length,
       message: (count: number) => (
         <>
-          <strong>{`${count} kit${count > 1 ? "s have" : " has"} `}</strong>{" "}
+          <strong>{`${count} box${count > 1 ? "s have" : " has"} `}</strong>{" "}
           unavailable assets inside {count > 1 ? "them" : "it"}.
         </>
       ),
@@ -483,7 +483,7 @@ export function AssetRow({ asset }: { asset: AssetFromQr }) {
       badgeText: "No units available",
       tooltipTitle: "No units available",
       tooltipContent:
-        "Every unit of this asset is already in custody, in a kit or reserved for the booking window.",
+        "Every unit of this asset is already in custody, in a box or reserved for the booking window.",
       priority: 80,
     },
   ];
@@ -554,9 +554,9 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
     {
       condition: bookingIsCheckedOut && isCheckedOut,
       badgeText: "Already checked out",
-      tooltipTitle: "Kit is checked out",
+      tooltipTitle: "Box is checked out",
       tooltipContent:
-        "This kit is already checked out and cannot be added to a checked-out booking.",
+        "This box is already checked out and cannot be added to a checked-out booking.",
       priority: 80, // High priority - blocking issue
       // Uses default warning colors (red/orange) appropriate for blocking issue
     },
@@ -583,7 +583,8 @@ export function KitRow({ kit }: { kit: KitFromQr }) {
             "text-xs text-gray-700"
           )}
         >
-          kit
+          
+          box
         </span>
         <KitAvailabilityLabels />
       </div>

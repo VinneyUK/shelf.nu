@@ -110,8 +110,8 @@ export const LocationSelect = ({
               : ({ onItemCreated, closePopover }) => (
                   <InlineEntityCreationDialog
                     type="location"
-                    title="Create new location"
-                    buttonLabel="Create new location"
+                    title="Create new place"
+                    buttonLabel="Create new place"
                     onCreated={(created) => {
                       if (created?.type !== "location") return;
                       const createdLocation = created.entity;

@@ -209,20 +209,23 @@ export const LocationForm = ({
         </When>
 
         <FormRow
-          rowLabel={"Parent location"}
+          rowLabel={"Parent place"}
           subHeading={
             <p>
-              Optional. Nest this location under an existing one to build
+              
+              Optional. Nest this place under an existing one to build
               breadcrumbs.
             </p>
           }
         >
           <div className="mb-2 block lg:hidden">
             <div className="text-sm font-medium text-gray-700">
-              Parent location
+              
+              Parent place
             </div>
             <p className="text-xs text-gray-600">
-              Optional. Nest this location under an existing one to build
+              
+              Optional. Nest this place under an existing one to build
               breadcrumbs.
             </p>
           </div>
@@ -289,8 +292,9 @@ export const LocationForm = ({
               rowLabel={"Address"}
               subHeading={
                 <p>
-                  Will set location’s geo position to address. Make sure to add
-                  an accurate address, to ensure the map location is as accurate
+                  
+                  Will set place’s geo position to address. Make sure to add
+                  an accurate address, to ensure the map place is as accurate
                   as possible
                 </p>
               }
@@ -330,8 +334,9 @@ export const LocationForm = ({
               rowLabel="Description"
               subHeading={
                 <p>
+                  
                   This is the initial object description. It will be shown on
-                  the location page. You can always change it.
+                  the place page. You can always change it.
                 </p>
               }
               required={zodFieldIsRequired(
@@ -344,7 +349,7 @@ export const LocationForm = ({
                 hideLabel
                 name={zo.fields.description()}
                 defaultValue={description || ""}
-                placeholder="Add a description for your location."
+                placeholder="Add a description for your place."
                 disabled={disabled}
                 data-test-id="locationDescription"
                 className="w-full"
@@ -360,7 +365,7 @@ export const LocationForm = ({
             label="Description"
             name={zo.fields.description()}
             defaultValue={description || ""}
-            placeholder="Add a description for your location."
+            placeholder="Add a description for your place."
             disabled={disabled}
             data-test-id="locationDescription"
             className="w-full"
@@ -436,7 +441,7 @@ const AddAnother = ({ disabled }: { disabled: boolean }) => (
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        <p className="text-sm">Save the location and add a new one</p>
+        <p className="text-sm">Save the place and add a new one</p>
       </TooltipContent>
     </Tooltip>
   </TooltipProvider>

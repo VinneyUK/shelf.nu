@@ -190,7 +190,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
             typeof assetKitId !== "string" ||
             assetKitId.length === 0
           ) {
-            throw new Error("invalid kit slice entry");
+            throw new Error("invalid box slice entry");
           }
           // why: `kitId` is deliberately NOT required. It feeds
           // `BookingAsset.sourceKitId`, but the service re-resolves that from

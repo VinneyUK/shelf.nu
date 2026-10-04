@@ -105,7 +105,7 @@ export function LocationBadge({ location, className }: LocationBadgeProps) {
     return (
       <div className="space-y-3 text-sm">
         <div>
-          <p className="font-semibold text-gray-500">Current location</p>
+          <p className="font-semibold text-gray-500">Current place</p>
           <Button
             to={`/locations/${currentLocation.id}`}
             variant="block-link"
@@ -128,13 +128,13 @@ export function LocationBadge({ location, className }: LocationBadgeProps) {
         ) : null}
 
         <div>
-          <p className="font-semibold text-gray-500">Child locations</p>
+          <p className="font-semibold text-gray-500">Child places</p>
           {hasChildren ? (
             <div className="mt-2">
               <LocationTree nodes={descendants} />
             </div>
           ) : (
-            <p className="mt-2 text-sm text-gray-600">No child locations.</p>
+            <p className="mt-2 text-sm text-gray-600">No child places.</p>
           )}
         </div>
       </div>

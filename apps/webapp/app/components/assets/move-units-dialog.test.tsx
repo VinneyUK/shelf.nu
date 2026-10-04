@@ -164,7 +164,7 @@ describe("MoveUnitsDialog", () => {
   });
 
   describe("header copy per axis", () => {
-    it("renders 'Move … from {location}' title for axis=location", () => {
+    it("renders 'Move … from {place}' title for axis=place", () => {
       render(
         <MoveUnitsDialog
           axis="location"
@@ -184,7 +184,7 @@ describe("MoveUnitsDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders 'Move … from {kit}' title for axis=kit", () => {
+    it("renders 'Move … from {box}' title for axis=box", () => {
       render(
         <MoveUnitsDialog
           axis="kit"

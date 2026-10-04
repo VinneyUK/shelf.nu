@@ -67,7 +67,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       },
     });
 
-    const title = `Scan assets for location | ${location.name}`;
+    const title = `Scan assets for place | ${location.name}`;
     const header: HeaderData = {
       title,
     };

@@ -150,7 +150,8 @@ export default function KitOverview() {
         <When truthy={!!kit.location}>
           <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
             <span className="w-1/4 text-[14px] font-medium text-gray-900">
-              Location
+              
+              Place
             </span>
             <div className="mt-1 md:mt-0 md:w-3/5">
               {kit.location ? (
@@ -176,7 +177,8 @@ export default function KitOverview() {
                 <>
                   <h6>Total value</h6>
                   <p>
-                    A sum of all assets' values in this kit. If no assets are
+                    
+                    A sum of all assets' values in this box. If no assets are
                     present, this will be zero.
                   </p>
                 </>

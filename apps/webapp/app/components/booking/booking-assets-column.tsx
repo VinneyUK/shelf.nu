@@ -213,7 +213,7 @@ export function BookingAssetsColumn() {
   return (
     <div className="flex-1">
       <div className="w-full">
-        <TextualDivider text="Assets & Kits" className="mb-8 lg:hidden" />
+        <TextualDivider text="Assets & Boxes" className="mb-8 lg:hidden" />
         <div className="mb-3 flex gap-4 lg:hidden"></div>
 
         <div className="flex flex-col">
@@ -331,7 +331,7 @@ export function BookingAssetsColumn() {
                     <Th> </Th>
                     <Th>Category</Th>
                     <Th>Tags</Th>
-                    <Th>Location</Th>
+                    <Th>Place</Th>
                     {shouldShowCheckoutColumns && (
                       <>
                         <Th className="whitespace-nowrap">
@@ -487,7 +487,7 @@ function BookingAssetsHeader({
     return (
       <div className="flex justify-between">
         <ListTitle
-          title={"Assets & Kits"}
+          title={"Assets & Boxes"}
           titleClassName="text-transform normal-case"
           hasBulkActions
           itemsGetter={itemsGetter}
@@ -525,7 +525,7 @@ function BookingAssetsHeader({
       {/* First row: ListTitle and ListBulkActionsDropdown */}
       <div className="flex items-start justify-between">
         <ListTitle
-          title="Assets & Kits"
+          title="Assets & Boxes"
           hasBulkActions
           itemsGetter={itemsGetter}
           disableSelectAllItems

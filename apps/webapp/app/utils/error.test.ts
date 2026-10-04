@@ -635,7 +635,7 @@ describe(isAssetQuantityOverAllocationError.name, () => {
     const wrapped = new ShelfError({
       cause: assetKitTriggerError,
       label: "Kit",
-      message: "Something went wrong while updating kit assets.",
+      message: "Something went wrong while updating box assets.",
     });
     expect(isAssetQuantityOverAllocationError(wrapped)).toBe(true);
   });
@@ -644,7 +644,7 @@ describe(isAssetQuantityOverAllocationError.name, () => {
     const inner = new ShelfError({
       cause: assetLocationTriggerError,
       label: "Location",
-      message: "Something went wrong while updating the location assets.",
+      message: "Something went wrong while updating the place assets.",
     });
     const outer = new ShelfError({
       cause: inner,
@@ -665,7 +665,7 @@ describe(isAssetQuantityOverAllocationError.name, () => {
     // Another trigger that mentions the same tables but a DIFFERENT invariant.
     expect(
       isAssetQuantityOverAllocationError(
-        new Error("INDIVIDUAL asset abc123 already linked to a kit")
+        new Error("INDIVIDUAL asset abc123 already linked to a box")
       )
     ).toBe(false);
     expect(isAssetQuantityOverAllocationError(null)).toBe(false);
@@ -768,7 +768,7 @@ describe(isIndividualAssetAlreadyPlacedError.name, () => {
   // `PrismaClientUnknownRequestError` is just an Error whose `message` carries
   // the raw `RAISE EXCEPTION` text.
   const singleLocationTriggerError = new Error(
-    "Invalid `prisma.assetLocation.createMany()` invocation: INDIVIDUAL asset abc123 already placed at a location"
+    "Invalid `prisma.assetLocation.createMany()` invocation: INDIVIDUAL asset abc123 already placed at a place"
   );
 
   it("detects the single-location trigger message", () => {
@@ -782,12 +782,12 @@ describe(isIndividualAssetAlreadyPlacedError.name, () => {
       cause: singleLocationTriggerError,
       label: "Location",
       message:
-        "Something went wrong while adding the kits to the location. Please try again or contact support.",
+        "Something went wrong while adding the boxes to the place. Please try again or contact support.",
     });
     const outer = new ShelfError({
       cause: inner,
       label: "Location",
-      message: "Something went wrong while updating the location kits.",
+      message: "Something went wrong while updating the place boxes.",
     });
     expect(isIndividualAssetAlreadyPlacedError(outer)).toBe(true);
   });
@@ -802,7 +802,7 @@ describe(isIndividualAssetAlreadyPlacedError.name, () => {
     // The sibling single-kit trigger has different wording.
     expect(
       isIndividualAssetAlreadyPlacedError(
-        new Error("INDIVIDUAL asset abc123 already linked to a kit")
+        new Error("INDIVIDUAL asset abc123 already linked to a box")
       )
     ).toBe(false);
     expect(isIndividualAssetAlreadyPlacedError(new Error("boom"))).toBe(false);
@@ -818,7 +818,7 @@ describe(isIndividualAssetAlreadyPlacedError.name, () => {
 
 describe(throwIfIndividualAssetAlreadyPlaced.name, () => {
   const triggerError = new Error(
-    "INDIVIDUAL asset abc123 already placed at a location"
+    "INDIVIDUAL asset abc123 already placed at a place"
   );
 
   it("throws a friendly 400, non-captured ShelfError for the trigger violation", () => {
@@ -843,7 +843,7 @@ describe(throwIfIndividualAssetAlreadyPlaced.name, () => {
       kitIds: ["k1"],
     });
     // Non-technical, actionable user message.
-    expect(shelfError.message).toContain("one location at a time");
+    expect(shelfError.message).toContain("one place at a time");
     // 400 → routed to Sentry logs, kept out of the error/issue pipeline.
     expect(isHandledClientError(shelfError)).toBe(true);
   });

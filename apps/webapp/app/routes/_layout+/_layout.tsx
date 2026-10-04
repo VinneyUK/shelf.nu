@@ -40,7 +40,6 @@ import { Toaster } from "~/components/shared/toast";
 import { MissingPaymentMethodBanner } from "~/components/subscription/missing-payment-method-banner";
 import { NoSubscription } from "~/components/subscription/no-subscription";
 import { UnpaidInvoiceBanner } from "~/components/subscription/unpaid-invoice-banner";
-import { VocabularyRenamer } from "~/components/vocabulary/vocabulary-renamer"; // fork
 import { config } from "~/config/shelf.config";
 import { getBookingSettingsForOrganization } from "~/modules/booking-settings/service.server";
 import { redirectForSwitchedOffPage } from "~/modules/customisation/catalogue";
@@ -351,7 +350,6 @@ export default function App() {
         <SkipLinks />
         <AtomsResetHandler />
         <AppSidebar id="navigation" />
-        <VocabularyRenamer /> {/* fork: "Kits" are "Boxes" here */}
         <SidebarInset id="main-content" tabIndex={-1}>
           {warnForNoPaymentMethod ? <MissingPaymentMethodBanner /> : null}
           {hasUnpaidInvoice ? <UnpaidInvoiceBanner /> : null}

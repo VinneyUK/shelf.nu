@@ -191,8 +191,8 @@ describe("/api/feedback", () => {
         traceId: "trace_789",
         sentryEventId: "evt_abc",
         errorStatus: "500",
-        errorTitle: "Kit error",
-        errorMessage: "Something went wrong while fetching the kit",
+        errorTitle: "Box error",
+        errorMessage: "Something went wrong while fetching the box",
       });
       request.headers.set("user-agent", "Mozilla/5.0 (Macintosh)");
 
@@ -208,8 +208,8 @@ describe("/api/feedback", () => {
             traceId: "trace_789",
             sentryEventId: "evt_abc",
             errorStatus: "500",
-            errorTitle: "Kit error",
-            errorMessage: "Something went wrong while fetching the kit",
+            errorTitle: "Box error",
+            errorMessage: "Something went wrong while fetching the box",
           },
         })
       );

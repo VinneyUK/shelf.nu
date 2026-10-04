@@ -2193,7 +2193,7 @@ export const assetQueryFragment = (options: AssetQueryOptions = {}) => {
       CASE
         WHEN l.id IS NOT NULL THEN (
           SELECT COUNT(*)::integer
-          FROM public."Location" lc
+          FROM public."Place" lc
           WHERE lc."parentId" = l.id
         )
         ELSE 0
@@ -2202,8 +2202,8 @@ export const assetQueryFragment = (options: AssetQueryOptions = {}) => {
         WHEN l.name IS NOT NULL THEN l.name
         ELSE NULL
       END AS "locationName",
-      kits_agg.kits AS kits,
-      locations_agg.locations AS locations,
+      kits_agg.boxes AS boxes,
+      locations_agg.places AS places,
       COALESCE(
         jsonb_agg(
           DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
@@ -2501,11 +2501,11 @@ export const assetReturnFragment = (options: AssetReturnOptions = {}) => {
           'availableToBook', aq."assetAvailableToBook",
           'labelled', aq."assetLabelled",
           'kitId', aq."assetKitId",
-          'kit', CASE WHEN aq."kitId" IS NOT NULL THEN jsonb_build_object('id', aq."kitId", 'name', aq."kitName", 'status', aq."kitStatus") ELSE NULL END,
-          'kits', COALESCE(aq.kits, '[]'::jsonb),
+          'box', CASE WHEN aq."kitId" IS NOT NULL THEN jsonb_build_object('id', aq."kitId", 'name', aq."kitName", 'status', aq."kitStatus") ELSE NULL END,
+          'boxes', COALESCE(aq.boxes, '[]'::jsonb),
           'category', CASE WHEN aq."categoryId" IS NOT NULL THEN jsonb_build_object('id', aq."categoryId", 'name', aq."categoryName", 'color', aq."categoryColor") ELSE NULL END,
           'tags', aq.tags,
-          'location', CASE
+          'place', CASE
             WHEN aq."assetLocationId" IS NOT NULL THEN jsonb_build_object(
               'id', aq."assetLocationId",
               'name', aq."locationName",
@@ -2514,7 +2514,7 @@ export const assetReturnFragment = (options: AssetReturnOptions = {}) => {
             )
             ELSE NULL
           END,
-          'locations', COALESCE(aq.locations, '[]'::jsonb),
+          'places', COALESCE(aq.places, '[]'::jsonb),
           'custody', aq.custody,
           'customFields', COALESCE(aq."customFields", '[]'::jsonb),
           'upcomingReminder', aq.upcomingReminder${bookingsField}${barcodesField}
@@ -2626,7 +2626,7 @@ const CHEAP_KIT_JOIN = Prisma.sql`
     LEFT JOIN LATERAL (
       SELECT k.id, k.name, k.status
       FROM public."AssetKit" ak
-      JOIN public."Kit" k ON ak."kitId" = k.id
+      JOIN public."Box" k ON ak."kitId" = k.id
       WHERE ak."assetId" = a.id
       ORDER BY ak."createdAt" ASC, ak.id ASC
       LIMIT 1
@@ -2639,7 +2639,7 @@ const CHEAP_LOCATION_JOIN = Prisma.sql`
     LEFT JOIN LATERAL (
       SELECT l.id, l.name, l."parentId"
       FROM public."AssetLocation" al
-      JOIN public."Location" l ON al."locationId" = l.id
+      JOIN public."Place" l ON al."locationId" = l.id
       WHERE al."assetId" = a.id
       ORDER BY al."createdAt" ASC, al.id ASC
       LIMIT 1
@@ -2927,7 +2927,7 @@ export function buildAdvancedAssetsQuery({
         })}
         ${assetQueryJoins}
         WHERE a.id = saq."assetId"
-        GROUP BY a.id, k.id, k.name, k.status, c.id, c.name, c.color, l.id, l."parentId", l.name, custody_agg.custody, kits_agg.kits, locations_agg.locations, b.id, bu.id, bu."firstName", bu."lastName", bu."displayName", bu."profilePicture", btm.id, btm.name, am.id, am.name
+        GROUP BY a.id, k.id, k.name, k.status, c.id, c.name, c.color, l.id, l."parentId", l.name, custody_agg.custody, kits_agg.boxes, locations_agg.places, b.id, bu.id, bu."firstName", bu."lastName", bu."displayName", bu."profilePicture", btm.id, btm.name, am.id, am.name
       ) aq ON TRUE;
     `;
 }

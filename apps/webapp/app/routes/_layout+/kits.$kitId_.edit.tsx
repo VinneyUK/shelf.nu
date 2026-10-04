@@ -185,8 +185,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     }
 
     sendNotification({
-      title: "Kit updated",
-      message: "Your kit has been updated successfully",
+      title: "Box updated",
+      message: "Your box has been updated successfully",
       icon: { name: "success", variant: "success" },
       senderId: authSession.userId,
     });

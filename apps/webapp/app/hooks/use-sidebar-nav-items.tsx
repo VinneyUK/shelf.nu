@@ -138,7 +138,7 @@ export function useSidebarNavItems() {
     },
     {
       type: "child",
-      title: "Kits",
+      title: "Boxes",
       to: "/kits",
       Icon: Package,
     },
@@ -158,7 +158,7 @@ export function useSidebarNavItems() {
     },
     {
       type: "child",
-      title: "Locations",
+      title: "Places",
       to: "/locations",
       Icon: MapPinIcon,
       hidden: isBaseOrSelfService,

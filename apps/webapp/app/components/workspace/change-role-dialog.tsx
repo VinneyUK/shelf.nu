@@ -325,13 +325,13 @@ export function ChangeRoleDialog({
                             <li>{entityCounts.tags} tags</li>
                           )}
                           {entityCounts.locations > 0 && (
-                            <li>{entityCounts.locations} locations</li>
+                            <li>{entityCounts.locations}  places</li>
                           )}
                           {entityCounts.customFields > 0 && (
                             <li>{entityCounts.customFields} custom fields</li>
                           )}
                           {entityCounts.kits > 0 && (
-                            <li>{entityCounts.kits} kits</li>
+                            <li>{entityCounts.kits}  boxes</li>
                           )}
                           {entityCounts.assetReminders > 0 && (
                             <li>

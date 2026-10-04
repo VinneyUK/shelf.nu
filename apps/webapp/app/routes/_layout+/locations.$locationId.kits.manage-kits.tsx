@@ -100,9 +100,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       .catch((cause) => {
         throw new ShelfError({
           cause,
-          title: "Location not found",
+          title: "Place not found",
           message:
-            "The location you are trying to access does not exist or you do not have permission to access it.",
+            "The place you are trying to access does not exist or you do not have permission to access it.",
           additionalData: { locationId, userId, organizationId },
           label: "Location",
         });
@@ -128,9 +128,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 
     return payload({
       header: {
-        title: `Move kits to '${location?.name}' location`,
+        title: `Move boxes to '${location?.name}' place`,
         subHeading:
-          "Search your database for kits that you would like to move to this location.",
+          "Search your database for boxes that you would like to move to this place.",
       },
       showSidebar: true,
       noScroll: true,
@@ -265,7 +265,8 @@ export default function ManageLocationKits() {
             ) : null}
           </TabsTrigger>
           <TabsTrigger className="flex-1 gap-x-2" value="kits">
-            Kits
+            
+            Boxes
             {selectedBulkItemsCount > 0 ? (
               <GrayBadge className="size-[20px] border border-primary-200 bg-primary-50 text-[10px] leading-[10px] text-primary-700">
                 {selectedBulkItemsCount}
@@ -288,16 +289,16 @@ export default function ManageLocationKits() {
             updateItem(item);
           }}
           customEmptyStateContent={{
-            title: "You haven't added any kits yet.",
-            text: "What are you waiting for? Create your first kit now!",
+            title: "You haven't added any boxes yet.",
+            text: "What are you waiting for? Create your first box now!",
             newButtonRoute: "/kits/new",
-            newButtonContent: "New kit",
+            newButtonContent: "New box",
           }}
           className="mx-1 flex h-full flex-col justify-start border-0"
           bulkActions={<> </>}
           headerChildren={
             <>
-              <Th>Location</Th>
+              <Th>Place</Th>
               <Th>Category</Th>
             </>
           }
@@ -363,8 +364,9 @@ export default function ManageLocationKits() {
           void submit(formRef.current);
         }}
       >
-        You have added some kits to the booking but haven't saved it yet. Do you
-        want to confirm adding those kits?
+        
+        You have added some boxes to the booking but haven't saved it yet. Do you
+        want to confirm adding those boxes?
       </UnsavedChangesAlert>
 
       <AlertDialog
@@ -378,16 +380,17 @@ export default function ManageLocationKits() {
                 <MapPin />
               </span>
             </div>
-            <AlertDialogTitle>Location Update notice</AlertDialogTitle>
+            <AlertDialogTitle>Place Update notice</AlertDialogTitle>
             <AlertDialogDescription>
-              Changing kit locations will also automatically update the location
-              of all assets within those kits.
+              
+              Changing box places will also automatically update the place
+              of all assets within those boxes.
               {selectedBulkItemsCount !== locationKitsCount && (
                 <div>
                   <strong>This action will affect:</strong>
                   <ul className="mt-2 list-inside list-disc">
-                    <li>All assets in kits being added to this location</li>
-                    <li>All assets in kits being removed from this location</li>
+                    <li>All assets in boxes being added to this place</li>
+                    <li>All assets in boxes being removed from this place</li>
                   </ul>
                 </div>
               )}
@@ -414,7 +417,8 @@ export default function ManageLocationKits() {
                 }}
                 disabled={isSearching}
               >
-                Yes, update locations
+                
+                Yes, update places
               </Button>
             </div>
           </AlertDialogFooter>

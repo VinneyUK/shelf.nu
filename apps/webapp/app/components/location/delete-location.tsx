@@ -55,14 +55,16 @@ export const DeleteLocation = ({ location, trigger }: DeleteLocationProps) => {
           </div>
           <AlertDialogTitle>Delete {location.name}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this Location? This action cannot be
+            
+            Are you sure you want to delete this Place? This action cannot be
             undone.
           </AlertDialogDescription>
           {location.childCount && location.childCount > 0 ? (
             <div className="rounded border border-warning-200 bg-warning-50 p-3 text-sm text-warning-900">
-              This location has <strong>{location.childCount}</strong> child
-              {location.childCount > 1 ? " locations" : " location"}. They will
-              move to the root level if you delete this location.
+              
+              This place has <strong>{location.childCount}</strong> child
+              {location.childCount > 1 ? " places" : " place"}. They will
+              move to the root level if you delete this place.
             </div>
           ) : null}
         </AlertDialogHeader>

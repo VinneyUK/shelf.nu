@@ -165,8 +165,9 @@ export default function KitsForm({
           rowLabel="Description"
           subHeading={
             <p>
+              
               Briefly describe what is included and/or what is will be used for.
-              It will be shown on the kit’s overview page.
+              It will be shown on the box’s overview page.
             </p>
           }
           className="border-b-0"
@@ -190,7 +191,8 @@ export default function KitsForm({
           rowLabel="Category"
           subHeading={
             <p>
-              Make it unique. Each kit can have 1 category. It will show on your
+              
+              Make it unique. Each box can have 1 category. It will show on your
               index.{" "}
               <Button
                 to="/categories/new"
@@ -240,18 +242,20 @@ export default function KitsForm({
         </FormRow>
 
         <FormRow
-          rowLabel="Location"
+          rowLabel="Place"
           subHeading={
             <p>
-              A location is a place where an item is supposed to be located.
-              This is different than the last scanned location{" "}
+              
+              A place is a place where an item is supposed to be located.
+              This is different than the last scanned place{" "}
               <Button
                 to="/locations/new"
                 className="text-gray-600 underline"
                 target="_blank"
                 variant="link-gray"
               >
-                Create locations
+                
+                Create places
               </Button>
             </p>
           }
@@ -265,7 +269,7 @@ export default function KitsForm({
             defaultValue={locationId ?? undefined}
             model={{ name: "location", queryKey: "name" }}
             contentLabel="Locations"
-            label="Location"
+            label="Place"
             hideLabel
             initialDataKey="locations"
             countKey="totalLocations"
@@ -274,8 +278,8 @@ export default function KitsForm({
             extraContent={({ onItemCreated, closePopover }) => (
               <InlineEntityCreationDialog
                 type="location"
-                title="Create new location"
-                buttonLabel="Create new location"
+                title="Create new place"
+                buttonLabel="Create new place"
                 onCreated={(created) => {
                   if (created?.type !== "location") return;
                   const location = created.entity;
@@ -330,7 +334,7 @@ export default function KitsForm({
           <FormRow
             rowLabel={"Barcodes"}
             className="border-b-0"
-            subHeading="Add additional barcodes to this kit (Code 128, Code 39, or Data Matrix). Note: Each kit automatically gets a default Shelf QR code for tracking."
+            subHeading="Add additional barcodes to this box (Code 128, Code 39, or Data Matrix). Note: Each box automatically gets a default Shelf QR code for tracking."
           >
             <BarcodesInput
               ref={barcodesInputRef}

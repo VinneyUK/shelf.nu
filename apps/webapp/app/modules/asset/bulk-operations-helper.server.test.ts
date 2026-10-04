@@ -146,7 +146,7 @@ describe("buildAdvancedFilteredAssetIdsQuery", () => {
     "?"
   );
 
-  it("joins location through the AssetLocation pivot (LATERAL primary-pick)", () => {
+  it("joins place through the AssetLocation pivot (LATERAL primary-pick)", () => {
     expect(sql).toContain('public."AssetLocation"');
     expect(sql).toContain("LEFT JOIN LATERAL");
   });

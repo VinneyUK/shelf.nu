@@ -316,10 +316,10 @@ function websiteOrder({
   return items.flatMap((item) => item.assets.map((asset) => asset.id));
 }
 
-const AUDIO_KIT: Kit = { id: "kit-audio", name: "Audio Kit" };
-const VIDEO_KIT: Kit = { id: "kit-video", name: "Video Kit" };
-const POWER_KIT: Kit = { id: "kit-power", name: "Power Kit" };
-const CAMERA_KIT: Kit = { id: "kit-camera", name: "Camera Kit" };
+const AUDIO_KIT: Kit = { id: "kit-audio", name: "Audio Box" };
+const VIDEO_KIT: Kit = { id: "kit-video", name: "Video Box" };
+const POWER_KIT: Kit = { id: "kit-power", name: "Power Box" };
+const CAMERA_KIT: Kit = { id: "kit-camera", name: "Camera Box" };
 
 describe("GET /api/mobile/bookings/:bookingId — asset order", () => {
   it("lists a checked-out asset after the assets still to check out", async () => {
@@ -380,7 +380,7 @@ describe("GET /api/mobile/bookings/:bookingId — asset order", () => {
     );
   });
 
-  it("sinks a fully checked-out kit as one unit, its members together, and orders the kits to match", async () => {
+  it("sinks a fully checked-out box as one unit, its members together, and orders the boxes to match", async () => {
     const slices = [
       slice({
         id: "ba-mic",
@@ -454,7 +454,7 @@ describe("GET /api/mobile/bookings/:bookingId — asset order", () => {
     ]);
   });
 
-  describe("a quantity-tracked asset booked both standalone and through a kit", () => {
+  describe("a quantity-tracked asset booked both standalone and through a box", () => {
     const slices = [
       slice({
         id: "ba-adapter",
@@ -487,7 +487,7 @@ describe("GET /api/mobile/bookings/:bookingId — asset order", () => {
       }),
     ];
 
-    it("keeps it on top while its standalone slice still has units to check out, though its kit slice is fully out", async () => {
+    it("keeps it on top while its standalone slice still has units to check out, though its box slice is fully out", async () => {
       findFirstMock.mockResolvedValue(bookingRow("ONGOING", slices));
       // Both kit units went out, tagged to the kit slice; none of the three
       // standalone units have.

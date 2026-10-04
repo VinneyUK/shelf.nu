@@ -100,7 +100,7 @@ describe("userToScimResource", () => {
     expect(result.name?.familyName).toBeUndefined();
   });
 
-  it("should include correct meta.location URL (keyed off the external id)", () => {
+  it("should include correct meta.place URL (keyed off the external id)", () => {
     const result = userToScimResource(baseUser, true);
 
     expect(result.meta.location).toBe(

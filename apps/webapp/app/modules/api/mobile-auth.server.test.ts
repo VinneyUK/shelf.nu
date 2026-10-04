@@ -111,7 +111,7 @@ function custodyRow(
 }
 
 describe("shapeMobileAssetResponse", () => {
-  it("returns null for kit, kitId, location, and custody when all pivots are empty", () => {
+  it("returns null for box, kitId, place, and custody when all pivots are empty", () => {
     const result = shapeMobileAssetResponse(baseAsset);
 
     expect(result.kit).toBeNull();
@@ -120,7 +120,7 @@ describe("shapeMobileAssetResponse", () => {
     expect(result.custody).toBeNull();
   });
 
-  it("flattens assetKits[0] to a top-level kit and synthesises kitId", () => {
+  it("flattens assetKits[0] to a top-level box and synthesises kitId", () => {
     const result = shapeMobileAssetResponse({
       ...baseAsset,
       assetKits: [{ kit: { id: "kit-456", name: "Camera Bag" } }],
@@ -146,7 +146,7 @@ describe("shapeMobileAssetResponse", () => {
     expect(result.location).toBeNull();
   });
 
-  it("flattens assetLocations[0] to a top-level location", () => {
+  it("flattens assetLocations[0] to a top-level place", () => {
     const result = shapeMobileAssetResponse({
       ...baseAsset,
       assetLocations: [{ location: { id: "loc-321", name: "Studio A" } }],
@@ -157,15 +157,15 @@ describe("shapeMobileAssetResponse", () => {
     expect(result.custody).toBeNull();
   });
 
-  it("populates all three flattened fields when kit, location, and custody are all present", () => {
+  it("populates all three flattened fields when box, place, and custody are all present", () => {
     const result = shapeMobileAssetResponse({
       ...baseAsset,
-      assetKits: [{ kit: { id: "kit-1", name: "Audio Kit" } }],
+      assetKits: [{ kit: { id: "kit-1", name: "Audio Box" } }],
       assetLocations: [{ location: { id: "loc-1", name: "Warehouse" } }],
       custody: [custodyRow("tm-1", "Bob Custodian", 1)],
     });
 
-    expect(result.kit).toEqual({ id: "kit-1", name: "Audio Kit" });
+    expect(result.kit).toEqual({ id: "kit-1", name: "Audio Box" });
     expect(result.kitId).toBe("kit-1");
     expect(result.location).toEqual({ id: "loc-1", name: "Warehouse" });
     expect(result.custody).toEqual({

@@ -95,7 +95,7 @@ describe("resolveLocationAssetIds", () => {
     expect(blob(where)).toContain("cat-1");
   });
 
-  it("still scopes to the location", async () => {
+  it("still scopes to the place", async () => {
     await resolveLocationAssetIds({
       ids: [ALL_SELECTED_KEY],
       organizationId: ORG,
@@ -171,7 +171,7 @@ describe("resolveLocationKitIds", () => {
     expect(blob(where)).toContain("case");
   });
 
-  it("still scopes to the location", async () => {
+  it("still scopes to the place", async () => {
     await resolveLocationKitIds({
       ids: [ALL_SELECTED_KEY],
       organizationId: ORG,
@@ -182,7 +182,7 @@ describe("resolveLocationKitIds", () => {
     expect(kitWhere().locationId).toBe(LOC);
   });
 
-  it("matches the list's custody semantics, not the kits index's", async () => {
+  it("matches the list's custody semantics, not the boxes index's", async () => {
     await resolveLocationKitIds({
       ids: [ALL_SELECTED_KEY],
       organizationId: ORG,

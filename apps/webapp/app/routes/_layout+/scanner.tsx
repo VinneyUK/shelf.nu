@@ -64,7 +64,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         action: PermissionAction.read,
       });
     const header: HeaderData = {
-      title: "Locations",
+      title: "Places",
     };
 
     const searchParams = getCurrentSearchParams(request);
@@ -291,7 +291,7 @@ const QRScanner = () => {
         triggerSuccess();
         void navigate(`/qr/${value}`);
       } else if (
-        ["Assign custody", "Release custody", "Update location"].includes(
+        ["Assign custody", "Release custody", "Update place"].includes(
           currentAction
         )
       ) {

@@ -644,7 +644,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
  */
 const moveUnitsLocationSchema = z.object({
   [MOVE_UNITS_INTENT_FIELD]: z.literal("location"),
-  fromLocationId: z.string().cuid("Invalid source location."),
+  fromLocationId: z.string().cuid("Invalid source place."),
   toId: z.string().cuid("Please pick a destination."),
   quantity: z.coerce
     .number()
@@ -654,7 +654,7 @@ const moveUnitsLocationSchema = z.object({
 
 const moveUnitsKitSchema = z.object({
   [MOVE_UNITS_INTENT_FIELD]: z.literal("kit"),
-  fromKitId: z.string().cuid("Invalid source kit."),
+  fromKitId: z.string().cuid("Invalid source box."),
   toId: z.string().cuid("Please pick a destination."),
   quantity: z.coerce
     .number()
@@ -938,7 +938,8 @@ export default function AssetOverview() {
                  */
                 <li className="group/field w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
                   <span className="w-1/4 text-[14px] font-medium text-gray-900">
-                    Location
+                    
+                    Place
                   </span>
                   <div className="relative mt-1 flex items-start gap-2 md:mt-0 md:w-3/5">
                     <div className="min-w-0 flex-1">
@@ -973,7 +974,8 @@ export default function AssetOverview() {
                                           target="_blank"
                                           className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
                                         >
-                                          via kit
+                                          
+                                          via box
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent
@@ -984,9 +986,10 @@ export default function AssetOverview() {
                                           {viaKit.name}
                                         </p>
                                         <p className="mt-1 text-xs text-gray-500">
-                                          These units are at this location
-                                          because the asset is in this kit.
-                                          Change the kit&apos;s location to move
+                                          
+                                          These units are at this place
+                                          because the asset is in this box.
+                                          Change the box&apos;s place to move
                                           them.
                                         </p>
                                       </TooltipContent>
@@ -1002,7 +1005,8 @@ export default function AssetOverview() {
                         </ul>
                       ) : (
                         <span className="text-gray-600">
-                          No locations · {asset.quantity ?? 0}{" "}
+                          
+                          No places · {asset.quantity ?? 0}{" "}
                           {asset.unitOfMeasure || "units"} unplaced
                         </span>
                       )}
@@ -1027,7 +1031,7 @@ export default function AssetOverview() {
               ) : (
                 <InlineEditableField
                   fieldName="location"
-                  label="Location"
+                  label="Place"
                   canEdit={canEditAsset}
                   isEmpty={!location}
                   renderDisplay={() =>
@@ -1043,7 +1047,7 @@ export default function AssetOverview() {
                         />
                       </div>
                     ) : (
-                      <span className="text-gray-600">No location</span>
+                      <span className="text-gray-600">No place</span>
                     )
                   }
                   renderEditor={() => (
@@ -1555,8 +1559,8 @@ export default function AssetOverview() {
                     <div className="min-w-0 flex-1">
                       <h3 className="mb-1 text-sm font-semibold">
                         {memberships.length > 1
-                          ? "Included in kits"
-                          : "Included in kit"}
+                          ? "Included in boxes"
+                          : "Included in box"}
                       </h3>
                       <ul className="space-y-1">
                         {memberships.map((m) => (
@@ -1680,8 +1684,8 @@ export default function AssetOverview() {
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <h3 className="text-sm font-semibold">
                           {placements.length > 1
-                            ? "Placed at locations"
-                            : "Placed at location"}
+                            ? "Placed at places"
+                            : "Placed at place"}
                         </h3>
                         {isQty && canEditAsset ? (
                           <Button
@@ -1722,7 +1726,8 @@ export default function AssetOverview() {
                                         target="_blank"
                                         className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
                                       >
-                                        via kit
+                                        
+                                        via box
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent
@@ -1733,9 +1738,10 @@ export default function AssetOverview() {
                                         {p.viaKit.name}
                                       </p>
                                       <p className="mt-1 text-xs text-gray-500">
-                                        These units are at this location because
-                                        the asset is in this kit. Change the
-                                        kit&apos;s location to move them.
+                                        
+                                        These units are at this place because
+                                        the asset is in this box. Change the
+                                        box&apos;s place to move them.
                                       </p>
                                     </TooltipContent>
                                   </Tooltip>

@@ -77,7 +77,7 @@ export const loader = async ({
     const qr = await getQr({ id: qrId });
     if (qr?.assetId || qr?.kitId) {
       throw new ShelfError({
-        message: "This QR code is already linked to an asset or a kit.",
+        message: "This QR code is already linked to an asset or a box.",
         title: "QR already linked",
         label: "QR",
         status: 403,
@@ -155,7 +155,7 @@ export const loader = async ({
         searchFieldLabel: "Search assets",
         searchFieldTooltip: {
           title: "Search your asset database",
-          text: "Search assets based on asset name or description, category, tag, location, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
+          text: "Search assets based on asset name or description, category, tag, place, custodian name. Simply separate your keywords by a space: 'Laptop lenovo 2020'.",
         },
         totalCategories,
         totalTags,
@@ -288,12 +288,13 @@ export default function QrLinkExisting() {
             <DynamicDropdown
               trigger={
                 <div className="flex cursor-pointer items-center gap-2">
-                  Locations{" "}
+                  
+                  Places{" "}
                   <ChevronRight className="hidden rotate-90 md:inline" />
                 </div>
               }
               model={{ name: "location", queryKey: "name" }}
-              label="Filter by Location"
+              label="Filter by Place"
               initialDataKey="locations"
               countKey="totalLocations"
               renderItem={({ metadata }) => (

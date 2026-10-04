@@ -124,7 +124,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     const totalPages = Math.ceil(totalKits / perPage);
 
     const header: HeaderData = {
-      title: `Kits in ${locationId}`,
+      title: `Boxes in ${locationId}`,
       subHeading: locationId,
     };
 
@@ -178,8 +178,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: "Kit removed",
-          message: "Kit and its assets have been removed from this location",
+          title: "Box removed",
+          message: "Box and its assets have been removed from this place",
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -210,7 +210,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         if (resolvedKitIds.length === 0) {
           return payload({
             success: true,
-            message: "No kits matched the current selection",
+            message: "No boxes matched the current selection",
           });
         }
 
@@ -224,8 +224,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         });
 
         sendNotification({
-          title: "Kits removed",
-          message: `${resolvedKitIds.length} kit(s) and their assets removed from this location`,
+          title: "Boxes removed",
+          message: `${resolvedKitIds.length} box(s) and their assets removed from this place`,
           icon: { name: "success", variant: "success" },
           senderId: userId,
         });
@@ -265,7 +265,7 @@ export default function LocationKits() {
       <ContextualSidebar />
       <ContextualModal />
 
-      <TextualDivider text="Kits" className="mb-4 lg:hidden" />
+      <TextualDivider text="Boxes" className="mb-4 lg:hidden" />
       <div className="flex flex-col md:gap-2">
         <Filters
           className="responsive-filters mb-2 lg:mb-0"
@@ -320,7 +320,8 @@ export default function LocationKits() {
                   width="full"
                   className="whitespace-nowrap"
                 >
-                  Add kits
+                  
+                  Add boxes
                 </Button>
               </div>
             </When>
@@ -347,13 +348,14 @@ export default function LocationKits() {
                     iconClassName="size-4"
                     content={
                       <>
-                        <h6>Kit custody</h6>
+                        <h6>Box custody</h6>
                         <p>
-                          This column shows if a user has custody of the kit
+                          
+                          This column shows if a user has custody of the box
                           either via direct assignment or via a booking. If you
-                          see <GrayBadge>private</GrayBadge> that means you
+                          see <GrayBadge>private</GrayBadge>  that means you
                           don't have the permissions to see who has custody of
-                          the kit.
+                          the box.
                         </p>
                       </>
                     }
@@ -366,10 +368,10 @@ export default function LocationKits() {
             </>
           }
           customEmptyStateContent={{
-            title: "You haven't added any kits yet.",
-            text: "What are you waiting for? Add your first kit now!",
+            title: "You haven't added any boxes yet.",
+            text: "What are you waiting for? Add your first box now!",
             newButtonRoute: "manage-kits",
-            newButtonContent: "Add kit",
+            newButtonContent: "Add box",
           }}
         />
       </div>

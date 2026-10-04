@@ -38,13 +38,13 @@ const locationNoteFindManyMock = vi.mocked(mockDb.db.locationNote.findMany);
 const locationNoteDeleteManyMock = vi.mocked(mockDb.db.locationNote.deleteMany);
 const locationFindFirstMock = vi.mocked(mockDb.db.location.findFirst);
 
-describe("location note service", () => {
+describe("place note service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("createLocationNote", () => {
-    it("creates a note associated to the user and location", async () => {
+    it("creates a note associated to the user and place", async () => {
       const note = {
         id: "lnote-1",
         content: "Manual note",
@@ -136,7 +136,7 @@ describe("location note service", () => {
   });
 
   describe("getLocationNotes", () => {
-    it("returns notes when location belongs to organization", async () => {
+    it("returns notes when place belongs to organization", async () => {
       const notes = [
         {
           id: "lnote-1",
@@ -180,17 +180,17 @@ describe("location note service", () => {
       expect(result).toEqual(notes);
     });
 
-    it("throws when location does not belong to organization", async () => {
+    it("throws when place does not belong to organization", async () => {
       locationFindFirstMock.mockResolvedValue(null);
 
       await expect(
         getLocationNotes({ locationId: "loc-2", organizationId: "org-9" })
-      ).rejects.toThrow("Location not found or access denied");
+      ).rejects.toThrow("Place not found or access denied");
     });
   });
 
   describe("deleteLocationNote", () => {
-    it("scopes the delete to the caller's organization, via the location", async () => {
+    it("scopes the delete to the caller's organization, via the place", async () => {
       locationNoteDeleteManyMock.mockResolvedValue({ count: 1 });
 
       await deleteLocationNote({

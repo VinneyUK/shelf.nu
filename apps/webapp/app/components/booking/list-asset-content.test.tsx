@@ -940,26 +940,26 @@ describe("ListAssetContent", () => {
         isRemovedFromKit: true,
       } as unknown as AssetWithBooking);
 
-      const trigger = screen.getByText("Removed from kit");
+      const trigger = screen.getByText("Removed from box");
       expect(trigger).toBeInTheDocument();
       // Focusable trigger: the tooltip must not be hover-only (WCAG 2.1 AA).
       expect(trigger.tagName).toBe("BUTTON");
 
       await userEvent.hover(trigger);
       const tooltip = await screen.findByRole("tooltip");
-      expect(tooltip.textContent).toMatch(/removed from the kit/i);
+      expect(tooltip.textContent).toMatch(/removed from the box/i);
       expect(tooltip.textContent).toMatch(/record of what was booked/i);
     });
 
-    it("does NOT label a live kit member", () => {
+    it("does NOT label a live box member", () => {
       mockUseLoaderData.mockReturnValue(finishedBooking);
 
       renderRow({
         ...baseAsset,
-        assetKits: [{ kitId: "kit-1", kit: { id: "kit-1", name: "Kit One" } }],
+        assetKits: [{ kitId: "kit-1", kit: { id: "kit-1", name: "Box One" } }],
       } as unknown as AssetWithBooking);
 
-      expect(screen.queryByText("Removed from kit")).not.toBeInTheDocument();
+      expect(screen.queryByText("Removed from box")).not.toBeInTheDocument();
     });
 
     it("does NOT label a genuinely standalone asset", () => {
@@ -970,7 +970,7 @@ describe("ListAssetContent", () => {
         assetKits: [],
       } as unknown as AssetWithBooking);
 
-      expect(screen.queryByText("Removed from kit")).not.toBeInTheDocument();
+      expect(screen.queryByText("Removed from box")).not.toBeInTheDocument();
     });
   });
 

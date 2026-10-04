@@ -78,7 +78,7 @@ describe("KitRow bulk-selection checkbox", () => {
   // the fixture to what the component actually touches.
   const kit = {
     id: "kit-1",
-    name: "Camera Kit",
+    name: "Camera Box",
     image: null,
     imageExpiration: null,
     status: KitStatus.AVAILABLE,
@@ -181,10 +181,10 @@ describe("KitRow bulk-selection checkbox", () => {
  * here, unlike `test/components/booking/availability-label.test.tsx`, so the
  * real conflict rule runs.
  */
-describe("KitRow already-booked signal (QT-only kit)", () => {
+describe("KitRow already-booked signal (QT-only box)", () => {
   const checkedOutKit = {
     id: "kit-1",
-    name: "Fabric Kit",
+    name: "Fabric Box",
     image: null,
     imageExpiration: null,
     status: KitStatus.CHECKED_OUT,
@@ -246,7 +246,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     vi.clearAllMocks();
   });
 
-  it("shows 'Already booked' when the kit is held on another overlapping booking through its kit slice", () => {
+  it("shows 'Already booked' when the box is held on another overlapping booking through its box slice", () => {
     const assets = [
       {
         id: "asset-1",
@@ -300,7 +300,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     expect(screen.queryByText("Already booked")).not.toBeInTheDocument();
   });
 
-  it("does not show 'Already booked' for a kit member detached mid-booking on another overlapping booking", () => {
+  it("does not show 'Already booked' for a box member detached mid-booking on another overlapping booking", () => {
     const assets = [
       {
         id: "asset-1",
@@ -329,7 +329,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     expect(screen.queryByText("Already booked")).not.toBeInTheDocument();
   });
 
-  it("shows 'Already booked' for an AVAILABLE kit that another overlapping booking has reserved", () => {
+  it("shows 'Already booked' for an AVAILABLE box that another overlapping booking has reserved", () => {
     const assets = [
       {
         id: "asset-1",
@@ -356,7 +356,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     expect(screen.getByText("Already booked")).toBeInTheDocument();
   });
 
-  it("does not show 'Already booked' for an AVAILABLE kit whose other booking has returned it", () => {
+  it("does not show 'Already booked' for an AVAILABLE box whose other booking has returned it", () => {
     const assets = [
       {
         id: "asset-1",
@@ -383,7 +383,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     expect(screen.queryByText("Already booked")).not.toBeInTheDocument();
   });
 
-  it("shows 'Already booked' for a kit slice that names the kit only through its membership", () => {
+  it("shows 'Already booked' for a box slice that names the box only through its membership", () => {
     const assets = [
       {
         id: "asset-1",
@@ -411,7 +411,7 @@ describe("KitRow already-booked signal (QT-only kit)", () => {
     expect(screen.getByText("Already booked")).toBeInTheDocument();
   });
 
-  it("does not show 'Already booked' for a slice held through the asset's membership of another kit", () => {
+  it("does not show 'Already booked' for a slice held through the asset's membership of another box", () => {
     const assets = [
       {
         id: "asset-1",

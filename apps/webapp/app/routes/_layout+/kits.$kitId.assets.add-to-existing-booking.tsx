@@ -46,7 +46,7 @@ import {
 } from "~/utils/permissions/permission.data";
 import { requirePermission } from "~/utils/roles.server";
 
-export const meta = () => [{ title: appendToMetaTitle("Add kit to booking") }];
+export const meta = () => [{ title: appendToMetaTitle("Add box to booking") }];
 
 const updateBookingSchema = z.object({
   bookingId: z.string().transform((val, ctx) => {
@@ -133,7 +133,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     if (!kitIds || kitIds.length === 0) {
       throw new ShelfError({
         cause: null,
-        message: `No kits found to add to the booking.`,
+        message: `No boxes found to add to the booking.`,
         status: 400,
         label: "Booking",
         shouldBeCaptured: false,
@@ -205,7 +205,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     if (kitSlices.length === 0) {
       throw new ShelfError({
         cause: null,
-        message: `The booking you have selected already contains the kit you are trying to add. Please select a different booking.`,
+        message: `The booking you have selected already contains the box you are trying to add. Please select a different booking.`,
         label: "Booking",
         shouldBeCaptured: false,
       });
@@ -314,8 +314,9 @@ export default function ExistingBooking() {
         <div className="mb-5">
           <h3>Add to Existing Booking</h3>
           <div>
-            You can add a kit to Draft, Reserved, Ongoing or Overdue bookings.
-            Kits added to an ongoing booking stay available until you check them
+            
+            You can add a box to Draft, Reserved, Ongoing or Overdue bookings.
+            Boxes added to an ongoing booking stay available until you check them
             out.
           </div>
         </div>

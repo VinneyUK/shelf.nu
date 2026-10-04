@@ -76,9 +76,9 @@ export function BookingLifecycleProgress({ progress }: { progress: Progress }) {
             content={
               <>
                 {countMode === "units" ? (
-                  <p>Kits count as one item.</p>
+                  <p>Boxes count as one item.</p>
                 ) : (
-                  <p>All assets inside kits are counted individually.</p>
+                  <p>All assets inside boxes are counted individually.</p>
                 )}
                 <p>
                   Partial means a quantity-tracked asset has some, but not all,

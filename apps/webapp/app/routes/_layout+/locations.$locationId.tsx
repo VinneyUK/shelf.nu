@@ -172,8 +172,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     await deleteLocation({ id, organizationId });
 
     sendNotification({
-      title: "Location deleted",
-      message: "Your location has been deleted successfully",
+      title: "Place deleted",
+      message: "Your place has been deleted successfully",
       icon: { name: "trash", variant: "error" },
       senderId: authSession.userId,
     });
@@ -205,7 +205,7 @@ export default function LocationPage() {
   const items = [
     { to: "overview", content: "Overview" },
     { to: "assets", content: "Assets" },
-    { to: "kits", content: "Kits" },
+    { to: "kits", content: "Boxes" },
     { to: "activity", content: "Activity" },
   ];
 
@@ -255,7 +255,8 @@ export default function LocationPage() {
           {childLocations?.length ? (
             <Card>
               <div className="text-sm font-semibold text-gray-900">
-                Child locations
+                
+                Child places
               </div>
               <div className="mt-3 text-sm text-gray-700">
                 <LocationTree nodes={childLocations} />

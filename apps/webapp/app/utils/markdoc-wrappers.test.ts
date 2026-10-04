@@ -65,7 +65,7 @@ describe("markdoc-wrappers", () => {
   });
 
   describe("wrapKitsForNote", () => {
-    it("should wrap single kit ID", () => {
+    it("should wrap single box ID", () => {
       const kitIds = ["kit-1"];
       const result = wrapKitsForNote(kitIds, "added");
 
@@ -74,7 +74,7 @@ describe("markdoc-wrappers", () => {
       );
     });
 
-    it("should wrap multiple kit IDs", () => {
+    it("should wrap multiple box IDs", () => {
       const kitIds = ["kit-1", "kit-2"];
       const result = wrapKitsForNote(kitIds, "removed");
 
@@ -129,19 +129,19 @@ describe("markdoc-wrappers", () => {
   });
 
   describe("wrapKitsWithDataForNote", () => {
-    it("should handle single kit with direct link", () => {
-      const kit = { id: "kit-1", name: "Photography Kit" };
+    it("should handle single box with direct link", () => {
+      const kit = { id: "kit-1", name: "Photography Box" };
       const result = wrapKitsWithDataForNote(kit, "added");
 
       expect(result).toBe(
-        '{% link to="/kits/kit-1" text="Photography Kit" /%}'
+        '{% link to="/kits/kit-1" text="Photography Box" /%}'
       );
     });
 
-    it("should handle multiple kits with tag", () => {
+    it("should handle multiple boxes with tag", () => {
       const kits = [
-        { id: "kit-1", name: "Photography Kit" },
-        { id: "kit-2", name: "Video Kit" },
+        { id: "kit-1", name: "Photography Box" },
+        { id: "kit-2", name: "Video Box" },
       ];
       const result = wrapKitsWithDataForNote(kits, "removed");
 
@@ -150,12 +150,12 @@ describe("markdoc-wrappers", () => {
       );
     });
 
-    it("should handle array with single kit", () => {
-      const kits = [{ id: "kit-1", name: "Photography Kit" }];
+    it("should handle array with single box", () => {
+      const kits = [{ id: "kit-1", name: "Photography Box" }];
       const result = wrapKitsWithDataForNote(kits, "added");
 
       expect(result).toBe(
-        '{% link to="/kits/kit-1" text="Photography Kit" /%}'
+        '{% link to="/kits/kit-1" text="Photography Box" /%}'
       );
     });
   });
@@ -388,9 +388,9 @@ describe("wrapLinkForNote", () => {
     expect(result).toBe(`{% link to="/assets/456" text="Laptop Dell XPS" /%}`);
   });
 
-  it("should handle kit links", () => {
-    const result = wrapLinkForNote("/kits/789", "Camera Kit");
-    expect(result).toBe(`{% link to="/kits/789" text="Camera Kit" /%}`);
+  it("should handle box links", () => {
+    const result = wrapLinkForNote("/kits/789", "Camera Box");
+    expect(result).toBe(`{% link to="/kits/789" text="Camera Box" /%}`);
   });
 
   it("should handle links with special characters in text", () => {

@@ -53,8 +53,9 @@ export default function DeleteKit({ kit, trigger }: DeleteKitProps) {
           </div>
           <AlertDialogTitle>Delete {kit.name}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this kit? This action cannot be
-            undone. Deleting a kit will not delete the assets. If the kit is
+            
+            Are you sure you want to delete this box? This action cannot be
+            undone. Deleting a box will not delete the assets. If the box is
             checked out, assets will be made available again.
           </AlertDialogDescription>
         </AlertDialogHeader>

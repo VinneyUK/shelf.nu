@@ -657,9 +657,9 @@ export async function removeKitSlicesFromPlanningBookings(
     // from kit Y" there would describe a membership edit that never occurred.
     const cause =
       reason === "kit-deleted"
-        ? `${actorLink} deleted kit **${safeKitName}**, so ${subjects} ${verb} removed from this booking`
-        : `${actorLink} removed ${subjects} from kit **${safeKitName}**, so ${pronoun} ${verb} also removed from this booking`;
-    const content = `${cause}. Nothing has been checked out yet, so the booking follows the kit's contents.`;
+        ? `${actorLink} deleted box **${safeKitName}**, so ${subjects} ${verb} removed from this booking`
+        : `${actorLink} removed ${subjects} from box **${safeKitName}**, so ${pronoun} ${verb} also removed from this booking`;
+    const content = `${cause}. Nothing has been checked out yet, so the booking follows the box's contents.`;
     const bucket = notesByOrg.get(group.organizationId);
     if (bucket) {
       bucket.push({ bookingId: group.bookingId, content });
@@ -1071,9 +1071,9 @@ export async function emitAssetKitDetachmentNotes({
     await createSystemBookingNote({
       bookingId: group.bookingId,
       organizationId,
-      content: `${actorLink} removed ${subjects} from kit **${stripMarkdocDelimiters(
+      content: `${actorLink} removed ${subjects} from box **${stripMarkdocDelimiters(
         group.kitName
-      )}**. The kit's booked slice has been converted to a standalone reservation in this booking.`,
+      )}**. The box's booked slice has been converted to a standalone reservation in this booking.`,
     });
   }
 }
@@ -1370,7 +1370,7 @@ export async function updateKit({
       throw new ShelfError({
         cause: null,
         message:
-          "A kit's location cannot be changed through updateKit — call updateKitLocation so the kit's assets move with it.",
+          "A box's place cannot be changed through updateKit — call updateKitLocation so the box's assets move with it.",
         label,
         additionalData: { kitId: id, locationId, organizationId },
       });
@@ -1459,7 +1459,7 @@ export async function updateKitImage({
       cause,
       message: isLikeShelfError(cause)
         ? cause.message
-        : "Something went wrong while updating image for kit.",
+        : "Something went wrong while updating image for box.",
       additionalData: { kitId, userId, field: "image" },
       label,
     });
@@ -1525,7 +1525,7 @@ export async function refreshExpiredKitImages<
       // Kit deleted, or file removed from storage between query and update —
       // expected, not a bug. Log and skip; the row keeps its stale URL.
       Logger.info(
-        `Failed to refresh image for kit ${kit.id}, proceeding with stale URL`
+        `Failed to refresh image for box ${kit.id}, proceeding with stale URL`
       );
       return null;
     }
@@ -1758,7 +1758,7 @@ export async function getPaginatedAndFilterableKits<
     ) {
       throw new ShelfError({
         cause: null,
-        message: "Booking dates are needed to hide unavailable kit.",
+        message: "Booking dates are needed to hide unavailable box.",
         additionalData: { hideUnavailable, bookingFrom, bookingTo },
         label,
       });
@@ -1809,7 +1809,7 @@ export async function getPaginatedAndFilterableKits<
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while fetching kits",
+      message: "Something went wrong while fetching boxes",
       additionalData: { page, perPage, organizationId },
       label,
     });
@@ -1874,7 +1874,7 @@ export async function getKit<const T extends Prisma.KitInclude | undefined>({
 
       throw new ShelfError({
         cause: null,
-        title: "Kit not found",
+        title: "Box not found",
         message: "",
         additionalData: {
           model: "kit",
@@ -1895,9 +1895,9 @@ export async function getKit<const T extends Prisma.KitInclude | undefined>({
 
     throw new ShelfError({
       cause,
-      title: "Kit not found",
+      title: "Box not found",
       message:
-        "The kit you are trying to access does not exist or you do not have permission to access it.",
+        "The box you are trying to access does not exist or you do not have permission to access it.",
       additionalData: {
         id,
         ...(isShelfError ? cause.additionalData : {}),
@@ -2265,7 +2265,7 @@ async function performKitDeletion({
           );
           const custodyPhrase = count ? `custody of ${count}` : "custody";
           return {
-            content: `${actorLink} released ${custodianDisplay}'s ${custodyPhrase} when kit **${stripMarkdocDelimiters(
+            content: `${actorLink} released ${custodianDisplay}'s ${custodyPhrase} when box **${stripMarkdocDelimiters(
               k.name
             )}** was deleted.`,
             type: "UPDATE" as const,
@@ -2371,7 +2371,7 @@ export async function deleteKit({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while deleting kit",
+      message: "Something went wrong while deleting box",
       additionalData: { id, organizationId, userId: actorUserId },
       label,
     });
@@ -2409,7 +2409,7 @@ export async function deleteKitImage({
     Logger.error(
       new ShelfError({
         cause,
-        message: "Failed to delete kit image",
+        message: "Failed to delete box image",
         additionalData: { url, bucketName },
         label,
       })
@@ -2588,7 +2588,7 @@ export async function releaseCustody({
       const count = formatUnitCount(asset, releasedQtyByAssetId.get(asset.id));
       const custodyPhrase = count ? `custody of ${count}` : "custody";
       return {
-        content: `${actorLink} released ${custodianDisplay}'s ${custodyPhrase} via kit: ${kitLink}.`,
+        content: `${actorLink} released ${custodianDisplay}'s ${custodyPhrase} via box: ${kitLink}.`,
         type: "UPDATE" as const,
         userId,
         assetId: asset.id,
@@ -2833,7 +2833,7 @@ export async function updateKitsWithBookingCustodians<T extends Kit>(
         Logger.error(
           new ShelfError({
             cause: null,
-            message: "Could not find custodian for kit",
+            message: "Could not find custodian for box",
             additionalData: { kit },
             label,
           })
@@ -2845,7 +2845,7 @@ export async function updateKitsWithBookingCustodians<T extends Kit>(
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Failed to update kits with booking custodian",
+      message: "Failed to update boxes with booking custodian",
       additionalData: { kits },
       label,
     });
@@ -3037,7 +3037,7 @@ export async function bulkDeleteKits({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while bulk deleting kits.",
+      message: "Something went wrong while bulk deleting boxes.",
       additionalData: { kitIds, organizationId, userId },
       label,
     });
@@ -3147,7 +3147,7 @@ export async function bulkAssignKitCustody({
       throw new ShelfError({
         cause: null,
         message:
-          "There are some unavailable kits. Please make sure you are selecting only available kits.",
+          "There are some unavailable boxes. Please make sure you are selecting only available boxes.",
         label,
         status: 400,
         shouldBeCaptured: false,
@@ -3180,7 +3180,7 @@ export async function bulkAssignKitCustody({
       throw new ShelfError({
         cause: null,
         message:
-          "There are some unavailable assets in some kits. Please make sure you have all available assets in kits.",
+          "There are some unavailable assets in some boxes. Please make sure you have all available assets in boxes.",
         label,
         status: 400,
         shouldBeCaptured: false,
@@ -3290,13 +3290,13 @@ export async function bulkAssignKitCustody({
         data: allAssetsOfAllKits.map((asset) => {
           const kitLink = asset.kit
             ? wrapLinkForNote(`/kits/${asset.kit.id}`, asset.kit.name.trim())
-            : "**Unknown Kit**";
+            : "**Unknown Box**";
           // For qty-tracked assets, name the unit count actually moved into
           // custody ("custody of 50 units"); INDIVIDUAL phrasing is unchanged.
           const count = formatUnitCount(asset, inheritedQtyFor(asset));
           const custodyPhrase = count ? `custody of ${count}` : "custody";
           return {
-            content: `${actor} granted ${custodianDisplay} ${custodyPhrase} via kit assignment ${kitLink}.`,
+            content: `${actor} granted ${custodianDisplay} ${custodyPhrase} via box assignment ${kitLink}.`,
             type: "UPDATE",
             userId,
             assetId: asset.id,
@@ -3330,7 +3330,7 @@ export async function bulkAssignKitCustody({
     const message =
       cause instanceof ShelfError
         ? cause.message
-        : "Something went wrong while bulk checking out kits.";
+        : "Something went wrong while bulk checking out boxes.";
 
     throw new ShelfError({
       cause,
@@ -3477,7 +3477,7 @@ export async function bulkReleaseKitCustody({
       throw new ShelfError({
         cause: null,
         message:
-          "None of the selected kits are available to release. Please refresh and try again.",
+          "None of the selected boxes are available to release. Please refresh and try again.",
         label,
         status: 400,
         shouldBeCaptured: false,
@@ -3500,7 +3500,7 @@ export async function bulkReleaseKitCustody({
       throw new ShelfError({
         cause: null,
         message:
-          "There are some kits which are not in custody. Please make sure you are only selecting kits in custody to release them.",
+          "There are some boxes which are not in custody. Please make sure you are only selecting boxes in custody to release them.",
         label,
       });
     }
@@ -3628,7 +3628,7 @@ export async function bulkReleaseKitCustody({
         data: allAssetsOfAllKits.map((asset) => {
           const kitLink = asset.kit
             ? wrapLinkForNote(`/kits/${asset.kit.id}`, asset.kit.name.trim())
-            : "**Unknown Kit**";
+            : "**Unknown Box**";
           // The custodian of the kit this asset came through — the note says
           // whose custody ended, and a bulk selection may span several.
           const custodian = asset.kit
@@ -3645,7 +3645,7 @@ export async function bulkReleaseKitCustody({
           );
           const custodyPhrase = count ? `custody of ${count}` : "custody";
           return {
-            content: `${actor} released ${custodianDisplay}'s ${custodyPhrase} via kit assignment ${kitLink}.`,
+            content: `${actor} released ${custodianDisplay}'s ${custodyPhrase} via box assignment ${kitLink}.`,
             type: "UPDATE",
             userId,
             assetId: asset.id,
@@ -3657,7 +3657,7 @@ export async function bulkReleaseKitCustody({
     const message =
       cause instanceof ShelfError
         ? cause.message
-        : "Something went wrong while bulk releasing kits.";
+        : "Something went wrong while bulk releasing boxes.";
 
     throw new ShelfError({
       cause,
@@ -3732,7 +3732,7 @@ export async function createKitsIfNotExists({
     throw new ShelfError({
       cause,
       message:
-        "Something went wrong while creating kits. Seems like some of the location data in your import file is invalid. Please check and try again.",
+        "Something went wrong while creating boxes. Seems like some of the place data in your import file is invalid. Please check and try again.",
       additionalData: { userId, organizationId },
       label,
       /** No need to capture those. They are mostly related to malformed CSV data */
@@ -3811,7 +3811,7 @@ export async function updateKitQrCode(
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating kit QR code",
+      message: "Something went wrong while updating box QR code",
       label,
       additionalData: { kitId, organizationId, newQrId },
     });
@@ -3844,7 +3844,7 @@ export async function relinkKitQrCode({
   if (!kit) {
     throw new ShelfError({
       cause: null,
-      message: "Kit not found.",
+      message: "Box not found.",
       label,
       additionalData: { kitId, organizationId, qrId },
       // why: without an explicit status this resolves to 500 — `cause: null` is
@@ -3883,7 +3883,7 @@ export async function relinkKitQrCode({
       cause: null,
       title: "QR already linked.",
       message:
-        "You cannot link to this code because its already linked to another kit. Delete the other kit to free up the code and try again.",
+        "You cannot link to this code because its already linked to another box. Delete the other box to free up the code and try again.",
       label,
       status: 403,
       shouldBeCaptured: false,
@@ -4170,7 +4170,7 @@ export async function updateKitLocation({
     if (!kitRow) {
       throw new ShelfError({
         cause: null,
-        message: "Kit not found",
+        message: "Box not found",
         label,
         shouldBeCaptured: false,
         status: 404,
@@ -4447,7 +4447,7 @@ export async function updateKitLocation({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating kit location",
+      message: "Something went wrong while updating box place",
       label,
     });
   }
@@ -4869,7 +4869,7 @@ export async function bulkUpdateKitLocation({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Something went wrong while updating kit location",
+      message: "Something went wrong while updating box place",
       label,
     });
   }
@@ -4973,7 +4973,7 @@ export async function updateKitAssets({
       .catch((cause) => {
         throw new ShelfError({
           cause,
-          message: "Kit not found",
+          message: "Box not found",
           additionalData: { kitId, userId, organizationId },
           status: 404,
           label: "Kit",
@@ -5253,7 +5253,7 @@ export async function updateKitAssets({
       throw new ShelfError({
         cause: null,
         message:
-          "Cannot add assets that are already in custody to a kit. Please release custody of assets to allow them to be added to a kit.",
+          "Cannot add assets that are already in custody to a box. Please release custody of assets to allow them to be added to a box.",
         additionalData: { userId, kitId },
         label: "Kit",
         shouldBeCaptured: false,
@@ -5575,7 +5575,7 @@ export async function updateKitAssets({
                 cause: null,
                 status: 400,
                 label,
-                message: `Cannot reduce kit quantity below units already checked in: ${violations.join(
+                message: `Cannot reduce box quantity below units already checked in: ${violations.join(
                   "; "
                 )}. Check in fewer units or choose a higher quantity.`,
                 shouldBeCaptured: false,
@@ -6460,7 +6460,7 @@ export async function updateKitAssets({
       cause,
       message: isShelfError
         ? cause.message
-        : "Something went wrong while updating kit assets.",
+        : "Something went wrong while updating box assets.",
       label,
       additionalData: { kitId, assetIds },
     });
@@ -6845,7 +6845,7 @@ export async function bulkRemoveAssetsFromKits({
   } catch (cause) {
     throw new ShelfError({
       cause,
-      message: "Failed to bulk remove assets from kits",
+      message: "Failed to bulk remove assets from boxes",
       additionalData: { assetIds, organizationId, userId },
       label: "Kit",
     });
@@ -6905,7 +6905,7 @@ export async function moveAssetKitUnits(
   if (fromKitId === toKitId) {
     throw new ShelfError({
       cause: null,
-      message: "Source and destination kits must be different.",
+      message: "Source and destination boxes must be different.",
       label,
       status: 400,
       shouldBeCaptured: false,
@@ -6940,7 +6940,7 @@ export async function moveAssetKitUnits(
         throw new ShelfError({
           cause: null,
           message:
-            "The source kit could not be found in your workspace. Please reload and try again.",
+            "The source box could not be found in your workspace. Please reload and try again.",
           label,
           status: 400,
           shouldBeCaptured: false,
@@ -6951,7 +6951,7 @@ export async function moveAssetKitUnits(
         throw new ShelfError({
           cause: null,
           message:
-            "The destination kit could not be found in your workspace. Please reload and try again.",
+            "The destination box could not be found in your workspace. Please reload and try again.",
           label,
           status: 400,
           shouldBeCaptured: false,
@@ -7000,7 +7000,7 @@ export async function moveAssetKitUnits(
       if (!source) {
         throw new ShelfError({
           cause: null,
-          message: "Asset is not allocated to the source kit.",
+          message: "Asset is not allocated to the source box.",
           label,
           status: 400,
           shouldBeCaptured: false,
@@ -7290,7 +7290,7 @@ export async function moveAssetKitUnits(
     }
     throw new ShelfError({
       cause,
-      message: "Failed to move units between kits",
+      message: "Failed to move units between boxes",
       additionalData: { assetId, fromKitId, toKitId, quantity, userId },
       label,
     });

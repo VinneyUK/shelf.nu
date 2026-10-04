@@ -41,7 +41,7 @@ export default function renderEventCard({ event }: EventCardProps) {
   const glyphLabel =
     sliceCount > 1
       ? `Reserved ${sliceCount} times on this booking`
-      : "Booked via a kit";
+      : "Booked via a box";
 
   // Ref callback to set up scroll tracking
   const triggerRefCallback = (element: HTMLDivElement | null) => {
@@ -362,7 +362,7 @@ export function EventCardContent({
                     ? "Standalone"
                     : slice.kitName
                     ? `via "${slice.kitName}"`
-                    : "via a kit"}
+                    : "via a box"}
                 </span>
                 {showQuantities ? (
                   <span className="tabular-nums">Qty {slice.quantity}</span>

@@ -43,8 +43,8 @@ export default function KitQuickActions({
           variant="secondary"
           className={"p-2"}
           to={`/kits/${kit.id}/edit`}
-          aria-label="Edit kit information"
-          tooltip="Edit kit information"
+          aria-label="Edit box information"
+          tooltip="Edit box information"
         >
           <PencilIcon className="size-4" />
         </Button>
@@ -83,8 +83,8 @@ export default function KitQuickActions({
               size="sm"
               variant="secondary"
               className="p-2"
-              aria-label="Show kit codes"
-              tooltip="Show kit codes"
+              aria-label="Show box codes"
+              tooltip="Show box codes"
             >
               <QrCodeIcon className="size-4" />
             </Button>
@@ -107,8 +107,8 @@ export default function KitQuickActions({
               size="sm"
               variant="secondary"
               className={"p-2"}
-              aria-label="Delete kit"
-              tooltip="Delete kit"
+              aria-label="Delete box"
+              tooltip="Delete box"
             >
               <Trash2Icon className="size-4" />
             </Button>

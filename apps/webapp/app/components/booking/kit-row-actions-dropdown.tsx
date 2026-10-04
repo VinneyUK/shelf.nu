@@ -169,7 +169,8 @@ function ConditionalActionsDropdown({ kit, fullWidth }: Props) {
                         Remove "{kit.name}" from booking
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to remove this kit from the
+                        
+                        Are you sure you want to remove this box from the
                         booking?
                       </AlertDialogDescription>
                     </AlertDialogHeader>

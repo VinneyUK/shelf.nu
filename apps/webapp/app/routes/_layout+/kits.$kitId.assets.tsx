@@ -153,7 +153,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     }
 
     const header: HeaderData = {
-      title: kit ? `${kit.name}'s assets` : "Kit assets",
+      title: kit ? `${kit.name}'s assets` : "Box assets",
     };
 
     const modelName = {
@@ -224,7 +224,7 @@ export default function KitAssets() {
         <List
           ItemComponent={ListContent}
           customEmptyStateContent={{
-            title: "Not assets in kit",
+            title: "Not assets in box",
             text: userRoleCanManageAssets
               ? "Start by adding your first asset."
               : "",
@@ -238,7 +238,7 @@ export default function KitAssets() {
           headerChildren={
             <>
               <Th>Category</Th>
-              <Th>Location</Th>
+              <Th>Place</Th>
               <Th>Tags</Th>
             </>
           }
@@ -325,7 +325,7 @@ function ListContent({ item }: { item: ListItemForKitPage }) {
                           ?.quantity ?? 0;
                       return (
                         <span className="ml-2 text-xs text-gray-500">
-                          · {inKit} {unit} in kit
+                          · {inKit} {unit}  in box
                         </span>
                       );
                     })()

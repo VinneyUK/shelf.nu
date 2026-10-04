@@ -535,7 +535,7 @@ describe("applyBulkUpdatesFromImport — qty-tracked + AssetModel", () => {
   });
 });
 
-describe("applyBulkUpdatesFromImport — multi-placement location guard (Bug 2 fix)", () => {
+describe("applyBulkUpdatesFromImport — multi-placement place guard (Bug 2 fix)", () => {
   // Reproduces the "Gloves" scenario: a QUANTITY_TRACKED asset with units
   // split across three AssetLocation rows. The placement NAMES matter as
   // well as the count — `fetchAssetsForUpdate` derives
@@ -547,7 +547,7 @@ describe("applyBulkUpdatesFromImport — multi-placement location guard (Bug 2 f
     { location: { id: "loc-3", name: "God Wars Dungeon" } },
   ];
 
-  it("warns and skips a location cell naming a different location — never calls updateAsset", async () => {
+  it("warns and skips a place cell naming a different place — never calls updateAsset", async () => {
     vi.mocked(db.asset.findMany).mockResolvedValueOnce([
       makeDbAsset({
         id: "uuid-gloves",
@@ -573,7 +573,7 @@ describe("applyBulkUpdatesFromImport — multi-placement location guard (Bug 2 f
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatchObject({
       id: "SAM-GLOVES",
-      message: expect.stringMatching(/multiple locations/i),
+      message: expect.stringMatching(/multiple places/i),
     });
     expect(updateAsset).not.toHaveBeenCalled();
     // The bogus "different location" name must never reach the entity
@@ -581,7 +581,7 @@ describe("applyBulkUpdatesFromImport — multi-placement location guard (Bug 2 f
     expect(db.location.findMany).not.toHaveBeenCalled();
   });
 
-  it("warns and skips an EMPTY location cell — never wipes placements", async () => {
+  it("warns and skips an EMPTY place cell — never wipes placements", async () => {
     vi.mocked(db.asset.findMany).mockResolvedValueOnce([
       makeDbAsset({
         id: "uuid-gloves",
@@ -605,12 +605,12 @@ describe("applyBulkUpdatesFromImport — multi-placement location guard (Bug 2 f
     });
 
     expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0].message).toMatch(/multiple locations/i);
+    expect(result.warnings[0].message).toMatch(/multiple places/i);
     // Critically: no call ever carries `newLocationId: null` for this asset.
     expect(updateAsset).not.toHaveBeenCalled();
   });
 
-  it("still applies a location change normally for a single-placement asset (regression guard)", async () => {
+  it("still applies a place change normally for a single-placement asset (regression guard)", async () => {
     vi.mocked(db.asset.findMany).mockResolvedValueOnce([
       makeDbAsset({
         id: "uuid-single",
@@ -1065,7 +1065,7 @@ describe("preview counts exclude warning-marked changes", () => {
     // The row still surfaces so the user can see what was flagged...
     expect(preview.assetsToUpdate).toHaveLength(1);
     expect(preview.assetsToUpdate[0].changes[0].warning).toMatch(
-      /multiple locations/i
+      /multiple places/i
     );
     // ...but nothing is actually applicable.
     expect(preview.totalFieldChanges).toBe(0);
@@ -1097,7 +1097,7 @@ describe("preview counts exclude warning-marked changes", () => {
   });
 });
 
-describe("multi-placement location guard — untouched round trip is a no-op", () => {
+describe("multi-placement place guard — untouched round trip is a no-op", () => {
   // why: the guard originally fired on placement COUNT alone, so a zero-edit
   // re-upload reported every multi-location asset as "needs fixing" even
   // though its location cell was a faithful round trip. Matching against ALL
@@ -1143,7 +1143,7 @@ describe("multi-placement location guard — untouched round trip is a no-op", (
     expect(preview.totalFieldChanges).toBe(0);
   });
 
-  it("still warns when the cell names a location the asset is NOT at", async () => {
+  it("still warns when the cell names a place the asset is NOT at", async () => {
     mockGloves();
 
     const preview = await buildUpdatePreview({
@@ -1156,7 +1156,7 @@ describe("multi-placement location guard — untouched round trip is a no-op", (
 
     expect(preview.assetsToUpdate).toHaveLength(1);
     expect(preview.assetsToUpdate[0].changes[0].warning).toMatch(
-      /multiple locations/i
+      /multiple places/i
     );
   });
 });

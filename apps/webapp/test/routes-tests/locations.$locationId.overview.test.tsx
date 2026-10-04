@@ -85,12 +85,12 @@ function createLoaderArgs(
   } as LoaderFunctionArgs;
 }
 
-describe("locations.$locationId.overview loader", () => {
+describe("places.$locationId.overview loader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns formatted location data with total valuation", async () => {
+  it("returns formatted place data with total valuation", async () => {
     requirePermissionMock.mockResolvedValue({
       organizationId: "org-1",
       userOrganizations: [],

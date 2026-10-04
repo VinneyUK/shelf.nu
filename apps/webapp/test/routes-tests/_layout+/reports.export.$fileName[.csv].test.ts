@@ -375,7 +375,7 @@ describe("app/routes/_layout+/reports.export.$fileName[.csv] loader", () => {
       );
     });
 
-    it("drops monthly-trends' category and location rather than claiming to filter on them", async () => {
+    it("drops monthly-trends' category and place rather than claiming to filter on them", async () => {
       // `monthlyBookingTrendsReport` accepts both and uses neither. Forwarding
       // them would advertise a filtering this export does not perform, so the
       // loader deliberately omits them — pinned here so a later "consistency"

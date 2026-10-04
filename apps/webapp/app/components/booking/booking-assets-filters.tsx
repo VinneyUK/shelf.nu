@@ -46,7 +46,7 @@ export function BookingAssetsFilters() {
                   what's left.
                 </p>
                 <p className="mt-1">
-                  <strong>Item type</strong> groups kits first, then individual
+                  <strong>Item type</strong>  groups boxes first, then individual
                   assets.
                 </p>
               </div>

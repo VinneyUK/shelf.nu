@@ -257,7 +257,7 @@ function getEmptyStateTitle(reportId: string): string {
     case "top-booked-assets":
       return "No booking activity";
     case "top-booked-kits":
-      return "No kit booking activity";
+      return "No box booking activity";
     case "distribution":
       return "No assets";
     case "asset-inventory":
@@ -289,9 +289,9 @@ function getEmptyStateDescription(reportId: string): string {
     case "top-booked-assets":
       return "No assets have been booked within the selected timeframe. Try selecting a longer period to see booking activity.";
     case "top-booked-kits":
-      return "No kits have been booked within the selected timeframe. Try selecting a longer period to see booking activity.";
+      return "No boxes have been booked within the selected timeframe. Try selecting a longer period to see booking activity.";
     case "distribution":
-      return "Add assets to your inventory to see distribution breakdowns by category, location, and status.";
+      return "Add assets to your inventory to see distribution breakdowns by category, place, and status.";
     case "asset-inventory":
       return "Your inventory is empty. Add assets to see them listed here with filtering and export options.";
     case "monthly-booking-trends":

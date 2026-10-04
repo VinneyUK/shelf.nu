@@ -961,7 +961,7 @@ export async function deleteNRM({
       throw new ShelfError({
         cause: null,
         message:
-          "This team member has custody over some assets or kits. Please release custody or check-in those items before deleting the user.",
+          "This team member has custody over some assets or boxes. Please release custody or check-in those items before deleting the user.",
         additionalData: { nrmId, organizationId },
         label,
         status: 400,
@@ -1044,7 +1044,7 @@ export async function bulkDeleteNRMs({
       throw new ShelfError({
         cause: null,
         message:
-          "Some team members have custody over some assets or kits. Please release custody or check-in those items before deleting the user.",
+          "Some team members have custody over some assets or boxes. Please release custody or check-in those items before deleting the user.",
         additionalData: { organizationId },
         label,
         status: 400,

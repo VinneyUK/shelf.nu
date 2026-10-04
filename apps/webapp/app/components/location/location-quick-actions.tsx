@@ -51,8 +51,8 @@ export default function LocationQuickActions({
           variant="secondary"
           className="p-2"
           to={`/locations/${location.id}/edit`}
-          aria-label="Edit location"
-          tooltip="Edit location"
+          aria-label="Edit place"
+          tooltip="Edit place"
         >
           <PencilIcon className="size-4" />
         </Button>
@@ -64,8 +64,8 @@ export default function LocationQuickActions({
           variant="secondary"
           className="p-2"
           to={`/locations/${location.id}/assets/manage-assets`}
-          aria-label="Manage location assets"
-          tooltip="Manage location assets"
+          aria-label="Manage place assets"
+          tooltip="Manage place assets"
         >
           <MapIcon className="size-4" />
         </Button>
@@ -77,8 +77,8 @@ export default function LocationQuickActions({
           variant="secondary"
           className="p-2"
           to={`/locations/${location.id}/scan-assets-kits`}
-          aria-label="Scan assets or kits"
-          tooltip="Scan assets or kits"
+          aria-label="Scan assets or boxes"
+          tooltip="Scan assets or boxes"
         >
           <QrCodeIcon className="size-4" />
         </Button>
@@ -96,8 +96,8 @@ export default function LocationQuickActions({
               size="sm"
               variant="secondary"
               className="p-2"
-              aria-label="Delete location"
-              tooltip="Delete location"
+              aria-label="Delete place"
+              tooltip="Delete place"
             >
               <Trash2Icon className="size-4" />
             </Button>

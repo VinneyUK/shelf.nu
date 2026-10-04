@@ -184,7 +184,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
     if (!storedKit) {
       return data(
-        { error: { message: "Kit not found in this workspace." } },
+        { error: { message: "Box not found in this workspace." } },
         { status: 404 }
       );
     }

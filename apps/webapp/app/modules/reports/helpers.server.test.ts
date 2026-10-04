@@ -543,7 +543,7 @@ describe("assetDistributionReport — quantity-aware bucket values", () => {
     expect(statusBucket?.totalValue).toBe(57);
   });
 
-  it("weights location buckets by units placed there; No Location means no placements at all", async () => {
+  it("weights place buckets by units placed there; No Place means no placements at all", async () => {
     // 10 units at $5 with 6 placed at Warehouse: the bucket carries $30
     // (units there × unit value). The asset has placement rows, so it must
     // NOT appear under No Location — that slice drills down to the
