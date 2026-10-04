@@ -30,6 +30,16 @@ export function buildAssetsByStatusChart(
 interface MonthlyGrowthRow {
   month_start: Date;
   assets_created: number;
+  /** fork: value of the assets added that month (today's values) */
+  value_added?: number;
+}
+
+/** fork: what the inventory value chart needs, see buildMonthlyGrowthData */
+export interface InventoryValueHistory {
+  /** value of assets added before the window and not sold before it */
+  baseline: number;
+  added: MonthlyGrowthRow[];
+  sold: { month_start: Date; value_sold: number }[];
 }
 
 // Fixed-en-US short-month formatter — the SAME mechanism the shared date
@@ -39,7 +49,8 @@ const SHORT_MONTH_FMT = new Intl.DateTimeFormat("en-US", { month: "short" });
 
 export function buildMonthlyGrowthData(
   monthlyRows: MonthlyGrowthRow[],
-  baselineCount: number
+  baselineCount: number,
+  value?: InventoryValueHistory
 ) {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
@@ -52,6 +63,19 @@ export function buildMonthlyGrowthData(
     rowMap.set(key, Number(row.assets_created));
   }
 
+  // fork: value added and sold per month
+  const monthKey = (d: Date | string) => {
+    const x = new Date(d);
+    return `${x.getFullYear()}-${x.getMonth()}`;
+  };
+  const addedMap = new Map<string, number>();
+  for (const row of value?.added ?? [])
+    addedMap.set(monthKey(row.month_start), Number(row.value_added ?? 0));
+  const soldMap = new Map<string, number>();
+  for (const row of value?.sold ?? [])
+    soldMap.set(monthKey(row.month_start), Number(row.value_sold));
+  let cumulativeValue = value?.baseline ?? 0;
+
   // Build the 12-month array with cumulative totals
   let cumulative = baselineCount;
   const months: {
@@ -59,6 +83,7 @@ export function buildMonthlyGrowthData(
     year: number;
     assetsCreated: number;
     "Total assets": number;
+    "Inventory value": number;
   }[] = [];
 
   for (let i = 0; i < 12; i++) {
@@ -66,6 +91,7 @@ export function buildMonthlyGrowthData(
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     const assetsCreated = rowMap.get(key) ?? 0;
     cumulative += assetsCreated;
+    cumulativeValue += (addedMap.get(key) ?? 0) - (soldMap.get(key) ?? 0);
 
     months.push({
       // why: a monthly chart-axis BUCKET label, not a full date — it uses the
@@ -77,6 +103,7 @@ export function buildMonthlyGrowthData(
       year: d.getFullYear(),
       assetsCreated,
       "Total assets": cumulative,
+      "Inventory value": Math.max(0, Math.round(cumulativeValue * 100) / 100),
     });
   }
 

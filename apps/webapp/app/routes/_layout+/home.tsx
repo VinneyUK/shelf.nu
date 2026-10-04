@@ -158,9 +158,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       }),
 
       // 1c. Monthly asset creation counts (last 12 months)
-      db.$queryRaw<{ month_start: Date; assets_created: number }[]>`
+      db.$queryRaw<
+        { month_start: Date; assets_created: number; value_added: number }[]
+      >`
         SELECT date_trunc('month', "createdAt") AS month_start,
-               COUNT(*)::int AS assets_created
+               COUNT(*)::int AS assets_created,
+               COALESCE(SUM("valuation" * COALESCE("quantity", 1)), 0)::float AS value_added
         FROM "Asset"
         WHERE "organizationId" = ${organizationId}
           AND "createdAt" >= ${twelveMonthsAgo}
@@ -375,6 +378,31 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       title: "Home",
     };
 
+    // fork: inventory value over the same months. Value joins when an asset is
+    // added (at today's value: Shelf keeps no value history) and leaves when it
+    // is sold. Assets with no value don't count.
+    const [valueSoldRows, baselineValue] = await Promise.all([
+      db.$queryRaw<{ month_start: Date; value_sold: number }[]>`
+        SELECT date_trunc('month', s."soldOn") AS month_start,
+               COALESCE(SUM(a."valuation" * COALESCE(a."quantity", 1)), 0)::float AS value_sold
+        FROM "AssetSale" s JOIN "Asset" a ON a.id = s."assetId"
+        WHERE a."organizationId" = ${organizationId}
+          AND s."soldOn" >= ${twelveMonthsAgo}
+        GROUP BY 1`,
+      db.$queryRaw<{ value: number }[]>`
+        SELECT COALESCE(SUM(a."valuation" * COALESCE(a."quantity", 1)), 0)::float AS value
+        FROM "Asset" a
+        LEFT JOIN "AssetSale" s ON s."assetId" = a.id
+        WHERE a."organizationId" = ${organizationId}
+          AND a."createdAt" < ${twelveMonthsAgo}
+          AND (s."assetId" IS NULL OR s."soldOn" >= ${twelveMonthsAgo})`,
+    ]);
+    const inventoryValueHistory = {
+      baseline: baselineValue[0]?.value ?? 0,
+      added: monthlyRows,
+      sold: valueSoldRows,
+    };
+
     return payload({
       header,
       homeLayout: await getHomeLayout({ userId, organizationId }), // home layout feature
@@ -401,7 +429,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         bookings: ongoingAndOverdueBookings as any,
       }),
       assetsByStatus: buildAssetsByStatusChart(statusGroups),
-      assetGrowthData: buildMonthlyGrowthData(monthlyRows, baselineCount),
+      assetGrowthData: buildMonthlyGrowthData(
+        monthlyRows,
+        baselineCount,
+        inventoryValueHistory // fork: inventory value as a second axis
+      ),
       announcement: announcement
         ? {
             ...announcement,
