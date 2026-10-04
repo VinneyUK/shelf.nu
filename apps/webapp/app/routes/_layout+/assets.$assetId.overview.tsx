@@ -767,6 +767,8 @@ async function handleMoveUnitsIntent({
 const SHOW_SHELF_QR_ID = false as boolean;
 const SHOW_SHELF_QR_SECTION = false as boolean;
 const SHOW_LOCATION_BOX = false as boolean;
+/** Fork: Shelf's internal record ID (a long random string) is not shown; the asset ID is. */
+const SHOW_INTERNAL_ID = false as boolean;
 
 export default function AssetOverview() {
   const {
@@ -856,14 +858,16 @@ export default function AssetOverview() {
         <div className="max-w-full flex-1 overflow-hidden">
           <Card className="my-3 max-w-full px-[-4] py-[-5] md:border">
             <ul className="item-information">
-              <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
-                <span className="w-1/4 text-[14px] font-medium text-gray-900">
-                  ID
-                </span>
-                <div className="mt-1 w-3/5 text-gray-600 md:mt-0">
-                  {asset?.id}
-                </div>
-              </li>
+              {SHOW_INTERNAL_ID ? (
+                <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
+                  <span className="w-1/4 text-[14px] font-medium text-gray-900">
+                    ID
+                  </span>
+                  <div className="mt-1 w-3/5 text-gray-600 md:mt-0">
+                    {asset?.id}
+                  </div>
+                </li>
+              ) : null}
               {asset?.sequentialId ? (
                 <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
                   <span className="w-1/4 text-[14px] font-medium text-gray-900">

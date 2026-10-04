@@ -14,6 +14,7 @@
  * @see {@link file://../../utils/date-format.ts} formatDate
  */
 import { useDateFormatter } from "~/hooks/use-date-formatter";
+import { useShowTimesInDates } from "~/modules/customisation/use-customisations"; // fork
 import type { DateFormatOptions } from "~/utils/date-format";
 
 /**
@@ -30,6 +31,8 @@ type DateSProps = {
   options?: DateFormatOptions;
   /** Append the time portion to the date. */
   includeTime?: boolean;
+  /** Fork: keep the time even when the workspace shows dates without it (for logs and history) */
+  keepTime?: boolean;
   /** Render only the time portion (no date). */
   onlyTime?: boolean;
   /**
@@ -50,16 +53,20 @@ export const DateS = ({
   date,
   options,
   includeTime,
+  keepTime = false,
   onlyTime,
   localeOnly,
 }: DateSProps) => {
   const { formatDate } = useDateFormatter();
+  const showTimesInDates = useShowTimesInDates(); // fork: "Show times in dates"
 
   // Resolve each formatting flag so an explicit prop wins, then a matching key
   // inside `options`, then the `false` default. Without this, a `false` default
   // spread after `...options` would silently overwrite a flag the caller passed
   // via `options` (e.g. `options={{ onlyTime: true }}`).
-  const resolvedIncludeTime = includeTime ?? options?.includeTime ?? false;
+  const resolvedIncludeTime =
+    (includeTime ?? options?.includeTime ?? false) &&
+    (showTimesInDates || keepTime);
   const resolvedOnlyTime = onlyTime ?? options?.onlyTime ?? false;
   const resolvedLocaleOnly = localeOnly ?? options?.localeOnly ?? false;
 

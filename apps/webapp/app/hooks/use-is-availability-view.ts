@@ -1,19 +1,11 @@
-import { useSearchParams } from "./search-params";
-import { useIsUserAssetsPage } from "./use-is-user-assets-page";
-import { useViewportHeight } from "./use-viewport-height";
-
 /**
- * Hook to determine if the current view is the availability view.
- * @returns `true` if the current view is the availability view, `false` otherwise.
+ * Fork: the availability (calendar) view of the assets and boxes lists is
+ * switched off everywhere, so this always says no. A `?view=availability` left
+ * in an old link is ignored.
  */
 export function useIsAvailabilityView() {
-  const isUserPage = useIsUserAssetsPage();
-  const { isMd } = useViewportHeight();
-  const [searchParams] = useSearchParams();
-  const view = searchParams.get("view") ?? "table";
-  const isAvailabilityView = view === "availability";
-
-  const shouldShowAvailabilityView = !isUserPage && isMd;
-
-  return { isAvailabilityView, shouldShowAvailabilityView };
+  return {
+    isAvailabilityView: false as boolean,
+    shouldShowAvailabilityView: false as boolean,
+  };
 }

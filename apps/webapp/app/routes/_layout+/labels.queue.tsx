@@ -419,6 +419,7 @@ export default function LabelsQueue() {
                       <DateS
                         date={job.printedAt ?? job.createdAt}
                         includeTime
+                        keepTime
                       />
                     </td>
                     <td className="py-2 pr-4">

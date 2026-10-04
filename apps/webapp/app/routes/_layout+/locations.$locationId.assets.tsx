@@ -65,6 +65,7 @@ import { isQuantityTracked } from "~/modules/asset/utils";
 import { CurrentSearchParamsSchema } from "~/modules/asset/utils.server";
 import { resolveDisplayCode } from "~/modules/barcode/display";
 import { getPrimaryCustody } from "~/modules/custody/utils";
+import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { resolveLocationAssetIds } from "~/modules/location/bulk-select.server";
 import {
   getLocation,
@@ -292,10 +293,13 @@ export default function LocationAssets() {
   });
 
   const organization = useCurrentOrganization();
-  const canReadCustody = userHasCustodyViewPermission({
-    roles,
-    organization: organization as OrganizationPermissionSettings, // Here we can be sure as TeamMemberBadge is only used in the context of an organization/logged in route
-  });
+  const { custodyEnabled } = useCustomisations(); // customise feature
+  const canReadCustody =
+    custodyEnabled &&
+    userHasCustodyViewPermission({
+      roles,
+      organization: organization as OrganizationPermissionSettings, // Here we can be sure as TeamMemberBadge is only used in the context of an organization/logged in route
+    });
 
   return (
     <>
@@ -379,24 +383,26 @@ export default function LocationAssets() {
             <>
               <Th>Category</Th>
               <Th>Tags</Th>
-              <Th className="flex items-center gap-1 whitespace-nowrap md:border-b-0">
-                Custodian{" "}
-                <InfoTooltip
-                  iconClassName="size-4"
-                  content={
-                    <>
-                      <h6>Asset custody</h6>
-                      <p>
-                        This column shows if a user has custody of the asset
-                        either via direct assignment or via a booking. If you
-                        see <GrayBadge>private</GrayBadge> that means you don't
-                        have the permissions to see who has custody of the
-                        asset.
-                      </p>
-                    </>
-                  }
-                />
-              </Th>
+              {canReadCustody ? (
+                <Th className="flex items-center gap-1 whitespace-nowrap md:border-b-0">
+                  Custodian{" "}
+                  <InfoTooltip
+                    iconClassName="size-4"
+                    content={
+                      <>
+                        <h6>Asset custody</h6>
+                        <p>
+                          This column shows if a user has custody of the asset
+                          either via direct assignment or via a booking. If you
+                          see <GrayBadge>private</GrayBadge> that means you
+                          don't have the permissions to see who has custody of
+                          the asset.
+                        </p>
+                      </>
+                    }
+                  />
+                </Th>
+              ) : null}
               <When truthy={userRoleCanManageAssets}>
                 <Th />
               </When>

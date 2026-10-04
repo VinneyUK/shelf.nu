@@ -2699,6 +2699,8 @@ model WorkspaceCustomisation {
   kitsEnabled        Boolean @default(true)
   assetModelsEnabled Boolean @default(true)
   qrDownloadsEnabled Boolean @default(true)
+  /// Dates in lists show the time as well as the date (off: just the date)
+  showTimesInDates   Boolean @default(false)
   updatedAt        DateTime @updatedAt
 }
 

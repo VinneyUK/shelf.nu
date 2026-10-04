@@ -67,6 +67,7 @@ const CustomiseSchema = z.object({
   barcodesEnabled: flag,
   hiddenMenuItems: z.string().transform((v) => (v ? v.split(",") : [])),
   imagePreviewOnHover: flag,
+  showTimesInDates: flag,
   labelsEnabled: flag,
   custodyEnabled: flag,
   locationsEnabled: flag,
@@ -179,6 +180,9 @@ export default function CustomiseSettings() {
   const [imagePreview, setImagePreview] = useState<boolean>(
     settings.imagePreviewOnHover
   );
+  const [showTimes, setShowTimes] = useState<boolean>(
+    settings.showTimesInDates
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -208,6 +212,7 @@ export default function CustomiseSettings() {
         name="imagePreviewOnHover"
         value={String(imagePreview)}
       />
+      <input type="hidden" name="showTimesInDates" value={String(showTimes)} />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -271,6 +276,37 @@ export default function CustomiseSettings() {
             <p id="imagePreviewOnHover-desc" className="text-sm text-gray-600">
               Show a larger image when you hover over an asset's thumbnail in
               the assets list.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">Dates</h3>
+        <div className="flex items-start gap-4 py-4">
+          <Switch
+            id="showTimesInDates"
+            checked={showTimes}
+            onCheckedChange={(checked) => {
+              setShowTimes(checked);
+              changed();
+            }}
+            aria-labelledby="showTimesInDates-label"
+            aria-describedby="showTimesInDates-desc"
+          />
+          <div>
+            <label
+              id="showTimesInDates-label"
+              htmlFor="showTimesInDates"
+              className="font-medium text-gray-900"
+            >
+              Show times in dates
+            </label>
+            <p id="showTimesInDates-desc" className="text-sm text-gray-600">
+              Off: lists show just the date (04/10/2026), as in Created at and
+              Updated at. On: they show the time as well (04/10/2026, 16:35).
+              Activity, the Labels history and email logs always keep their
+              times.
             </p>
           </div>
         </div>

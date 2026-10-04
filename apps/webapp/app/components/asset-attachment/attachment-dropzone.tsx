@@ -13,8 +13,12 @@ import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_TYPES_DESCRIPTION,
 } from "~/modules/asset-attachment/constants";
-import { formatBytes } from "~/utils/format-bytes";
 import { tw } from "~/utils/tw";
+
+/** The limit is set in MB (of 1,048,576 bytes), so show it that way: 100 MB, not 105. */
+function formatLimit(bytes: number) {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
 
 export function AttachmentDropzone({
   maxBytes,
@@ -33,7 +37,7 @@ export function AttachmentDropzone({
       const code = first?.errors[0]?.code;
       const reason =
         code === "file-too-large"
-          ? `is bigger than ${formatBytes(maxBytes, 0)}`
+          ? `is bigger than ${formatLimit(maxBytes)}`
           : code === "file-invalid-type"
           ? `isn't a ${ATTACHMENT_TYPES_DESCRIPTION} file`
           : "can't be uploaded";
@@ -70,7 +74,7 @@ export function AttachmentDropzone({
         or drag and drop
       </p>
       <p className="text-xs text-gray-500">
-        {ATTACHMENT_TYPES_DESCRIPTION}, up to {formatBytes(maxBytes, 0)} each
+        {ATTACHMENT_TYPES_DESCRIPTION}, up to {formatLimit(maxBytes)} each
       </p>
     </div>
   );

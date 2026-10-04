@@ -30,6 +30,7 @@ import { useNprogress } from "./hooks/use-nprogress";
 import { detectAndPersistFormatPrefs } from "./modules/user/format-prefs.server";
 import darkStylesheetUrl from "./styles/dark.css?url"; // fork: dark theme
 import fontsStylesheetUrl from "./styles/fonts.css?url";
+import forkStylesheetUrl from "./styles/fork.css?url"; // fork: both themes
 import globalStylesheetUrl from "./styles/global.css?url";
 import nProgressCustomStyles from "./styles/nprogress.css?url";
 import pmDocStylesheetUrl from "./styles/pm-doc.css?url";
@@ -74,6 +75,7 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: nProgressStyles },
   { rel: "stylesheet", href: nProgressCustomStyles },
   { rel: "stylesheet", href: darkStylesheetUrl }, // fork: dark theme
+  { rel: "stylesheet", href: forkStylesheetUrl }, // fork: both themes
 ];
 
 export const meta: MetaFunction = () => [

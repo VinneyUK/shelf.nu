@@ -21,7 +21,6 @@ import { resolveTeamMemberName } from "~/utils/user";
 import { AdvancedFilteringAndSorting } from "./advanced-asset-index-filters-and-sorting";
 import { ConfigureColumnsDropdown } from "./configure-columns-dropdown";
 import { SavedFilterPresetsControls } from "./saved-filter-presets";
-import { AvailabilityViewToggle } from "./view-toggle";
 
 export const ASSET_SORTING_OPTIONS = {
   title: "Name",
@@ -65,7 +64,7 @@ export function AssetIndexFilters({
                 className="flex-1"
               />
 
-              <AvailabilityViewToggle />
+              {null}
             </div>
           ),
         }}
@@ -192,7 +191,7 @@ function AdvancedAssetIndexFilters() {
     <Filters
       slots={{
         "left-of-search": <AdvancedFilteringAndSorting />,
-        "right-of-search": <AvailabilityViewToggle modeIsSimple={false} />,
+        "right-of-search": null,
       }}
       searchClassName="leading-5"
     >

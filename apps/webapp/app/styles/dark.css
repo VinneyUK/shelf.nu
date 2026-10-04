@@ -132,8 +132,8 @@ html.dark .text-orange-600 { color: #fb923c; }
 html.dark .text-orange-700 { color: #fdba74; }
 html.dark .text-orange-800 { color: #fed7aa; }
 html.dark .text-orange-900 { color: #ffedd5; }
-html.dark .text-primary-600 { color: #F38744; }
-html.dark .text-primary-700 { color: #F7B27A; }
+html.dark .text-primary-600 { color: #EF6820; }
+html.dark .text-primary-700 { color: #EF6820; }
 html.dark .text-red-600 { color: #f87171; }
 html.dark .text-red-700 { color: #fca5a5; }
 html.dark .text-red-800 { color: #fecaca; }
@@ -157,7 +157,7 @@ html.dark .to-primary-100 { --tw-gradient-to: #332018 var(--tw-gradient-to-posit
 html.dark .after\:bg-gray-200::after { background-color: #262d36; }
 html.dark .after\:border-gray-200::after { border-color: #2b333d; }
 html.dark .aria-selected\:bg-primary-50[aria-selected="true"] { background-color: #251b17; }
-html.dark .aria-selected\:text-primary-700[aria-selected="true"] { color: #F7B27A; }
+html.dark .aria-selected\:text-primary-700[aria-selected="true"] { color: #EF6820; }
 html.dark .before\:bg-gray-200::before { background-color: #262d36; }
 html.dark .before\:border-gray-200::before { border-color: #2b333d; }
 html.dark .checked\:bg-primary:checked { background-color: #EF6820; }
@@ -204,7 +204,7 @@ html.dark .focus\:ring-primary-25:focus { --tw-ring-color: #332018; }
 html.dark .focus\:ring-primary-300\/20:focus { --tw-ring-color: rgb(145 68 28 / 0.2); }
 html.dark .focus\:ring-primary-500:focus { --tw-ring-color: #EF6820; }
 html.dark .focus\:ring-primary:focus { --tw-ring-color: #EF6820; }
-html.dark .group:hover .group-hover\:text-primary-600 { color: #F38744; }
+html.dark .group:hover .group-hover\:text-primary-600 { color: #EF6820; }
 html.dark .hover\:\!bg-error-800:hover { background-color: #912018 !important; }
 html.dark .hover\:bg-blue-100:hover { background-color: #16243a; }
 html.dark .hover\:bg-blue-200:hover { background-color: #1a2d4c; }
@@ -238,9 +238,9 @@ html.dark .hover\:text-gray-600:hover { color: #a1a8b3; }
 html.dark .hover\:text-gray-700:hover { color: #d1d5db; }
 html.dark .hover\:text-gray-800:hover { color: #e5e7eb; }
 html.dark .hover\:text-gray-900:hover { color: #f3f4f6; }
-html.dark .hover\:text-primary-600:hover { color: #F38744; }
-html.dark .hover\:text-primary-700:hover { color: #F7B27A; }
-html.dark .hover\:text-primary-800:hover { color: #F9DBAF; }
+html.dark .hover\:text-primary-600:hover { color: #EF6820; }
+html.dark .hover\:text-primary-700:hover { color: #EF6820; }
+html.dark .hover\:text-primary-800:hover { color: #F38744; }
 html.dark .hover\:text-primary:hover { color: #EF6820; }
 html.dark .hover\:text-red-500:hover { color: #ef4444; }
 html.dark .hover\:text-white\/80:hover { color: rgb(255 255 255 / 0.8); }
@@ -309,15 +309,18 @@ html.dark {
 html.dark body { background-color: #0f1216; color: #e5e7eb; }
 :where(html.dark) :is(h1, h2, h3, h4, h5, h6) { color: #f3f4f6; }
 :where(html.dark) *, :where(html.dark) ::before, :where(html.dark) ::after { border-color: #2b333d; }
-/* inputs without their own colour classes (those are handled by the class rules) */
-html.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):not([class*="bg-"]) {
+/* inputs: a dark background unless a class sets its own (mapped classes are more specific and win;
+   bg-transparent is left alone). Matching class tokens exactly: a substring match on "bg-"
+   also matched disabled:bg-gray-50, which left most inputs white. */
+html.dark :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([class~="bg-transparent"]),
+  textarea:not([class~="bg-transparent"]),
+  select:not([class~="bg-transparent"])
+) {
   background-color: #161b22;
 }
-html.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):not([class*="text-"]) {
-  color: #f3f4f6;
-}
 :where(html.dark) :where(input, textarea)::placeholder { color: #6e7682; }
-html.dark :where([type="checkbox"], [type="radio"]):not(:checked):not([class*="bg-"]) { background-color: #161b22; border-color: #4b5360; }
+html.dark :where([type="checkbox"], [type="radio"]):not(:checked):not([class~="bg-white"]) { background-color: #161b22; border-color: #4b5360; }
 html.dark ::-webkit-scrollbar { background: #12161b; }
 html.dark ::-webkit-scrollbar-thumb { background: #39424d; border-radius: 8px; }
 html.dark ::-webkit-scrollbar-corner { background: #12161b; }
@@ -408,6 +411,9 @@ html.dark [class~="[&>div>p:first-child]:text-gray-900"] > div > p:first-child {
 html.dark [class~="[&>div>p:last-child]:text-gray-600"] > div > p:last-child { color: #a1a8b3; }
 html.dark [class~="[&:is(button:enabled)]:hover:bg-gray-50"]:is(button:enabled):hover { background-color: #161b22; }
 html.dark [class~="[&:is(a)]:hover:bg-gray-50"]:is(a):hover { background-color: #161b22; }
+
+/* ---- the wordmark next to the logo is dark ink ---- */
+html.dark [data-shelf-wordmark] path { fill: #f3f4f6; }
 
 /* ---- the hand-drawn checkbox (it fills with currentColor, which was white) ---- */
 html.dark [data-fake-checkbox="off"] rect { fill: #161b22; stroke: #4b5360; }

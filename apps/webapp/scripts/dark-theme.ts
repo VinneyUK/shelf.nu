@@ -171,6 +171,14 @@ const TEXT_SHIFT: Record<string, string> = {
   "900": "100",
   "950": "50",
 };
+/** The brand orange stays the brand orange (not a pale peach) on dark. */
+const TEXT_SHIFT_PRIMARY: Record<string, string> = {
+  "600": "500",
+  "700": "500",
+  "800": "400",
+  "900": "400",
+  "950": "400",
+};
 
 /** The original colour of a token, or null if it isn't a plain colour. */
 export function lightColor(family: string, shade: string): string | null {
@@ -210,7 +218,9 @@ export function darkColor(
     const a = BORDER_TINT[shade];
     return a === undefined ? null : mix(base, PAGE, a);
   }
-  const lighter = TEXT_SHIFT[shade];
+  const lighter = (family === "primary" ? TEXT_SHIFT_PRIMARY : TEXT_SHIFT)[
+    shade
+  ];
   return lighter ? pal[lighter] ?? null : null;
 }
 

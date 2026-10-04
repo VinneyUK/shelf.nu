@@ -249,6 +249,9 @@ type Props = Partial<
 };
 
 // react-doctor:no-giant-component — deferred for follow-up refactor
+/** Fork: the Barcodes row (and its upsell) is switched off on the asset form. */
+const SHOW_BARCODES_ROW = false as boolean;
+
 export const AssetForm = ({
   id,
   sequentialId,
@@ -1367,7 +1370,7 @@ export const AssetForm = ({
             per-asset inside createAsset (so each of the N rows still
             gets its own auto-allocated barcode when the workspace
             preference is enabled). */}
-        <When truthy={!bulkMode}>
+        <When truthy={SHOW_BARCODES_ROW && !bulkMode}>
           {canUseBarcodes ? (
             <>
               <FormRow

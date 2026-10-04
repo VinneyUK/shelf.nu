@@ -1,0 +1,19 @@
+/* Fork (VinneyUK/shelf.nu): rules for both light and dark. */
+
+/* No gaussian blur anywhere (headers, footers, dialog overlays), on desktop or mobile */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* No fade over the edge of tables that scroll sideways */
+.fixed-gradient {
+  display: none !important;
+}
+
+/* Native checkboxes and radios in the brand orange, not the browser's blue */
+input[type="checkbox"],
+input[type="radio"] {
+  color: #ef6820;
+  accent-color: #ef6820;
+}

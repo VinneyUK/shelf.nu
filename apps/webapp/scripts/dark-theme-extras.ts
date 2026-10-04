@@ -31,15 +31,18 @@ html.dark {
 html.dark body { background-color: #0f1216; color: #e5e7eb; }
 :where(html.dark) :is(h1, h2, h3, h4, h5, h6) { color: #f3f4f6; }
 :where(html.dark) *, :where(html.dark) ::before, :where(html.dark) ::after { border-color: #2b333d; }
-/* inputs without their own colour classes (those are handled by the class rules) */
-html.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):not([class*="bg-"]) {
+/* inputs: a dark background unless a class sets its own (mapped classes are more specific and win;
+   bg-transparent is left alone). Matching class tokens exactly: a substring match on "bg-"
+   also matched disabled:bg-gray-50, which left most inputs white. */
+html.dark :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([class~="bg-transparent"]),
+  textarea:not([class~="bg-transparent"]),
+  select:not([class~="bg-transparent"])
+) {
   background-color: #161b22;
 }
-html.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):not([class*="text-"]) {
-  color: #f3f4f6;
-}
 :where(html.dark) :where(input, textarea)::placeholder { color: #6e7682; }
-html.dark :where([type="checkbox"], [type="radio"]):not(:checked):not([class*="bg-"]) { background-color: #161b22; border-color: #4b5360; }
+html.dark :where([type="checkbox"], [type="radio"]):not(:checked):not([class~="bg-white"]) { background-color: #161b22; border-color: #4b5360; }
 html.dark ::-webkit-scrollbar { background: #12161b; }
 html.dark ::-webkit-scrollbar-thumb { background: #39424d; border-radius: 8px; }
 html.dark ::-webkit-scrollbar-corner { background: #12161b; }
@@ -130,6 +133,9 @@ html.dark [class~="[&>div>p:first-child]:text-gray-900"] > div > p:first-child {
 html.dark [class~="[&>div>p:last-child]:text-gray-600"] > div > p:last-child { color: #a1a8b3; }
 html.dark [class~="[&:is(button:enabled)]:hover:bg-gray-50"]:is(button:enabled):hover { background-color: #161b22; }
 html.dark [class~="[&:is(a)]:hover:bg-gray-50"]:is(a):hover { background-color: #161b22; }
+
+/* ---- the wordmark next to the logo is dark ink ---- */
+html.dark [data-shelf-wordmark] path { fill: #f3f4f6; }
 
 /* ---- the hand-drawn checkbox (it fills with currentColor, which was white) ---- */
 html.dark [data-fake-checkbox="off"] rect { fill: #161b22; stroke: #4b5360; }

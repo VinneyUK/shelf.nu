@@ -24,6 +24,8 @@ export type Customisations = {
   assetModelsEnabled: boolean;
   /** Shelf's own QR code downloads (sheets and per-asset) */
   qrDownloadsEnabled: boolean;
+  /** Dates in lists show the time too (off: just the date) */
+  showTimesInDates: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -39,6 +41,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   kitsEnabled: true,
   assetModelsEnabled: true,
   qrDownloadsEnabled: true,
+  showTimesInDates: false,
 };
 
 type MenuMatch = { to?: string; title?: string };

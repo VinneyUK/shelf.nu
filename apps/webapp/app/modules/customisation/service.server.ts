@@ -44,6 +44,8 @@ export async function getWorkspaceCustomisations(
       row?.assetModelsEnabled ?? DEFAULT_CUSTOMISATIONS.assetModelsEnabled,
     qrDownloadsEnabled:
       row?.qrDownloadsEnabled ?? DEFAULT_CUSTOMISATIONS.qrDownloadsEnabled,
+    showTimesInDates:
+      row?.showTimesInDates ?? DEFAULT_CUSTOMISATIONS.showTimesInDates,
   };
 }
 
@@ -96,6 +98,7 @@ export async function saveCustomisePageSettings(
         kitsEnabled: settings.kitsEnabled,
         assetModelsEnabled: settings.assetModelsEnabled,
         qrDownloadsEnabled: settings.qrDownloadsEnabled,
+        showTimesInDates: settings.showTimesInDates,
       },
       update: {
         bookingsEnabled: settings.bookingsEnabled,
@@ -108,6 +111,7 @@ export async function saveCustomisePageSettings(
         kitsEnabled: settings.kitsEnabled,
         assetModelsEnabled: settings.assetModelsEnabled,
         qrDownloadsEnabled: settings.qrDownloadsEnabled,
+        showTimesInDates: settings.showTimesInDates,
       },
     }),
     db.organization.update({

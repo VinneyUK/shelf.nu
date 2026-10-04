@@ -368,7 +368,10 @@ export async function deleteAssetAttachment({
   attachmentId,
   assetId,
   organizationId,
+  userId = null,
 }: {
+  /** Who deleted it, for the asset's activity */
+  userId?: string | null;
   attachmentId: string;
   /** null deletes a staged file, one not yet on any asset */
   assetId: string | null;
@@ -403,6 +406,14 @@ export async function deleteAssetAttachment({
   await db.assetAttachment.deleteMany({
     where: { id: attachment.id, organizationId },
   });
+  if (assetId) {
+    await addAssetActivity({
+      organizationId,
+      assetIds: [assetId],
+      userId,
+      action: `deleted the attachment **${attachment.fileName}**.`,
+    });
+  }
   return attachment.fileName;
 }
 

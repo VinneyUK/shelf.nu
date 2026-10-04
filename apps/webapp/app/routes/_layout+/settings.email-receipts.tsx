@@ -204,7 +204,8 @@ export default function EmailReceiptsSettings() {
         <p className="mt-2 text-sm text-gray-600">
           {settings.lastCheckedAt ? (
             <>
-              Last checked <DateS date={settings.lastCheckedAt} includeTime />.{" "}
+              Last checked{" "}
+              <DateS date={settings.lastCheckedAt} includeTime keepTime />.{" "}
             </>
           ) : (
             "Not checked yet. "
@@ -397,7 +398,11 @@ export default function EmailReceiptsSettings() {
                 {recent.map((r) => (
                   <tr key={r.id}>
                     <td className="whitespace-nowrap py-2 pr-4 text-gray-600">
-                      <DateS date={r.receivedAt ?? r.createdAt} includeTime />
+                      <DateS
+                        date={r.receivedAt ?? r.createdAt}
+                        includeTime
+                        keepTime
+                      />
                     </td>
                     <td className="py-2 pr-4 text-gray-600">{r.fromAddress}</td>
                     <td className="py-2 pr-4 text-gray-900">{r.subject}</td>
@@ -451,7 +456,11 @@ function UnmatchedRow({
         </p>
         <p className="text-gray-500">
           From {receipt.fromAddress},{" "}
-          <DateS date={receipt.receivedAt ?? receipt.createdAt} includeTime />
+          <DateS
+            date={receipt.receivedAt ?? receipt.createdAt}
+            includeTime
+            keepTime
+          />
           {receipt.reason ? ` — ${receipt.reason}` : ""}
         </p>
       </div>

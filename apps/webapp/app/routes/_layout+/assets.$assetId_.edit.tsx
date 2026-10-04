@@ -128,7 +128,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 
     const header: HeaderData = {
       title: `Edit | ${asset.title}`,
-      subHeading: asset.id,
+      subHeading: asset.sequentialId ?? "",
     };
 
     return payload({

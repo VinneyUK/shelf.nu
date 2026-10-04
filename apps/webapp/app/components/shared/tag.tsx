@@ -20,6 +20,7 @@ export const Tag = forwardRef<HTMLSpanElement, TagProps>(function Tag(
   return (
     <span
       ref={ref}
+      data-badge={hasColor ? "" : undefined} // fork: dark theme flips user-chosen colours
       className={tw(
         "inline-flex items-center rounded-2xl bg-gray-100 py-0.5 pl-1.5 text-[12px] font-medium text-gray-700",
         withDot ? " gap-1 pr-2" : "px-2",

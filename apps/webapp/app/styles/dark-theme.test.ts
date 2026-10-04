@@ -71,6 +71,20 @@ describe("dark theme cascade", () => {
     }
   });
 
+  it("gives inputs a dark background by exact class match, not a substring that skips disabled:bg-gray-50", () => {
+    expect(css).toContain(':not([class~="bg-transparent"])');
+    expect(css).not.toContain('[class*="bg-"]');
+  });
+
+  it("keeps the brand orange for primary text on dark, not a pale tint", () => {
+    expect(darkColor("text", "primary", "700")).toBe(
+      lightColor("primary", "500")
+    );
+    expect(darkColor("text", "primary", "600")).toBe(
+      lightColor("primary", "500")
+    );
+  });
+
   it("includes the sidebar's variables (it reads them, not classes)", () => {
     at("--sidebar-background:");
   });

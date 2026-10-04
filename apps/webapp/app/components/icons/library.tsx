@@ -567,6 +567,7 @@ export function ActiveSwitchIcon(props: SVGProps<SVGSVGElement>) {
 export function ShelfTypography(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
+      data-shelf-wordmark // fork: the dark theme lightens the ink
       width="61"
       height="21"
       viewBox="0 0 61 21"

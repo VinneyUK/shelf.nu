@@ -125,6 +125,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
       attachmentId,
       assetId,
       organizationId,
+      userId,
     });
     return payload({ success: true, uploaded: null, deleted });
   } catch (cause) {
