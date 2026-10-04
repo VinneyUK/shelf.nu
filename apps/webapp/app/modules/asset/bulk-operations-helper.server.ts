@@ -40,7 +40,7 @@ export function buildAdvancedFilteredAssetIdsQuery(
     LEFT JOIN LATERAL (
       SELECT l.id, l.name, l."parentId"
       FROM public."AssetLocation" al
-      JOIN public."Place" l ON al."locationId" = l.id
+      JOIN public."Location" l ON al."locationId" = l.id
       WHERE al."assetId" = a.id
       ORDER BY al."createdAt" ASC, al.id ASC
       LIMIT 1

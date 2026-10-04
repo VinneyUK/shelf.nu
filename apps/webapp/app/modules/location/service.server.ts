@@ -457,7 +457,7 @@ export async function getLocationHierarchy(params: {
         "parentId",
         "organizationId",
         0 AS depth
-      FROM "Place"
+      FROM "Location"
       WHERE id = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -466,7 +466,7 @@ export async function getLocationHierarchy(params: {
         l."parentId",
         l."organizationId",
         lh.depth + 1 AS depth
-      FROM "Place" l
+      FROM "Location" l
       INNER JOIN location_hierarchy lh ON lh."parentId" = l.id
       WHERE l."organizationId" = ${organizationId}
     )
@@ -503,7 +503,7 @@ export async function getLocationDescendantsTree(params: {
         name,
         "parentId",
         "organizationId"
-      FROM "Place"
+      FROM "Location"
       WHERE "parentId" = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -511,7 +511,7 @@ export async function getLocationDescendantsTree(params: {
         l.name,
         l."parentId",
         l."organizationId"
-      FROM "Place" l
+      FROM "Location" l
       INNER JOIN location_descendants ld ON ld.id = l."parentId"
       WHERE l."organizationId" = ${organizationId}
     )
@@ -560,7 +560,7 @@ export async function getLocationSubtreeDepth(params: {
         "parentId",
         "organizationId",
         0 AS depth
-      FROM "Place"
+      FROM "Location"
       WHERE id = ${locationId} AND "organizationId" = ${organizationId}
       UNION ALL
       SELECT
@@ -568,7 +568,7 @@ export async function getLocationSubtreeDepth(params: {
         l."parentId",
         l."organizationId",
         ls.depth + 1 AS depth
-      FROM "Place" l
+      FROM "Location" l
       INNER JOIN location_subtree ls ON l."parentId" = ls.id
       WHERE l."organizationId" = ${organizationId}
     )

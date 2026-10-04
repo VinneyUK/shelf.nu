@@ -2193,7 +2193,7 @@ export const assetQueryFragment = (options: AssetQueryOptions = {}) => {
       CASE
         WHEN l.id IS NOT NULL THEN (
           SELECT COUNT(*)::integer
-          FROM public."Place" lc
+          FROM public."Location" lc
           WHERE lc."parentId" = l.id
         )
         ELSE 0
@@ -2626,7 +2626,7 @@ const CHEAP_KIT_JOIN = Prisma.sql`
     LEFT JOIN LATERAL (
       SELECT k.id, k.name, k.status
       FROM public."AssetKit" ak
-      JOIN public."Box" k ON ak."kitId" = k.id
+      JOIN public."Kit" k ON ak."kitId" = k.id
       WHERE ak."assetId" = a.id
       ORDER BY ak."createdAt" ASC, ak.id ASC
       LIMIT 1
@@ -2639,7 +2639,7 @@ const CHEAP_LOCATION_JOIN = Prisma.sql`
     LEFT JOIN LATERAL (
       SELECT l.id, l.name, l."parentId"
       FROM public."AssetLocation" al
-      JOIN public."Place" l ON al."locationId" = l.id
+      JOIN public."Location" l ON al."locationId" = l.id
       WHERE al."assetId" = a.id
       ORDER BY al."createdAt" ASC, al.id ASC
       LIMIT 1

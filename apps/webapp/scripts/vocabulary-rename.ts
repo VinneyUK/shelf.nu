@@ -151,6 +151,14 @@ function isSingularPluralPair(node: ts.ConditionalExpression): boolean {
   });
 }
 
+/** A chunk of a tagged template such as Prisma.sql`…` or sql`…`: SQL, not wording. */
+function isTaggedSql(node: ts.Node): boolean {
+  const tpl = node.parent?.parent; // TemplateSpan → TemplateExpression
+  const tagged = tpl?.parent;
+  if (!tagged || !ts.isTaggedTemplateExpression(tagged)) return false;
+  return /sql$/i.test(tagged.tag.getText());
+}
+
 /** `expect(x).toContain("kit")` and the like: the string is wording being looked for. */
 function isTextAssertionArgument(node: ts.Node): boolean {
   const call = node.parent;
@@ -175,6 +183,14 @@ function isTextAssertionArgument(node: ts.Node): boolean {
   return false;
 }
 
+/** SQL, in a string or a template chunk: table names and keywords are code. */
+const looksLikeSql = (s: string) =>
+  /\b(SELECT|JOIN|FROM|WHERE|GROUP BY|ORDER BY|LEFT|INNER|LATERAL|COALESCE|EXISTS|INSERT|UPDATE|DELETE)\b/.test(
+    s
+  ) ||
+  /public\."|"[A-Z][A-Za-z]+"\s+[a-z]{1,3}\b|::|\$\d/.test(s) ||
+  /^\s*--/.test(s);
+
 const hasWord = (s: string) =>
   RULES.some((r) => new RegExp(r.from.source, "i").test(s));
 
@@ -184,6 +200,7 @@ function isWording(
 ): boolean {
   const text = node.text;
   if (!hasWord(text)) return false;
+  if (looksLikeSql(text)) return false;
   if (text.includes("/") || text.includes("_") || /^[A-Z0-9_]+$/.test(text))
     return false;
   const parent = node.parent;
@@ -314,7 +331,9 @@ function rewriteFile(file: string, check: boolean): number {
       if (
         hasWord(node.text) &&
         (testFile || node.text.includes(" ")) &&
-        !node.text.includes("/")
+        !node.text.includes("/") &&
+        !looksLikeSql(node.text) &&
+        !isTaggedSql(node)
       ) {
         const raw = node.getText();
         const next = renameWords(raw);
