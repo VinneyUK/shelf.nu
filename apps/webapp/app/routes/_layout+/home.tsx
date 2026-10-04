@@ -434,6 +434,9 @@ export const handle = {
   breadcrumb: () => <Link to="/home">Home</Link>,
 };
 
+/** Fork: Shelf hides the dashboard until its onboarding checklist is done. Not here. */
+const SHOW_DASHBOARD_ALWAYS = true as boolean;
+
 export default function HomePage() {
   const { skipOnboardingChecklist, checklistOptions, homeLayout } =
     useLoaderData<typeof loader>();
@@ -442,7 +445,10 @@ export default function HomePage() {
   return (
     <div>
       <Header> </Header>
-      {completedAllChecks || skipOnboardingChecklist ? (
+      {/* fork: the dashboard always shows; the Welcome checklist can never finish with features switched off */}
+      {SHOW_DASHBOARD_ALWAYS ||
+      completedAllChecks ||
+      skipOnboardingChecklist ? (
         <div>
           <AnnouncementBar />
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
 import { useFetcher } from "react-router";
 import { useZorm } from "react-zorm";
+import { bulkDialogAtom } from "~/atoms/bulk-update-dialog";
 import {
   type TagsFetcherData,
   BulkUpdateTagsSchema,
@@ -25,7 +27,10 @@ export default function BulkRemoveTagsDialog() {
     }));
   }, [fetcher.data]);
 
+  // fork: fetch only once the dialog is opened, not on every page load
+  const isOpen = useAtomValue(bulkDialogAtom)["tag-remove"];
   useEffect(() => {
+    if (!isOpen || fetcher.data) return;
     void fetcher.submit(
       {
         name: "tag",
@@ -38,7 +43,8 @@ export default function BulkRemoveTagsDialog() {
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Handle validation errors
   const validationErrors = useMemo(() => {

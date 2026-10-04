@@ -50,8 +50,8 @@ const post = async (fields: Record<string, string>) => {
   const res = await action({
     request,
     params: {},
-    context: { getSession: () => ({ userId: "u1" }) } as never,
-  });
+    context: { getSession: () => ({ userId: "u1" }) },
+  } as never);
   return res;
 };
 const status = (res: unknown) =>

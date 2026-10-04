@@ -97,5 +97,10 @@ describe("openAccess", () => {
     const { nextCalled } = await run("/assets");
     expect(nextCalled).toBe(true);
     expect(mocks.store.has(authSessionKey)).toBe(false);
+    // and the login page stays reachable, so it can't loop
+    mocks.mint.mockRejectedValueOnce(new Error("no such user"));
+    const login = await run("/login");
+    expect(login.redirects).toEqual([]);
+    expect(login.nextCalled).toBe(true);
   });
 });

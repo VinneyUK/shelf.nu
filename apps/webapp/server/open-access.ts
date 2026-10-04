@@ -24,7 +24,6 @@ export function openAccess() {
   return createMiddleware(async (c, next) => {
     if (!OPEN_ACCESS_USER) return next();
     const path = new URL(c.req.url).pathname;
-    if (AUTH_PAGES.test(path)) return c.redirect("/");
     const session = getSession<SessionData, FlashData>(c);
     if (!session.get(authSessionKey)) {
       try {
@@ -40,6 +39,10 @@ export function openAccess() {
         });
       }
     }
+    // Only once signed in do the auth pages go Home; if signing in failed,
+    // the login page must stay reachable (otherwise / and /login would loop).
+    if (session.get(authSessionKey) && AUTH_PAGES.test(path))
+      return c.redirect("/");
     return next();
   });
 }

@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
 import { useFetcher } from "react-router";
 import { useZorm } from "react-zorm";
 import { z } from "zod";
+import { bulkDialogAtom } from "~/atoms/bulk-update-dialog";
 import { BulkUpdateDialogContent } from "../bulk-update-dialog/bulk-update-dialog";
 import { Button } from "../shared/button";
 import { TagsAutocomplete } from "../tag/tags-autocomplete";
@@ -43,7 +45,10 @@ export default function BulkAssignTagsDialog() {
     }));
   }, [fetcher.data]);
 
+  // fork: fetch only once the dialog is opened, not on every page load
+  const isOpen = useAtomValue(bulkDialogAtom)["tag-add"];
   useEffect(() => {
+    if (!isOpen || fetcher.data) return;
     void fetcher.submit(
       {
         name: "tag",
@@ -57,7 +62,8 @@ export default function BulkAssignTagsDialog() {
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Handle validation errors
   const validationErrors = useMemo(() => {

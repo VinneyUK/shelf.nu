@@ -93,13 +93,18 @@ export function InlineCell({
       setLists(listsFetcher.data);
     }
   }, [listsFetcher.data]);
+  // Each save result is handled once. (Listing `revalidator` as a dependency
+  // re-ran this after every reload it caused, which reloaded again, forever.)
+  const handled = useRef<unknown>(null);
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.success) {
-      setOpen(false);
-      void salesLookup.refresh();
-      void revalidator.revalidate();
-    }
-  }, [fetcher.state, fetcher.data, revalidator]);
+    if (fetcher.state !== "idle" || !fetcher.data?.success) return;
+    if (handled.current === fetcher.data) return;
+    handled.current = fetcher.data;
+    setOpen(false);
+    void salesLookup.refresh();
+    void revalidator.revalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- revalidator changes identity on every reload
+  }, [fetcher.state, fetcher.data]);
 
   const save = (values: Record<string, string>) =>
     void fetcher.submit(
