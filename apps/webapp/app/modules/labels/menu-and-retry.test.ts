@@ -31,11 +31,9 @@ describe("Labels in the menu", () => {
   it("goes straight after Reports", () => {
     const out = applyCustomisationsToMenu(menu(), DEFAULT_CUSTOMISATIONS, Icon);
     expect(tos(out.topMenuItems)).toEqual([
-      "[Asset management]",
       "/assets",
       "/reports",
       "/labels",
-      "[Organization]",
       "/x",
     ]);
   });
@@ -46,13 +44,7 @@ describe("Labels in the menu", () => {
       { ...DEFAULT_CUSTOMISATIONS, hiddenMenuItems: ["reports"] },
       Icon
     );
-    expect(tos(out.topMenuItems)).toEqual([
-      "[Asset management]",
-      "/assets",
-      "/labels",
-      "[Organization]",
-      "/x",
-    ]);
+    expect(tos(out.topMenuItems)).toEqual(["/assets", "/labels", "/x"]);
   });
 
   it("ends the first section when Shelf doesn't show Reports at all", () => {
@@ -61,13 +53,7 @@ describe("Labels in the menu", () => {
       DEFAULT_CUSTOMISATIONS,
       Icon
     );
-    expect(tos(out.topMenuItems)).toEqual([
-      "[Asset management]",
-      "/assets",
-      "/labels",
-      "[Organization]",
-      "/x",
-    ]);
+    expect(tos(out.topMenuItems)).toEqual(["/assets", "/labels", "/x"]);
   });
 
   it("is removed when Labels is switched off, page included", () => {

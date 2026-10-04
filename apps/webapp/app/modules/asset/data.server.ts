@@ -23,7 +23,6 @@ import { payload, getCurrentSearchParams } from "~/utils/http.server";
 import { getParamsValues } from "~/utils/list";
 import { Logger } from "~/utils/logger";
 import { parseMarkdownToReact } from "~/utils/md";
-import { isPersonalOrg } from "~/utils/organization";
 import {
   PermissionAction,
   PermissionEntity,
@@ -31,7 +30,6 @@ import {
 import { hasPermission } from "~/utils/permissions/permission.validator.server";
 import { canImportAssets } from "~/utils/subscription.server";
 import type { UserNameFields } from "~/utils/user";
-import { resolveUserDisplayName } from "~/utils/user";
 import { parseFiltersWithHierarchy } from "./query.server";
 import {
   getAdvancedPaginatedAndFilterableAssets,
@@ -154,7 +152,7 @@ export async function simpleModeLoader({
   organizations,
   role,
   currentOrganization,
-  user,
+  user: _user, // fork: no longer used for the title
   settings,
   canSeeAllCustody,
 }: Props) {
@@ -382,16 +380,8 @@ export async function simpleModeLoader({
     }
   }
 
-  const userName = resolveUserDisplayName(user);
-  const header: HeaderData = {
-    title: isPersonalOrg(currentOrganization)
-      ? userName
-        ? `${userName}'s inventory`
-        : `Your inventory`
-      : currentOrganization?.name
-      ? `${currentOrganization?.name}'s inventory`
-      : "Your inventory",
-  };
+  // fork: the assets list is simply "Assets", in both views
+  const header: HeaderData = { title: "Assets" };
 
   const modelName = {
     singular: "asset",
@@ -488,7 +478,7 @@ export async function advancedModeLoader({
   organizations,
   role,
   currentOrganization,
-  user,
+  user: _user, // fork: no longer used for the title
   settings,
   canSeeAllCustody,
 }: Props) {
@@ -706,16 +696,8 @@ export async function advancedModeLoader({
     );
   }
 
-  const userName = resolveUserDisplayName(user);
-  const header: HeaderData = {
-    title: isPersonalOrg(currentOrganization)
-      ? userName
-        ? `${userName}'s inventory`
-        : `Your inventory`
-      : currentOrganization?.name
-      ? `${currentOrganization?.name}'s inventory`
-      : "Your inventory",
-  };
+  // fork: the assets list is simply "Assets", in both views
+  const header: HeaderData = { title: "Assets" };
 
   const modelName = {
     singular: "asset",

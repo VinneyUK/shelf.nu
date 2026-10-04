@@ -145,14 +145,19 @@ const menu = () => ({
 
 const titles = (items: NavItem[]) => items.map((i) => i.title);
 const settingsChildren = (items: NavItem[]) => {
-  const s = items.find((i) => i.title === "Workspace settings");
+  const s = items.find((i) => i.title === "Settings");
   return s && s.type === "parent" ? s.children.map((c) => c.to) : [];
 };
 
 describe("applyCustomisationsToMenu", () => {
   it("only adds the Customise page when nothing is switched off", () => {
     const out = applyCustomisationsToMenu(menu(), all);
-    expect(titles(out.topMenuItems)).toEqual(titles(menu().topMenuItems));
+    // headings go, and Workspace settings becomes Settings
+    expect(titles(out.topMenuItems)).toEqual(
+      titles(menu().topMenuItems)
+        .filter((t) => !["Asset management", "Organization"].includes(t))
+        .map((t) => (t === "Workspace settings" ? "Settings" : t))
+    );
     expect(settingsChildren(out.topMenuItems)).toEqual([
       "/settings/general",
       "/settings/bookings",
@@ -191,7 +196,7 @@ describe("applyCustomisationsToMenu", () => {
     expect(titles(out.topMenuItems)).not.toContain("Team");
     expect(titles(out.topMenuItems)).not.toContain("Kits");
     expect(titles(out.topMenuItems)).not.toContain("Tags");
-    expect(titles(out.topMenuItems)).toContain("Organization"); // still has Workspace settings
+    expect(titles(out.topMenuItems)).not.toContain("Organization"); // headings are gone
     expect(out.bottomMenuItems).toEqual([]);
   });
 

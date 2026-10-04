@@ -87,6 +87,20 @@ function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
   });
 }
 
+/**
+ * Fork: a tidier menu. No section headings ("Asset management",
+ * "Organization"), and "Workspace settings" is just "Settings".
+ */
+function tidy(items: NavItem[]): NavItem[] {
+  return items
+    .filter((item) => item.type !== "label")
+    .map((item) =>
+      item.title === "Workspace settings"
+        ? { ...item, title: "Settings" }
+        : item
+    );
+}
+
 export function applyCustomisationsToMenu(
   menu: { topMenuItems: NavItem[]; bottomMenuItems: NavItem[] },
   c: Customisations,
@@ -96,7 +110,7 @@ export function applyCustomisationsToMenu(
     ? withLabelsItem(menu.topMenuItems, labelsIcon)
     : menu.topMenuItems;
   return {
-    topMenuItems: withoutHidden(top, c),
-    bottomMenuItems: withoutHidden(menu.bottomMenuItems, c),
+    topMenuItems: tidy(withoutHidden(top, c)),
+    bottomMenuItems: tidy(withoutHidden(menu.bottomMenuItems, c)),
   };
 }

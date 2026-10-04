@@ -17,27 +17,17 @@ import type {
 } from "react-router";
 import { data, Link, useLoaderData } from "react-router";
 import AnnouncementBar from "~/components/dashboard/announcement-bar";
-import AssetsByStatusChart from "~/components/dashboard/assets-by-status-chart";
 import OnboardingChecklist from "~/components/dashboard/checklist";
-import CustodiansList from "~/components/dashboard/custodians";
-import InventoryValueChart from "~/components/dashboard/inventory-value-chart";
-import NewestAssets from "~/components/dashboard/newest-assets";
 import { ErrorContent } from "~/components/errors";
-import ActiveBookings from "~/components/home/active-bookings";
-import AssetGrowthChart from "~/components/home/asset-growth-chart";
-import KpiCards from "~/components/home/kpi-cards";
-import LocationDistribution from "~/components/home/location-distribution";
-import OverdueBookings from "~/components/home/overdue-bookings";
-import UpcomingBookings from "~/components/home/upcoming-bookings";
-import UpcomingReminders from "~/components/home/upcoming-reminders";
+import { HomeDashboard } from "~/components/home/home-dashboard"; // home layout feature
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import { db } from "~/database/db.server";
 import { ASSET_MODEL_IMAGE_SELECT } from "~/modules/asset/image-select";
 import { getUpcomingRemindersForHomePage } from "~/modules/asset-reminder/service.server";
 import { getBookings } from "~/modules/booking/service.server";
-import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 
+import { getHomeLayout } from "~/modules/home-layout/service.server"; // home layout feature
 import styles from "~/styles/layout/skeleton-loading.css?url";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { getLocale } from "~/utils/client-hints";
@@ -387,6 +377,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     return payload({
       header,
+      homeLayout: await getHomeLayout({ userId, organizationId }), // home layout feature
       // KPI data
       totalAssets,
       teamMembersCount,
@@ -444,13 +435,7 @@ export const handle = {
 };
 
 export default function HomePage() {
-  const {
-    bookingsEnabled,
-    remindersEnabled,
-    custodyEnabled,
-    locationsEnabled,
-  } = useCustomisations(); // customise feature
-  const { skipOnboardingChecklist, checklistOptions } =
+  const { skipOnboardingChecklist, checklistOptions, homeLayout } =
     useLoaderData<typeof loader>();
   const completedAllChecks = Object.values(checklistOptions).every(Boolean);
 
@@ -458,44 +443,11 @@ export default function HomePage() {
     <div>
       <Header> </Header>
       {completedAllChecks || skipOnboardingChecklist ? (
-        <div className="pb-8">
+        <div>
           <AnnouncementBar />
 
-          {/* KPI Summary Cards */}
-          <div className="mt-4">
-            <KpiCards />
-          </div>
-
-          {/* Row 1: Trends & Value — wide chart + value card */}
-          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <div className="xl:col-span-2">
-              <AssetGrowthChart />
-            </div>
-            <InventoryValueChart />
-          </div>
-
-          {/* Widget Grid — 3-column rows */}
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {/* Row 2: Bookings pipeline */}
-            {bookingsEnabled ? ( // customise feature
-              <>
-                <UpcomingBookings />
-                <ActiveBookings />
-                <OverdueBookings />
-              </>
-            ) : null}
-
-            {/* Row 3: Reminders, Status & Locations */}
-            {remindersEnabled ? <UpcomingReminders /> : null}
-            <AssetsByStatusChart />
-            {locationsEnabled ? <LocationDistribution /> : null}
-          </div>
-
-          {/* Row 4: People & Assets — 2-column */}
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            {custodyEnabled ? <CustodiansList /> : null}
-            <NewestAssets />
-          </div>
+          {/* home layout feature: movable, hideable tiles */}
+          <HomeDashboard initial={homeLayout} />
         </div>
       ) : (
         <OnboardingChecklist />

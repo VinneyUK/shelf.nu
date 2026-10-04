@@ -2807,3 +2807,17 @@ model EmailReceipt {
   @@unique([organizationId, messageId])
   @@index([organizationId, status, createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// Home page layout — added by the home layout feature. One row per user per
+// workspace: which tiles show, and in what order.
+// ---------------------------------------------------------------------------
+model HomeLayout {
+  userId         String
+  organizationId String
+  order          String[] @default([])
+  hidden         String[] @default([])
+  updatedAt      DateTime @updatedAt
+
+  @@id([userId, organizationId])
+}

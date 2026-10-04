@@ -4,7 +4,7 @@ import { m } from "framer-motion";
 import { Package } from "lucide-react";
 import { useFetcher, useFetchers, useLoaderData } from "react-router";
 import { AttachmentCountBadge } from "~/components/asset-attachment/attachment-count"; // attachments feature
-import { AssetLabelledBadge } from "~/components/labels/labelled-badge"; // labels feature
+import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
 import { LocationBadge } from "~/components/location/location-badge";
@@ -64,6 +64,7 @@ export const AssetsList = ({
   disableBulkActions?: boolean;
   wrapperClassName?: string;
 }) => {
+  const { custodyEnabled } = useCustomisations(); // customise feature
   const { items } = useLoaderData<AssetIndexLoaderData>();
   // We use the hook because it handles optimistic UI
   const { modeIsSimple } = useAssetIndexViewState();
@@ -91,7 +92,7 @@ export const AssetsList = ({
     <>
       <Th>Category</Th>
       <Th>Tags</Th>
-      <When truthy={!isUserPage}>
+      <When truthy={custodyEnabled /* customise feature */ && !isUserPage}>
         <Th className="flex items-center gap-1 whitespace-nowrap">
           Custodian{" "}
           <InfoTooltip
@@ -246,7 +247,7 @@ export const ListAssetContent = ({
   bulkActions?: ReactNode;
   isUserPage?: boolean;
 }) => {
-  const { imagePreviewOnHover, labelsEnabled } = useCustomisations(); // customise feature
+  const { imagePreviewOnHover, custodyEnabled } = useCustomisations(); // customise feature
   const { category, tags, custody: custodyArray } = item;
   // Render only the single primary-location badge in the list column —
   // a qty-tracked asset can sit at multiple locations via AssetLocation.
@@ -331,11 +332,16 @@ export const ListAssetContent = ({
                   availableToBook={item.availableToBook}
                   asset={item}
                 />
-                {displayCode ? <AssetCodeBadge {...displayCode} /> : null}
+                {/* labels feature: the asset ID chip (click copies, green when labelled) */}
+                {item.sequentialId ? (
+                  <AssetIdChip
+                    assetId={item.id}
+                    sequentialId={item.sequentialId}
+                  />
+                ) : displayCode ? (
+                  <AssetCodeBadge {...displayCode} />
+                ) : null}
                 <AttachmentCountBadge assetId={item.id} />{" "}
-                {labelsEnabled ? (
-                  <AssetLabelledBadge assetId={item.id} />
-                ) : null}{" "}
                 {/* attachments feature */}
               </div>
             </div>
@@ -354,7 +360,7 @@ export const ListAssetContent = ({
       </Td>
 
       {/* Custodian */}
-      <When truthy={!isUserPage}>
+      <When truthy={custodyEnabled /* customise feature */ && !isUserPage}>
         <Td>
           {!primaryCustody || totalCustodians === 0 ? (
             <EmptyTableValue />

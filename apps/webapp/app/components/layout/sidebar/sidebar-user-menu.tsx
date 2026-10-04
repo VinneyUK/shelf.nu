@@ -18,6 +18,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "./sidebar";
+import { ThemeMenuItems } from "./theme-menu-items"; // fork
 
 export default function SidebarUserMenu() {
   const { user } = useLoaderData<typeof loader>();
@@ -76,6 +77,9 @@ export default function SidebarUserMenu() {
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {/* fork: light / dark / auto */}
+            <ThemeMenuItems />
             <DropdownMenuSeparator />
             <DropdownMenuItem
               asChild

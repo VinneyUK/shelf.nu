@@ -28,6 +28,7 @@ import { config } from "./config/shelf.config";
 import { db } from "./database/db.server";
 import { useNprogress } from "./hooks/use-nprogress";
 import { detectAndPersistFormatPrefs } from "./modules/user/format-prefs.server";
+import darkStylesheetUrl from "./styles/dark.css?url"; // fork: dark theme
 import fontsStylesheetUrl from "./styles/fonts.css?url";
 import globalStylesheetUrl from "./styles/global.css?url";
 import nProgressCustomStyles from "./styles/nprogress.css?url";
@@ -50,6 +51,7 @@ import { payload } from "./utils/http.server";
 import { useNonce } from "./utils/nonce-provider";
 import { isAdmin } from "./utils/roles.server";
 import { splashScreenLinks } from "./utils/splash-screen-links";
+import { THEME_BOOT_SCRIPT } from "./utils/theme"; // fork
 
 export interface RootData {
   env: typeof getBrowserEnv;
@@ -71,6 +73,7 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: pmDocStylesheetUrl },
   { rel: "stylesheet", href: nProgressStyles },
   { rel: "stylesheet", href: nProgressCustomStyles },
+  { rel: "stylesheet", href: darkStylesheetUrl }, // fork: dark theme
 ];
 
 export const meta: MetaFunction = () => [
@@ -189,7 +192,7 @@ export function Layout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <html lang="en" className="overflow-hidden">
+    <html lang="en" className="overflow-hidden" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -214,6 +217,11 @@ export function Layout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: BROWSER_SUPPORT_CHECK_SCRIPT }}
         />
         <ClientHintCheck nonce={nonce} />
+        {/* fork: apply the chosen theme before the first paint */}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
         <style data-fullcalendar />
         <Meta />
         <Links />
