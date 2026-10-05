@@ -2853,6 +2853,8 @@ model AiSettings {
   /// The Anthropic API key, encrypted at rest. Never sent to the browser.
   apiKey         String   @default("")
   model          String   @default("claude-sonnet-5-5")
+  /// Sent as the anthropic-workspace-id header, for API keys not tied to one workspace
+  workspaceId    String   @default("")
   /// Emailed receipts naming no asset become drafts
   draftReceipts  Boolean  @default(true)
   lastError      String?

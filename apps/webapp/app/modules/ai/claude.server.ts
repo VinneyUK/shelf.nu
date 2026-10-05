@@ -85,6 +85,14 @@ export function explainFailure(
         status
       );
     case 400:
+      if (
+        /not scoped to a workspace|anthropic-workspace-id/i.test(apiMessage)
+      ) {
+        return new ClaudeError(
+          "This API key isn't tied to one Anthropic workspace, so Anthropic needs to be told which. Either create the key inside a workspace (Console → Settings → API keys → Create key → choose a workspace), or enter that workspace's ID (it starts with wrkspc_) in Settings → AI.",
+          status
+        );
+      }
       if (/credit balance|billing/i.test(apiMessage)) {
         return new ClaudeError(
           "The Anthropic account is out of credit. Add some under Billing at console.anthropic.com.",
@@ -130,6 +138,8 @@ export type CallArgs = {
   content: ContentBlock[];
   tool: Tool;
   maxTokens?: number;
+  /** For API keys not tied to one workspace: sent as anthropic-workspace-id */
+  workspaceId?: string;
   /** Injected in tests */
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
@@ -143,6 +153,7 @@ export async function callClaude({
   content,
   tool,
   maxTokens = 1500,
+  workspaceId,
   fetchImpl = fetch,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }: CallArgs): Promise<Record<string, unknown>> {
@@ -168,6 +179,9 @@ export async function callClaude({
           "content-type": "application/json",
           "x-api-key": apiKey,
           "anthropic-version": API_VERSION,
+          ...(workspaceId?.trim()
+            ? { "anthropic-workspace-id": workspaceId.trim() }
+            : {}),
         },
         body,
       });

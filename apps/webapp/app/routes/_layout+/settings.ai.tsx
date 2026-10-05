@@ -49,6 +49,14 @@ const SaveSchema = z.object({
   draftReceipts: z.enum(["true", "false"]).transform((v) => v === "true"),
   apiKey: z.string().default(""),
   model: z.string().trim().min(1, "Choose a model.").max(100),
+  workspaceId: z
+    .string()
+    .trim()
+    .regex(
+      /^(wrkspc_[A-Za-z0-9]+)?$/,
+      "A workspace ID starts with wrkspc_. Leave it blank if your key is tied to one workspace."
+    )
+    .default(""),
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -203,6 +211,22 @@ export default function AiSettings() {
                 <option value={settings.model}>{settings.model}</option>
               )}
             </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+            Workspace ID (only if Anthropic asks for it)
+            <input
+              name="workspaceId"
+              defaultValue={settings.workspaceId}
+              placeholder="wrkspc_…"
+              className={inputClass}
+              autoComplete="off"
+            />
+            <span className="font-normal text-gray-600">
+              If the test says the key "is not scoped to a workspace", either
+              make a new key inside a workspace (Console → Settings → API keys →
+              Create key → choose a workspace) and leave this blank, or enter
+              that workspace's ID here.
+            </span>
           </label>
           <div className="flex items-start gap-4">
             <Switch

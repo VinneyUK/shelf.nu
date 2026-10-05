@@ -14,6 +14,7 @@ export async function getAiSettingsRow(organizationId: string) {
     enabled: row?.enabled ?? false,
     apiKey: decryptSecret(row?.apiKey ?? ""),
     model: row?.model || DEFAULT_MODEL,
+    workspaceId: row?.workspaceId ?? "",
     draftReceipts: row?.draftReceipts ?? true,
     lastError: row?.lastError ?? null,
   };
@@ -37,6 +38,7 @@ export async function saveAiSettings(
     enabled: boolean;
     apiKey: string;
     model: string;
+    workspaceId: string;
     draftReceipts: boolean;
   }
 ) {
@@ -44,6 +46,7 @@ export async function saveAiSettings(
   const data = {
     enabled: input.enabled,
     model: input.model.trim() || DEFAULT_MODEL,
+    workspaceId: input.workspaceId.trim(),
     draftReceipts: input.draftReceipts,
     // Blank keeps the saved key
     ...(key ? { apiKey: encryptSecret(key), lastError: null } : {}),
@@ -65,6 +68,7 @@ export async function testAiConnection(
     await call({
       apiKey: s.apiKey,
       model: s.model,
+      workspaceId: s.workspaceId,
       system: "This is a connection test. Record an empty list of items.",
       content: [{ type: "text", text: "Connection test: record no items." }],
       tool: PHOTO_TOOL,

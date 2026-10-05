@@ -301,6 +301,7 @@ export async function processDraft(
       const result = await call({
         apiKey: ai.apiKey,
         model: ai.model,
+        workspaceId: ai.workspaceId,
         system: photoSystemPrompt(currency),
         content: photoContent(
           imageBlock(bytes, draft.fileType ?? "image/jpeg"),
@@ -321,6 +322,7 @@ export async function processDraft(
       const result = await call({
         apiKey: ai.apiKey,
         model: ai.model,
+        workspaceId: ai.workspaceId,
         system: receiptSystemPrompt(currency),
         content: receiptContent(
           { blocks, emailText: draft.sourceText },

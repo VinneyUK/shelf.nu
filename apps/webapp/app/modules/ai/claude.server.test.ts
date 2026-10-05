@@ -105,3 +105,35 @@ describe("explainFailure", () => {
     expect(explainFailure(401, "")).toBeInstanceOf(ClaudeError);
   });
 });
+
+describe("workspace-scoped keys", () => {
+  it("sends the workspace ID header only when one is set", async () => {
+    const withId = vi.fn().mockResolvedValue(ok({ items: [] }));
+    await callClaude({
+      ...args(withId as never),
+      workspaceId: " wrkspc_01ABC ",
+    });
+    expect(withId.mock.calls[0][1].headers["anthropic-workspace-id"]).toBe(
+      "wrkspc_01ABC"
+    );
+    const without = vi.fn().mockResolvedValue(ok({ items: [] }));
+    await callClaude(args(without as never));
+    expect(without.mock.calls[0][1].headers).not.toHaveProperty(
+      "anthropic-workspace-id"
+    );
+    const blank = vi.fn().mockResolvedValue(ok({ items: [] }));
+    await callClaude({ ...args(blank as never), workspaceId: "  " });
+    expect(blank.mock.calls[0][1].headers).not.toHaveProperty(
+      "anthropic-workspace-id"
+    );
+  });
+  it("explains what to do when Anthropic asks for a workspace", () => {
+    const e = explainFailure(
+      400,
+      "This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use."
+    );
+    expect(e.message).toMatch(/create the key inside a workspace/i);
+    expect(e.message).toMatch(/wrkspc_/);
+    expect(e.retryable).toBe(false);
+  });
+});

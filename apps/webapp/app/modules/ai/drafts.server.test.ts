@@ -98,6 +98,7 @@ beforeEach(() => {
     enabled: true,
     apiKey: "sk-test",
     model: "claude-sonnet-5-5",
+    workspaceId: "wrkspc_01ABC",
     draftReceipts: true,
     lastError: null,
   });
@@ -212,6 +213,12 @@ describe("reading a draft with Claude", () => {
       ],
     });
     await processDraft("d1", call);
+    expect(call).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: "wrkspc_01ABC",
+        apiKey: "sk-test",
+      })
+    );
     expect(mocks.draft.update).toHaveBeenCalledWith({
       where: { id: "d1", organizationId: "o1" },
       data: expect.objectContaining({
