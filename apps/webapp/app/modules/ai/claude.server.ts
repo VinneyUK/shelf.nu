@@ -10,15 +10,9 @@
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
-export const MODELS = [
-  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 (recommended)" },
-  {
-    id: "claude-opus-5-5",
-    label: "Claude Opus 5.5 (most capable, costs more)",
-  },
-  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (cheapest)" },
-] as const;
-export const DEFAULT_MODEL = MODELS[0].id;
+import { DEFAULT_MODEL, MODELS } from "./models";
+
+export { DEFAULT_MODEL, MODELS };
 
 export type ContentBlock =
   | { type: "text"; text: string }

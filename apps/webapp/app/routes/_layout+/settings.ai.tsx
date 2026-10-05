@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Switch } from "~/components/forms/switch";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
-import { MODELS } from "~/modules/ai/claude.server";
+import { MODELS } from "~/modules/ai/models";
 import {
   getAiSettings,
   saveAiSettings,
