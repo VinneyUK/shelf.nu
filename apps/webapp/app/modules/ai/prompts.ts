@@ -62,7 +62,7 @@ export const PHOTO_TOOL: Tool = {
             estimatedValue: {
               type: ["number", "null"],
               description:
-                "Estimated current second-hand market value, one number, in the stated currency. Null if you can't tell.",
+                "Estimated price to buy this item NEW today, from a UK retailer: one number, in the stated currency. If it is no longer sold, the price of the closest current equivalent. Null if you can't tell what it is.",
             },
           },
           required: ["name", "description", "estimatedValue", "categoryId"],
@@ -123,9 +123,9 @@ const categoryList = (categories: CategoryOption[]) =>
 export const photoSystemPrompt = (currency: string) =>
   [
     "You help catalogue a household's belongings for a home inventory, in the UK.",
-    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a one-to-three sentence description (what it is, colour, condition, any visible model or serial text), an estimated current second-hand market value in " +
+    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a one-to-three sentence description (what it is, colour, condition, any visible model or serial text), the estimated price to buy it NEW today from a UK retailer (its replacement value, not what it would sell for second-hand) in " +
       currency +
-      " as a single number, and the best matching category from the list given.",
+      " as a single number, and the best matching category from the list given. If it is no longer sold new, use the price of the closest current equivalent.",
     "Never invent details that aren't visible. If you can't tell the model, say what it looks like instead. If you can't estimate a value, use null.",
     "Normally return ONE item. Return more only when several distinct items are clearly shown, up to " +
       MAX_ITEMS +

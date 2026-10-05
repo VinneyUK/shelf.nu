@@ -5,6 +5,7 @@ import {
   cleanPhotoResult,
   cleanReceiptResult,
   descriptionWithPurchase,
+  PHOTO_TOOL,
   photoContent,
   photoSystemPrompt,
 } from "./prompts";
@@ -26,6 +27,15 @@ describe("the photo request", () => {
     expect(text).toContain("cat-tools: Tools");
     expect(text).toContain("Currency: GBP");
     expect(photoSystemPrompt("GBP")).toMatch(/UK/);
+  });
+  it("asks for the price to buy it NEW, never the second-hand value", () => {
+    const prompt = photoSystemPrompt("GBP");
+    expect(prompt).toMatch(/NEW today/);
+    expect(prompt).toMatch(/replacement value/);
+    expect(prompt).toMatch(/closest current equivalent/);
+    const toolText = JSON.stringify(PHOTO_TOOL);
+    expect(toolText).toMatch(/buy this item NEW/);
+    expect(toolText).not.toMatch(/second-hand market value/);
   });
 });
 

@@ -415,7 +415,7 @@ function DraftCard({
                   {isReceipt ? "Price paid" : "Value"} ({symbol})
                   {draft.valueEstimated ? (
                     <span className="ml-1 rounded bg-warning-50 px-1.5 py-0.5 text-xs font-medium text-warning-700">
-                      Estimated
+                      {isReceipt ? "Estimated" : "Estimated new"}
                     </span>
                   ) : null}
                 </span>
