@@ -68,6 +68,7 @@ const CustomiseSchema = z.object({
   hiddenMenuItems: z.string().transform((v) => (v ? v.split(",") : [])),
   imagePreviewOnHover: flag,
   showTimesInDates: flag,
+  reuseLatestNumber: flag,
   labelsEnabled: flag,
   custodyEnabled: flag,
   locationsEnabled: flag,
@@ -183,6 +184,9 @@ export default function CustomiseSettings() {
   const [showTimes, setShowTimes] = useState<boolean>(
     settings.showTimesInDates
   );
+  const [reuseNumber, setReuseNumber] = useState<boolean>(
+    settings.reuseLatestNumber
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -213,6 +217,11 @@ export default function CustomiseSettings() {
         value={String(imagePreview)}
       />
       <input type="hidden" name="showTimesInDates" value={String(showTimes)} />
+      <input
+        type="hidden"
+        name="reuseLatestNumber"
+        value={String(reuseNumber)}
+      />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -307,6 +316,41 @@ export default function CustomiseSettings() {
               Updated at. On: they show the time as well (04/10/2026, 16:35).
               Activity, the Labels history and email logs always keep their
               times.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">
+          Asset numbers
+        </h3>
+        <div className="flex items-start gap-4 py-4">
+          <Switch
+            id="reuseLatestNumber"
+            checked={reuseNumber}
+            onCheckedChange={(checked) => {
+              setReuseNumber(checked);
+              changed();
+            }}
+            aria-labelledby="reuseLatestNumber-label"
+            aria-describedby="reuseLatestNumber-desc"
+          />
+          <div>
+            <label
+              id="reuseLatestNumber-label"
+              htmlFor="reuseLatestNumber"
+              className="font-medium text-gray-900"
+            >
+              Reuse the latest number
+            </label>
+            <p id="reuseLatestNumber-desc" className="text-sm text-gray-600">
+              On: deleting the most recent asset gives its number back, so if
+              you delete SAM-0020 the next asset is SAM-0020 again. A number in
+              the middle (SAM-0010 while SAM-0015 exists) is never reused, so
+              old emails, exports and labels can't end up pointing at a
+              different asset. Off: numbers are never reused, as in Shelf
+              itself.
             </p>
           </div>
         </div>

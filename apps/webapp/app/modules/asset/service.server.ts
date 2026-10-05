@@ -167,6 +167,7 @@ import {
   parseFiltersWithHierarchy,
   parseSortingOptions,
 } from "./query.server";
+import { releaseTrailingAssetNumbers } from "./release-numbers.server"; // fork
 import { resolveAssetSearchIds } from "./search-ids.server";
 import { buildAssetStatusWhere, splitAssetSearchTerms } from "./search.server";
 import { getNextSequentialId } from "./sequential-id.server";
@@ -3301,6 +3302,9 @@ export async function deleteAsset({
 
     // Cancel reminders outside transaction (cleanup operation, not critical for atomicity)
     await Promise.all(deletedAsset.reminders.map(cancelAssetReminderScheduler));
+
+    // fork: deleting the latest asset gives its number back (customise feature)
+    await releaseTrailingAssetNumbers(organizationId);
   } catch (cause) {
     throw new ShelfError({
       cause,
@@ -6053,6 +6057,9 @@ export async function bulkDeleteAssets({
         label: "Assets",
       });
     }
+
+    // fork: deleting the latest assets gives their numbers back (customise feature)
+    await releaseTrailingAssetNumbers(organizationId);
   } catch (cause) {
     const message =
       cause instanceof ShelfError

@@ -26,6 +26,8 @@ export type Customisations = {
   qrDownloadsEnabled: boolean;
   /** Dates in lists show the time too (off: just the date) */
   showTimesInDates: boolean;
+  /** Deleting the latest asset gives its number back */
+  reuseLatestNumber: boolean;
   /** AI feature: switched on with a key saved (set in Settings → AI, not on the Customise page) */
   aiEnabled: boolean;
 };
@@ -44,6 +46,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   assetModelsEnabled: true,
   qrDownloadsEnabled: true,
   showTimesInDates: false,
+  reuseLatestNumber: true,
   aiEnabled: false,
 };
 

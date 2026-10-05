@@ -2701,6 +2701,8 @@ model WorkspaceCustomisation {
   qrDownloadsEnabled Boolean @default(true)
   /// Dates in lists show the time as well as the date (off: just the date)
   showTimesInDates   Boolean @default(false)
+  /// Deleting the most recent asset gives its number back (SAM-0020 is used again); a deleted middle number is never reused
+  reuseLatestNumber  Boolean @default(true)
   updatedAt        DateTime @updatedAt
 }
 
