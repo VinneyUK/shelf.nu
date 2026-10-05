@@ -15,6 +15,7 @@ import {
   getAiSettings,
   saveAiSettings,
   testAiConnection,
+  testWebSearch,
 } from "~/modules/ai/settings.server";
 import { makeShelfError } from "~/utils/error";
 import { isFormProcessing } from "~/utils/form";
@@ -47,6 +48,7 @@ const SaveSchema = z.object({
   intent: z.literal("save"),
   enabled: z.enum(["true", "false"]).transform((v) => v === "true"),
   draftReceipts: z.enum(["true", "false"]).transform((v) => v === "true"),
+  webSearch: z.enum(["true", "false"]).transform((v) => v === "true"),
   apiKey: z.string().default(""),
   model: z.string().trim().min(1, "Choose a model.").max(100),
   workspaceId: z
@@ -81,6 +83,13 @@ export async function action({ context, request }: ActionFunctionArgs) {
         message: result.ok
           ? `Connected. Claude (${result.model}) answered.`
           : `Not working: ${result.message}`,
+        failed: !result.ok,
+      });
+    }
+    if (intent === "test-web") {
+      const result = await testWebSearch(organizationId);
+      return payload({
+        message: result.ok ? result.message : `Not working: ${result.message}`,
         failed: !result.ok,
       });
     }
@@ -123,9 +132,12 @@ export default function AiSettings() {
   const { settings } = useLoaderData<typeof loader>();
   const save = useFetcher<Result>();
   const test = useFetcher<Result>();
+  const testWeb = useFetcher<Result>();
   const [enabled, setEnabled] = useState(settings.enabled);
+  const [webSearch, setWebSearch] = useState(settings.webSearch);
   const [draftReceipts, setDraftReceipts] = useState(settings.draftReceipts);
   useEffect(() => setEnabled(settings.enabled), [settings.enabled]);
+  useEffect(() => setWebSearch(settings.webSearch), [settings.webSearch]);
   useEffect(
     () => setDraftReceipts(settings.draftReceipts),
     [settings.draftReceipts]
@@ -158,6 +170,7 @@ export default function AiSettings() {
       <save.Form method="post">
         <input type="hidden" name="intent" value="save" />
         <input type="hidden" name="enabled" value={String(enabled)} />
+        <input type="hidden" name="webSearch" value={String(webSearch)} />
         <input
           type="hidden"
           name="draftReceipts"
@@ -230,6 +243,35 @@ export default function AiSettings() {
           </label>
           <div className="flex items-start gap-4">
             <Switch
+              id="webSearch"
+              checked={webSearch}
+              onCheckedChange={setWebSearch}
+              aria-labelledby="webSearch-label"
+              aria-describedby="webSearch-desc"
+            />
+            <div>
+              <label
+                id="webSearch-label"
+                htmlFor="webSearch"
+                className="font-medium text-gray-900"
+              >
+                Look up prices on the web (photos)
+              </label>
+              <p id="webSearch-desc" className="text-sm text-gray-600">
+                Before drafting a photo, Claude searches UK retailers for what
+                the item costs new today, so the estimate is anchored to real
+                prices instead of memory. The draft's note says what it was
+                based on. It adds a few seconds per photo and costs about a
+                penny or two in searches, on top of the usual charge. Anthropic
+                requires an admin of your Anthropic organisation to enable web
+                search in the Claude Console first; use Test web search below to
+                check. If a lookup ever fails, the draft still gets made from
+                Claude's own knowledge and says so.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <Switch
               id="draftReceipts"
               checked={draftReceipts}
               onCheckedChange={setDraftReceipts}
@@ -272,8 +314,23 @@ export default function AiSettings() {
           </Button>
           <ResultLine fetcher={test} />
         </test.Form>
+        <testWeb.Form
+          method="post"
+          className="mt-3 flex flex-wrap items-center gap-3"
+        >
+          <input type="hidden" name="intent" value="test-web" />
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={!settings.hasKey || isFormProcessing(testWeb.state)}
+          >
+            Test web search
+          </Button>
+          <ResultLine fetcher={testWeb} />
+        </testWeb.Form>
         <p className="mt-2 text-sm text-gray-600">
-          Uses the saved settings, so save changes first.
+          Both tests use the saved settings, so save changes first. Testing web
+          search makes one real search.
         </p>
       </Card>
     </div>

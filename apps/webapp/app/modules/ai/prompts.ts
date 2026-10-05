@@ -130,7 +130,7 @@ export const photoSystemPrompt = (currency: string) =>
     "Normally return ONE item. Return more only when several distinct items are clearly shown, up to " +
       MAX_ITEMS +
       ".",
-    "Use the notes field for what you couldn't tell.",
+    "Use the notes field for what you couldn't tell, and end it with one short sentence saying what the value is based on (for example the web price research, or your own estimate).",
   ].join("\n");
 
 export const receiptSystemPrompt = (currency: string) =>
@@ -146,18 +146,44 @@ export const receiptSystemPrompt = (currency: string) =>
 export function photoContent(
   image: ContentBlock,
   categories: CategoryOption[],
-  currency: string
+  currency: string,
+  /** What a web price lookup found, if one was done */
+  research?: string | null
 ): ContentBlock[] {
   return [
     image,
     {
       type: "text",
-      text: `Currency: ${currency}\n\nCategories:\n${categoryList(
-        categories
-      )}\n\nRecord the item(s) in this photo.`,
+      text:
+        `Currency: ${currency}\n\nCategories:\n${categoryList(
+          categories
+        )}\n\n` +
+        (research?.trim()
+          ? `Price research from a web search (use it for the new price, with your own judgement, as it can be wrong. If it says unknown, estimate from what you know):\n${research
+              .trim()
+              .slice(0, 1500)}\n\n`
+          : "") +
+        "Record the item(s) in this photo.",
     },
   ];
 }
+
+/** The web price lookup: identify the item, search, and answer in a fixed plain-text shape. */
+export const priceResearchSystemPrompt = (currency: string) =>
+  [
+    "You research the price of an item in a photo, for a home inventory in the UK.",
+    `Identify the item (brand and model if visible). Then use web search to find what it costs NEW today from UK retailers, in ${currency}. Prefer the manufacturer's UK site and major UK retailers. If it has been renamed or discontinued, find the closest current equivalent and say so. Ignore second-hand, auction and "opened" listings unless nothing else exists, and say so if you use one.`,
+    "Two or three searches is plenty. If you can't tell what the item is, don't search: say so.",
+    `Reply in plain text, under 100 words, in exactly this shape:\nItem: <what it is>\nNew price (${currency}): <one number, or unknown>\nBasis: <one sentence: what the price is and where it came from>\nConfidence: <high, medium or low>`,
+  ].join("\n");
+
+export const priceResearchContent = (image: ContentBlock): ContentBlock[] => [
+  image,
+  {
+    type: "text",
+    text: "Find the current new price in the UK of the item in this photo.",
+  },
+];
 
 export function receiptContent(
   parts: { blocks: ContentBlock[]; emailText?: string | null },

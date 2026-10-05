@@ -2857,6 +2857,8 @@ model AiSettings {
   model          String   @default("claude-sonnet-5-5")
   /// Sent as the anthropic-workspace-id header, for API keys not tied to one workspace
   workspaceId    String   @default("")
+  /// Photos: look the new price up on the web first (needs web search enabled for the Anthropic organisation)
+  webSearch      Boolean  @default(false)
   /// Emailed receipts naming no asset become drafts
   draftReceipts  Boolean  @default(true)
   lastError      String?

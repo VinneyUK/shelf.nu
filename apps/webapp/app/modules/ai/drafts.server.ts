@@ -22,6 +22,7 @@ import {
   pdfBlock,
   type ContentBlock,
 } from "./claude.server";
+import { researchPrice } from "./price-research.server";
 import {
   type CategoryOption,
   cleanDate,
@@ -32,6 +33,8 @@ import {
   PHOTO_TOOL,
   photoContent,
   photoSystemPrompt,
+  priceResearchContent,
+  priceResearchSystemPrompt,
   RECEIPT_TOOL,
   receiptContent,
   receiptSystemPrompt,
@@ -266,7 +269,8 @@ const fail = (id: string, organizationId: string, message: string) =>
 /** Reads one draft with Claude and fills it in (extra items on the same photo or receipt become extra drafts). */
 export async function processDraft(
   id: string,
-  call: typeof callClaude = callClaude
+  call: typeof callClaude = callClaude,
+  research: typeof researchPrice = researchPrice
 ) {
   // eslint-disable-next-line local-rules/require-org-scope-on-id-queries -- idor-safe: background worker; the id comes from the queue, and every later query uses the row's own organizationId
   const draft = await db.assetDraft.findUnique({ where: { id } });
@@ -298,19 +302,49 @@ export async function processDraft(
     let items: DraftFields[];
     if (draft.source === "photo") {
       if (!bytes) throw bad("There's no photo to read.");
+      const image = imageBlock(bytes, draft.fileType ?? "image/jpeg");
+
+      // fork: look the new price up on the web first, if that's switched on.
+      // A lookup that fails never stops the draft: it carries on from the
+      // model's own knowledge, and says so in the notes.
+      let lookup: Awaited<ReturnType<typeof researchPrice>> | null = null;
+      if (ai.webSearch) {
+        lookup = await research({
+          apiKey: ai.apiKey,
+          model: ai.model,
+          workspaceId: ai.workspaceId,
+          system: priceResearchSystemPrompt(currency),
+          content: priceResearchContent(image),
+        });
+        if (lookup.error && !lookup.text) {
+          await db.aiSettings.updateMany({
+            where: { organizationId: draft.organizationId },
+            data: { lastError: lookup.error },
+          });
+        }
+      }
+
       const result = await call({
         apiKey: ai.apiKey,
         model: ai.model,
         workspaceId: ai.workspaceId,
         system: photoSystemPrompt(currency),
         content: photoContent(
-          imageBlock(bytes, draft.fileType ?? "image/jpeg"),
+          image,
           categories as CategoryOption[],
-          currency
+          currency,
+          lookup?.text
         ),
         tool: PHOTO_TOOL,
       });
       items = cleanPhotoResult(result, categories);
+      if (lookup?.error) {
+        const warning = `No web price lookup: ${lookup.error}`;
+        items = items.map((item) => ({
+          ...item,
+          notes: [item.notes, warning].filter(Boolean).join(" ").slice(0, 300),
+        }));
+      }
     } else {
       const blocks: ContentBlock[] = bytes
         ? [

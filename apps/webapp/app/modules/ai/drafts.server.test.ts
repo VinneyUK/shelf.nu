@@ -483,3 +483,172 @@ describe("editing a draft", () => {
     );
   });
 });
+
+describe("looking the price up on the web first", () => {
+  const working = {
+    id: "d1",
+    organizationId: "o1",
+    status: "working",
+    source: "photo",
+    fileBytes: Buffer.from([1, 2]),
+    fileType: "image/jpeg",
+    fileName: "a.jpg",
+    createdById: "u1",
+    emailReceiptId: null,
+    sourceText: null,
+  };
+  const items = {
+    items: [
+      {
+        name: "ROLI LUMI Keys",
+        description: "Keyboard.",
+        estimatedValue: 150,
+        categoryId: null,
+        notes: "Based on UK listings.",
+      },
+    ],
+  };
+  const on = () =>
+    mocks.getAiSettingsRow.mockResolvedValue({
+      enabled: true,
+      apiKey: "sk-test",
+      model: "claude-sonnet-5-5",
+      workspaceId: "",
+      webSearch: true,
+      draftReceipts: true,
+      lastError: null,
+    });
+  const textOf = (call: ReturnType<typeof vi.fn>) =>
+    (call.mock.calls[0][0].content as { type: string; text?: string }[])
+      .map((b) => b.text ?? "")
+      .join("\n");
+
+  beforeEach(() => mocks.draft.findUnique.mockResolvedValue(working));
+
+  it("researches first, then drafts with what it found in hand", async () => {
+    on();
+    const research = vi
+      .fn()
+      .mockResolvedValue({
+        text: "Item: ROLI Piano M\nNew price (GBP): 150",
+        searches: 2,
+        error: null,
+      });
+    const call = vi.fn().mockResolvedValue(items);
+    await processDraft("d1", call, research);
+    expect(research).toHaveBeenCalledTimes(1);
+    expect(research.mock.calls[0][0].system).toMatch(/costs NEW today/);
+    expect(research.mock.calls[0][0].apiKey).toBe("sk-test");
+    expect(textOf(call)).toMatch(/Price research from a web search/);
+    expect(textOf(call)).toMatch(/New price \(GBP\): 150/);
+    expect(mocks.draft.update.mock.calls[0][0].data).toMatchObject({
+      name: "ROLI LUMI Keys",
+      status: "ready",
+      valuation: 150,
+      valueEstimated: true,
+    });
+    expect(mocks.draft.update.mock.calls[0][0].data.notes).not.toMatch(
+      /No web price lookup/
+    );
+  });
+  it("makes no lookup when it's switched off", async () => {
+    const research = vi.fn();
+    const call = vi.fn().mockResolvedValue(items);
+    await processDraft("d1", call, research);
+    expect(research).not.toHaveBeenCalled();
+    expect(textOf(call)).not.toMatch(/Price research/);
+  });
+  it("never lets a failed lookup stop the draft: it carries on from memory and says so", async () => {
+    on();
+    const research = vi
+      .fn()
+      .mockResolvedValue({
+        text: null,
+        searches: 0,
+        error: "Web search isn't switched on for this Anthropic account.",
+      });
+    const call = vi.fn().mockResolvedValue(items);
+    await processDraft("d1", call, research);
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(textOf(call)).not.toMatch(/Price research/);
+    const data = mocks.draft.update.mock.calls[0][0].data;
+    expect(data.status).toBe("ready");
+    expect(data.notes).toMatch(
+      /No web price lookup: Web search isn't switched on/
+    );
+    // and the AI settings page shows the problem
+    expect(mocks.aiSettings.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "o1" },
+      data: {
+        lastError: "Web search isn't switched on for this Anthropic account.",
+      },
+    });
+  });
+  it("uses a partial answer and keeps its warning", async () => {
+    on();
+    const research = vi
+      .fn()
+      .mockResolvedValue({
+        text: "Item: keyboard\nNew price (GBP): 140",
+        searches: 1,
+        error: "Anthropic's web search is rate-limited right now.",
+      });
+    const call = vi.fn().mockResolvedValue(items);
+    await processDraft("d1", call, research);
+    expect(textOf(call)).toMatch(/140/);
+    expect(mocks.draft.update.mock.calls[0][0].data.notes).toMatch(
+      /rate-limited/
+    );
+    expect(mocks.aiSettings.updateMany).not.toHaveBeenCalled(); // an answer was found: not a settings problem
+  });
+  it("keeps the notes within their limit", async () => {
+    on();
+    const research = vi
+      .fn()
+      .mockResolvedValue({ text: null, searches: 0, error: "x".repeat(400) });
+    const call = vi
+      .fn()
+      .mockResolvedValue({
+        items: [
+          {
+            name: "Thing",
+            description: "",
+            estimatedValue: 1,
+            categoryId: null,
+            notes: "n".repeat(250),
+          },
+        ],
+      });
+    await processDraft("d1", call, research);
+    expect(
+      mocks.draft.update.mock.calls[0][0].data.notes.length
+    ).toBeLessThanOrEqual(300);
+  });
+  it("is used for photos only, never receipts", async () => {
+    on();
+    mocks.draft.findUnique.mockResolvedValue({
+      ...working,
+      source: "receipt",
+      fileType: "application/pdf",
+      fileName: "r.pdf",
+    });
+    const research = vi.fn();
+    const call = vi
+      .fn()
+      .mockResolvedValue({
+        vendor: "Amazon",
+        purchaseDate: null,
+        items: [
+          {
+            name: "Cable",
+            description: "",
+            price: 5,
+            quantity: 1,
+            categoryId: null,
+          },
+        ],
+      });
+    await processDraft("d1", call, research);
+    expect(research).not.toHaveBeenCalled();
+  });
+});
