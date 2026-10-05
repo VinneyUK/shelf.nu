@@ -32,7 +32,7 @@ const args = (fetchImpl: typeof fetch) => ({
 });
 
 describe("callClaude", () => {
-  it("sends the key, model and a forced tool call, and returns the tool input", async () => {
+  it("sends the key, model and the tool, and returns its input, and returns the tool input", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(ok({ items: [] }));
     expect(await callClaude(args(fetchImpl as never))).toEqual({ items: [] });
     const [url, init] = fetchImpl.mock.calls[0];
@@ -41,7 +41,13 @@ describe("callClaude", () => {
     expect(init.headers["anthropic-version"]).toBe("2023-06-01");
     const body = JSON.parse(init.body);
     expect(body.model).toBe("claude-sonnet-5-5");
-    expect(body.tool_choice).toEqual({ type: "tool", name: "record_items" });
+    // newer models (Sonnet 5.5, Opus 5.5) refuse a forced tool: the model chooses
+    expect(body.tool_choice).toEqual({ type: "auto" });
+    expect(body.tool_choice.type).not.toBe("tool");
+    const last = body.messages[0].content.at(-1);
+    expect(last.type).toBe("text");
+    expect(last.text).toMatch(/calling the record_items tool/);
+    expect(last.text).not.toMatch(/You must call it now/);
     expect(body.messages[0].content[0].source.data).toBe(
       Buffer.from([1, 2, 3]).toString("base64")
     );
@@ -77,17 +83,61 @@ describe("callClaude", () => {
     await expect(callClaude(args(down as never))).rejects.toThrow(
       /Couldn't reach Anthropic/
     );
+    // a fresh response each call, as a real fetch gives
     const empty = vi
       .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ content: [{ type: "text", text: "hi" }] }),
-          { status: 200 }
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ content: [{ type: "text", text: "hi" }] }),
+            { status: 200 }
+          )
         )
       );
     await expect(callClaude(args(empty as never))).rejects.toThrow(
       /usable answer/
     );
+    expect(empty).toHaveBeenCalledTimes(2); // asked once more, then reported
+  });
+  it("re-asks once, insisting, when the first answer is plain text, and uses the second", async () => {
+    const prose = new Response(
+      JSON.stringify({
+        content: [{ type: "text", text: "Here is a charger." }],
+        stop_reason: "end_turn",
+      }),
+      { status: 200 }
+    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(ok({ items: [{ name: "Charger" }] }));
+    expect(await callClaude(args(fetchImpl as never))).toEqual({
+      items: [{ name: "Charger" }],
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const second = JSON.parse(fetchImpl.mock.calls[1][1].body);
+    expect(second.messages[0].content.at(-1).text).toMatch(
+      /You must call it now/
+    );
+    expect(second.tool_choice).toEqual({ type: "auto" });
+  });
+  it("does not re-ask an answer that was cut off, and says so", async () => {
+    const cut = new Response(
+      JSON.stringify({ content: [], stop_reason: "max_tokens" }),
+      { status: 200 }
+    );
+    const fetchImpl = vi.fn().mockResolvedValue(cut);
+    await expect(callClaude(args(fetchImpl as never))).rejects.toThrow(
+      /cut off/
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+  it("gives the model room to think before answering", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(ok({ items: [] }));
+    await callClaude(args(fetchImpl as never));
+    expect(
+      JSON.parse(fetchImpl.mock.calls[0][1].body).max_tokens
+    ).toBeGreaterThanOrEqual(4096);
   });
 });
 

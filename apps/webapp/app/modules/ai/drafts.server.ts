@@ -330,7 +330,7 @@ export async function processDraft(
           currency
         ),
         tool: RECEIPT_TOOL,
-        maxTokens: 3000,
+        maxTokens: 6000,
       });
       items = cleanReceiptResult(result, categories);
     }

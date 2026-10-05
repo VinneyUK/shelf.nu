@@ -72,7 +72,7 @@ export async function testAiConnection(
       system: "This is a connection test. Record an empty list of items.",
       content: [{ type: "text", text: "Connection test: record no items." }],
       tool: PHOTO_TOOL,
-      maxTokens: 100,
+      maxTokens: 1024,
     });
     await db.aiSettings.updateMany({
       where: { organizationId },

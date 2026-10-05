@@ -152,21 +152,41 @@ export async function callClaude({
   system,
   content,
   tool,
-  maxTokens = 1500,
+  maxTokens = 4096,
   workspaceId,
   fetchImpl = fetch,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }: CallArgs): Promise<Record<string, unknown>> {
   if (!apiKey)
     throw new ClaudeError("No API key is saved yet. Add one in Settings → AI.");
-  const body = JSON.stringify({
-    model,
-    max_tokens: maxTokens,
-    system,
-    tools: [tool],
-    tool_choice: { type: "tool", name: tool.name },
-    messages: [{ role: "user", content }],
-  });
+  // Newer models (Sonnet 5.5, Opus 5.5 and later) refuse a forced tool_choice
+  // with a 400. So the model chooses, and is told plainly to answer by calling
+  // the tool; if it answers in prose anyway it's reminded once.
+  const instruction = `Give your answer by calling the ${tool.name} tool. Do not answer in plain text.`;
+  const buildBody = (insist: boolean) =>
+    JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system,
+      tools: [tool],
+      tool_choice: { type: "auto" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...content,
+            {
+              type: "text",
+              text: insist
+                ? `${instruction} You must call it now, with the answer as its input.`
+                : instruction,
+            },
+          ],
+        },
+      ],
+    });
+  let body = buildBody(false);
+  let reminded = false;
 
   let lastError: ClaudeError | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -218,6 +238,14 @@ export async function callClaude({
       (b) => b.type === "tool_use" && b.name === tool.name
     );
     if (!block?.input) {
+      if (!reminded && result.stop_reason !== "max_tokens") {
+        reminded = true;
+        body = buildBody(true);
+        lastError = new ClaudeError(
+          "Claude didn't give a usable answer. Try again."
+        );
+        continue;
+      }
       throw new ClaudeError(
         result.stop_reason === "max_tokens"
           ? "Claude's answer was cut off. Try again."
