@@ -13,6 +13,8 @@ import {
 export const CUSTOMISE_PAGE = "/settings/customise";
 export const EMAIL_RECEIPTS_PAGE = "/settings/email-receipts";
 export const LABELS_PAGE = "/labels";
+export const AI_PAGE = "/settings/ai";
+export const DRAFTS_PAGE = "/drafts";
 
 /**
  * labels feature: Labels goes after Reports, or at the end of the first
@@ -42,6 +44,23 @@ function withLabelsItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
   const secondHeading = items.findIndex((i, n) => n > 0 && i.type === "label");
   const at = secondHeading >= 0 ? secondHeading : items.length;
   return [...items.slice(0, at), labels, ...items.slice(at)];
+}
+
+/** AI feature: Drafts goes straight after Labels (or Reports), only once AI is switched on. */
+function withDraftsItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
+  if (items.some((i) => i.type === "child" && i.to === DRAFTS_PAGE))
+    return items;
+  const drafts = {
+    type: "child",
+    title: "Drafts",
+    to: DRAFTS_PAGE,
+    Icon,
+  } as NavItem;
+  const anchor = [LABELS_PAGE, "/reports"]
+    .map((to) => items.findIndex((i) => i.type === "child" && i.to === to))
+    .find((i) => i >= 0);
+  if (anchor === undefined) return [...items, drafts];
+  return [...items.slice(0, anchor + 1), drafts, ...items.slice(anchor + 1)];
 }
 
 function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
@@ -74,6 +93,13 @@ function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
       ) {
         children.push({ title: "Email receipts", to: EMAIL_RECEIPTS_PAGE });
       }
+      // AI feature
+      if (
+        item.title === "Workspace settings" &&
+        !children.some((child) => child.to === AI_PAGE)
+      ) {
+        children.push({ title: "AI", to: AI_PAGE });
+      }
       return { ...item, children };
     })
     // A parent whose children have all been hidden goes too
@@ -104,11 +130,16 @@ function tidy(items: NavItem[]): NavItem[] {
 export function applyCustomisationsToMenu(
   menu: { topMenuItems: NavItem[]; bottomMenuItems: NavItem[] },
   c: Customisations,
-  labelsIcon?: LucideIcon
+  labelsIcon?: LucideIcon,
+  draftsIcon?: LucideIcon
 ) {
-  const top = labelsIcon
+  const withLabels = labelsIcon
     ? withLabelsItem(menu.topMenuItems, labelsIcon)
     : menu.topMenuItems;
+  const top =
+    draftsIcon && c.aiEnabled
+      ? withDraftsItem(withLabels, draftsIcon)
+      : withLabels;
   return {
     topMenuItems: tidy(withoutHidden(top, c)),
     bottomMenuItems: tidy(withoutHidden(menu.bottomMenuItems, c)),

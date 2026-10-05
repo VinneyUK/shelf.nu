@@ -26,6 +26,8 @@ export type Customisations = {
   qrDownloadsEnabled: boolean;
   /** Dates in lists show the time too (off: just the date) */
   showTimesInDates: boolean;
+  /** AI feature: switched on with a key saved (set in Settings → AI, not on the Customise page) */
+  aiEnabled: boolean;
 };
 
 /** Shelf as it ships, for workspaces that have never been customised. */
@@ -42,6 +44,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   assetModelsEnabled: true,
   qrDownloadsEnabled: true,
   showTimesInDates: false,
+  aiEnabled: false,
 };
 
 type MenuMatch = { to?: string; title?: string };

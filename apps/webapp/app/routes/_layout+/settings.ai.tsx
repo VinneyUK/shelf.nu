@@ -1,0 +1,257 @@
+/**
+ * Settings → AI (fork): the Anthropic API key, the model, and a connection test.
+ * Claude reads photos and receipts and proposes assets (see Drafts).
+ * Part of the AI feature; not in upstream Shelf.
+ */
+import { useEffect, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { data, useFetcher, useLoaderData } from "react-router";
+import { z } from "zod";
+import { Switch } from "~/components/forms/switch";
+import { Button } from "~/components/shared/button";
+import { Card } from "~/components/shared/card";
+import { MODELS } from "~/modules/ai/claude.server";
+import {
+  getAiSettings,
+  saveAiSettings,
+  testAiConnection,
+} from "~/modules/ai/settings.server";
+import { makeShelfError } from "~/utils/error";
+import { isFormProcessing } from "~/utils/form";
+import { error, parseData, payload } from "~/utils/http.server";
+import {
+  PermissionAction,
+  PermissionEntity,
+} from "~/utils/permissions/permission.data";
+import { requirePermission } from "~/utils/roles.server";
+
+export const handle = { breadcrumb: () => "AI" };
+
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const { userId } = context.getSession();
+  try {
+    const { organizationId } = await requirePermission({
+      userId,
+      request,
+      entity: PermissionEntity.generalSettings,
+      action: PermissionAction.read,
+    });
+    return payload({ settings: await getAiSettings(organizationId) });
+  } catch (cause) {
+    const reason = makeShelfError(cause, { userId });
+    throw data(error(reason), { status: reason.status });
+  }
+}
+
+const SaveSchema = z.object({
+  intent: z.literal("save"),
+  enabled: z.enum(["true", "false"]).transform((v) => v === "true"),
+  draftReceipts: z.enum(["true", "false"]).transform((v) => v === "true"),
+  apiKey: z.string().default(""),
+  model: z.string().trim().min(1, "Choose a model.").max(100),
+});
+
+export async function action({ context, request }: ActionFunctionArgs) {
+  const { userId } = context.getSession();
+  try {
+    const { organizationId } = await requirePermission({
+      userId,
+      request,
+      entity: PermissionEntity.generalSettings,
+      action: PermissionAction.update,
+    });
+    const formData = await request.formData();
+    const intent = String(formData.get("intent") ?? "");
+    if (intent === "save") {
+      const { intent: _intent, ...rest } = parseData(formData, SaveSchema);
+      await saveAiSettings(organizationId, rest);
+      return payload({ message: "Saved." });
+    }
+    if (intent === "test") {
+      const result = await testAiConnection(organizationId);
+      return payload({
+        message: result.ok
+          ? `Connected. Claude (${result.model}) answered.`
+          : `Not working: ${result.message}`,
+        failed: !result.ok,
+      });
+    }
+    return payload({ message: "Unknown action." });
+  } catch (cause) {
+    const reason = makeShelfError(cause, { userId });
+    return data(error(reason), { status: reason.status });
+  }
+}
+
+type Result = {
+  error?: { message: string } | null;
+  message?: string;
+  failed?: boolean;
+};
+
+function ResultLine({
+  fetcher,
+}: {
+  fetcher: { state: string; data?: Result };
+}) {
+  if (isFormProcessing(fetcher.state as never))
+    return <p className="text-sm text-gray-600">Working…</p>;
+  if (fetcher.state !== "idle" || !fetcher.data) return null;
+  const bad = Boolean(fetcher.data.error) || fetcher.data.failed;
+  return (
+    <p
+      role={bad ? "alert" : "status"}
+      className={bad ? "text-sm text-error-600" : "text-sm text-gray-600"}
+    >
+      {fetcher.data.error?.message ?? fetcher.data.message}
+    </p>
+  );
+}
+
+const inputClass =
+  "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
+
+export default function AiSettings() {
+  const { settings } = useLoaderData<typeof loader>();
+  const save = useFetcher<Result>();
+  const test = useFetcher<Result>();
+  const [enabled, setEnabled] = useState(settings.enabled);
+  const [draftReceipts, setDraftReceipts] = useState(settings.draftReceipts);
+  useEffect(() => setEnabled(settings.enabled), [settings.enabled]);
+  useEffect(
+    () => setDraftReceipts(settings.draftReceipts),
+    [settings.draftReceipts]
+  );
+  const known = MODELS.some((m) => m.id === settings.model);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="my-0">
+        <h3 className="text-text-lg font-semibold text-gray-900">AI</h3>
+        <p className="text-sm text-gray-600">
+          Add photos of your things, or send in receipts, and Claude suggests
+          the name, description, estimated value and category. They land in{" "}
+          <strong>Drafts</strong> for you to check; nothing becomes an asset
+          until you say so.
+        </p>
+        <p className="mt-2 text-sm text-gray-600">
+          Photos and receipts you add are sent to Anthropic to be read. Nothing
+          is sent unless you add it, or forward a receipt while this is on.
+          Usage is charged to your own Anthropic account, usually a penny or two
+          for a photo.
+        </p>
+        {settings.lastError ? (
+          <p role="alert" className="mt-2 text-sm text-error-600">
+            Last problem: {settings.lastError}
+          </p>
+        ) : null}
+      </Card>
+
+      <save.Form method="post">
+        <input type="hidden" name="intent" value="save" />
+        <input type="hidden" name="enabled" value={String(enabled)} />
+        <input
+          type="hidden"
+          name="draftReceipts"
+          value={String(draftReceipts)}
+        />
+        <Card className="my-0 flex flex-col gap-4">
+          <div className="flex items-start gap-4">
+            <Switch
+              id="enabled"
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              aria-labelledby="enabled-label"
+            />
+            <label
+              id="enabled-label"
+              htmlFor="enabled"
+              className="font-medium text-gray-900"
+            >
+              Use Claude to draft assets from photos and receipts
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+            Anthropic API key
+            <input
+              name="apiKey"
+              type="password"
+              autoComplete="new-password"
+              placeholder={
+                settings.hasKey ? "Saved — leave blank to keep it" : "sk-ant-…"
+              }
+              className={inputClass}
+            />
+            <span className="font-normal text-gray-600">
+              Make one at console.anthropic.com → API keys. It's stored
+              encrypted and never shown again.
+            </span>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+            Model
+            <select
+              name="model"
+              defaultValue={settings.model}
+              className={inputClass}
+            >
+              {MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+              {known ? null : (
+                <option value={settings.model}>{settings.model}</option>
+              )}
+            </select>
+          </label>
+          <div className="flex items-start gap-4">
+            <Switch
+              id="draftReceipts"
+              checked={draftReceipts}
+              onCheckedChange={setDraftReceipts}
+              aria-labelledby="draftReceipts-label"
+            />
+            <div>
+              <label
+                id="draftReceipts-label"
+                htmlFor="draftReceipts"
+                className="font-medium text-gray-900"
+              >
+                Turn emailed receipts with no asset ID into drafts
+              </label>
+              <p className="text-sm text-gray-600">
+                A forwarded receipt that names no asset is read by Claude and
+                becomes drafts, with the receipt attached when you create them.
+                Receipts that name an asset (like SAM-0017) are attached as
+                before.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <ResultLine fetcher={save} />
+            <Button type="submit" disabled={isFormProcessing(save.state)}>
+              Save
+            </Button>
+          </div>
+        </Card>
+      </save.Form>
+
+      <Card className="my-0">
+        <test.Form method="post" className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="intent" value="test" />
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={!settings.hasKey || isFormProcessing(test.state)}
+          >
+            Test connection
+          </Button>
+          <ResultLine fetcher={test} />
+        </test.Form>
+        <p className="mt-2 text-sm text-gray-600">
+          Uses the saved settings, so save changes first.
+        </p>
+      </Card>
+    </div>
+  );
+}

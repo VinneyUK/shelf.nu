@@ -72,6 +72,7 @@ export default function SettingsPage() {
     { to: "team", content: "Team" },
     { to: "customise", content: "Customise" }, // customise feature
     { to: "email-receipts", content: "Email receipts" }, // email receipts feature
+    { to: "ai", content: "AI" }, // AI feature
   ];
 
   const { isBaseOrSelfService } = useUserRoleHelper();
@@ -88,6 +89,7 @@ export default function SettingsPage() {
           "asset-models",
           "customise",
           "email-receipts",
+          "ai",
         ].includes(item.to)
     );
   }

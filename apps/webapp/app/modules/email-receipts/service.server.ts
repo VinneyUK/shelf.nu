@@ -19,6 +19,11 @@ import { ShelfError } from "~/utils/error";
 import type { ErrorLabel } from "~/utils/error";
 import { Logger } from "~/utils/logger";
 import {
+  decryptSecret,
+  encryptSecret,
+  isEncrypted,
+} from "~/utils/secret-box.server"; // fork: secrets at rest
+import {
   assetIdsInSubject,
   emailFileName,
   isAllowedSender,
@@ -37,18 +42,25 @@ async function getSettingsRow(organizationId: string) {
   const row = await db.emailReceiptSettings.findUnique({
     where: { organizationId },
   });
+  // A password saved before encryption existed is encrypted the first time it's read
+  if (row?.password && !isEncrypted(row.password)) {
+    await db.emailReceiptSettings.update({
+      where: { organizationId },
+      data: { password: encryptSecret(row.password) },
+    });
+  }
   return {
     enabled: false,
     host: "imap.gmail.com",
     port: 993,
     username: "",
-    password: "",
     mailbox: "INBOX",
     processedFolder: "Shelf",
     allowedSenders: [] as string[],
     lastCheckedAt: null as Date | null,
     lastError: null as string | null,
     ...(row ?? {}),
+    password: decryptSecret(row?.password ?? ""),
   };
 }
 
@@ -93,7 +105,7 @@ export async function saveEmailReceiptSettings(
     allowedSenders: input.allowedSenders,
     // Gmail shows app passwords in groups of four; the spaces aren't part of it
     ...(input.password.trim()
-      ? { password: input.password.replace(/\s+/g, "") }
+      ? { password: encryptSecret(input.password.replace(/\s+/g, "")) }
       : {}),
   };
   await db.emailReceiptSettings.upsert({
@@ -273,6 +285,25 @@ async function handleMessage(
       raw,
       mail,
     });
+    // AI feature: Claude reads it into drafts. If that can't happen, it simply
+    // stays in the Unmatched list as before.
+    try {
+      // loaded here, not at the top: drafts also imports this module
+      const { draftsFromEmailedReceipt } = await import("~/modules/ai/drafts.server");
+      await draftsFromEmailedReceipt({
+        organizationId,
+        emailReceiptId: receipt.id,
+        subject: mail.subject ?? "",
+        text: mail.text ?? null,
+        files: receiptParts(mail.attachments).map((part) => ({
+          name: part.filename || "receipt",
+          type: part.contentType,
+          bytes: new Uint8Array(part.content),
+        })),
+      });
+    } catch {
+      // never let drafting stop the email being handled
+    }
     return;
   }
 

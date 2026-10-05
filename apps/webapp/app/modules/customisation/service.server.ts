@@ -22,10 +22,16 @@ export async function getWorkspaceCustomisations(
   organizationId: string,
   organization: OrganizationFlags
 ): Promise<Customisations> {
-  const row = await db.workspaceCustomisation.findUnique({
-    where: { organizationId },
-  });
+  const [row, ai] = await Promise.all([
+    db.workspaceCustomisation.findUnique({ where: { organizationId } }),
+    // AI feature: Drafts shows in the menu once AI is on and has a key
+    db.aiSettings.findUnique({
+      where: { organizationId },
+      select: { enabled: true, apiKey: true },
+    }),
+  ]);
   return {
+    aiEnabled: Boolean(ai?.enabled && ai.apiKey),
     bookingsEnabled:
       row?.bookingsEnabled ?? DEFAULT_CUSTOMISATIONS.bookingsEnabled,
     remindersEnabled:
@@ -74,7 +80,8 @@ export type CustomisePageSettings = Awaited<
 
 export async function saveCustomisePageSettings(
   organizationId: string,
-  settings: CustomisePageSettings
+  // aiEnabled is set from Settings → AI, not on this page
+  settings: Omit<CustomisePageSettings, "aiEnabled">
 ) {
   const current = await db.organization.findUniqueOrThrow({
     where: { id: organizationId },

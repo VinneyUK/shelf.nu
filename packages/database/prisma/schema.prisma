@@ -2842,3 +2842,52 @@ model BoxNumber {
 
   @@unique([organizationId, number])
 }
+
+// ---------------------------------------------------------------------------
+// AI drafts — added by the AI feature. Claude reads photos and receipts and
+// proposes assets; nothing becomes an asset until the person approves it.
+// ---------------------------------------------------------------------------
+model AiSettings {
+  organizationId String   @id
+  enabled        Boolean  @default(false)
+  /// The Anthropic API key, encrypted at rest. Never sent to the browser.
+  apiKey         String   @default("")
+  model          String   @default("claude-sonnet-5-5")
+  /// Emailed receipts naming no asset become drafts
+  draftReceipts  Boolean  @default(true)
+  lastError      String?
+  updatedAt      DateTime @updatedAt
+}
+
+model AssetDraft {
+  id             String   @id @default(cuid())
+  organizationId String
+  createdById    String?
+  /// photo | receipt
+  source         String
+  /// pending | working | ready | failed | creating | created | discarded
+  status         String   @default("pending")
+  name           String   @default("")
+  description    String   @default("")
+  valuation      Float?
+  /// True when the value is Claude's estimate, not a price paid
+  valueEstimated Boolean  @default(false)
+  categoryId     String?
+  purchasedOn    DateTime? @db.Date
+  vendor         String?
+  /// Claude's remarks: what it couldn't tell
+  notes          String?
+  error          String?
+  /// An emailed receipt this came from, so creating the asset attaches it
+  emailReceiptId String?
+  fileName       String?
+  fileType       String?
+  fileBytes      Bytes?
+  /// A receipt that arrived as the email's own text, for Claude to read; cleared once read
+  sourceText     String?
+  createdAssetId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+}

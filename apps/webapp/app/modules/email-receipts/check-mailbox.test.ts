@@ -52,11 +52,19 @@ vi.mock("imapflow", () => ({
   },
 }));
 
+vi.mock("~/utils/env", () => ({
+  SESSION_SECRET: "test-session-secret-0123456789",
+}));
+vi.mock("~/modules/ai/drafts.server", () => ({ draftsFromEmailedReceipt: vi.fn() }));
 vi.mock("~/database/db.server", () => ({
   db: {
     emailReceiptSettings: {
       findUnique: async () => store.settings,
       updateMany: async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(store.settings!, data);
+      },
+      // a plain-text password is encrypted the first time it's read
+      update: async ({ data }: { data: Record<string, unknown> }) => {
         Object.assign(store.settings!, data);
       },
     },
@@ -212,5 +220,18 @@ describe("checkMailbox", () => {
     mailbox.loginFails = true;
     await checkMailbox("o1");
     expect(String(store.settings!.lastError)).toContain("refused the login");
+  });
+});
+
+describe("the mailbox password at rest", () => {
+  it("is encrypted the first time a plain-text one is read, and still logs in with it", async () => {
+    const { getEmailReceiptSettings } = await import("./service.server");
+    store.settings = { ...store.settings!, password: "plain app password" };
+    const view = await getEmailReceiptSettings("org1");
+    expect(view.hasPassword).toBe(true);
+    expect(store.settings!.password).toMatch(/^enc:v1:/);
+    expect(String(store.settings!.password)).not.toContain(
+      "plain app password"
+    );
   });
 });

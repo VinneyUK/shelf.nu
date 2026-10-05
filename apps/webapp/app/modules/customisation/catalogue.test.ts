@@ -4,6 +4,7 @@ import {
   applyCustomisationsToMenu,
   CUSTOMISE_PAGE,
   EMAIL_RECEIPTS_PAGE,
+  AI_PAGE,
 } from "./apply-to-menu";
 import {
   type Customisations,
@@ -163,6 +164,7 @@ describe("applyCustomisationsToMenu", () => {
       "/settings/bookings",
       CUSTOMISE_PAGE,
       EMAIL_RECEIPTS_PAGE,
+      AI_PAGE,
     ]);
   });
 
@@ -182,6 +184,7 @@ describe("applyCustomisationsToMenu", () => {
       "/settings/general",
       CUSTOMISE_PAGE,
       EMAIL_RECEIPTS_PAGE,
+      AI_PAGE,
     ]);
   });
 
