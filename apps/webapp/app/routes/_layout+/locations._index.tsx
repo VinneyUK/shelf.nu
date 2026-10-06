@@ -67,8 +67,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       title: "Places",
     };
     const modelName = {
-      singular: "location",
-      plural: "locations",
+      singular: "place",
+      plural: "places",
     };
 
     return data(

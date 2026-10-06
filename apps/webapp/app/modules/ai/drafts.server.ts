@@ -22,6 +22,7 @@ import {
   pdfBlock,
   type ContentBlock,
 } from "./claude.server";
+import { DESCRIPTION_LENGTH } from "./models";
 import { researchPrice } from "./price-research.server";
 import {
   type CategoryOption,
@@ -30,7 +31,7 @@ import {
   cleanReceiptResult,
   descriptionWithPurchase,
   type DraftFields,
-  PHOTO_TOOL,
+  photoTool,
   photoContent,
   photoSystemPrompt,
   priceResearchContent,
@@ -297,6 +298,8 @@ export async function processDraft(
       }),
     ]);
     const currency = org?.currency ?? "GBP";
+    // how long a description may be: the person's setting (Settings → AI)
+    const maxChars = ai.descriptionLength ?? DESCRIPTION_LENGTH.default;
     const bytes = draft.fileBytes ? new Uint8Array(draft.fileBytes) : null;
 
     let items: DraftFields[];
@@ -328,16 +331,16 @@ export async function processDraft(
         apiKey: ai.apiKey,
         model: ai.model,
         workspaceId: ai.workspaceId,
-        system: photoSystemPrompt(currency),
+        system: photoSystemPrompt(currency, maxChars),
         content: photoContent(
           image,
           categories as CategoryOption[],
           currency,
           lookup?.text
         ),
-        tool: PHOTO_TOOL,
+        tool: photoTool(maxChars),
       });
-      items = cleanPhotoResult(result, categories);
+      items = cleanPhotoResult(result, categories, maxChars);
       if (lookup?.error) {
         const warning = `No web price lookup: ${lookup.error}`;
         items = items.map((item) => ({
@@ -366,7 +369,7 @@ export async function processDraft(
         tool: RECEIPT_TOOL,
         maxTokens: 6000,
       });
-      items = cleanReceiptResult(result, categories);
+      items = cleanReceiptResult(result, categories, maxChars);
     }
 
     if (items.length === 0) {

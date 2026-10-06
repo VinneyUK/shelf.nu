@@ -5,8 +5,20 @@
 import { db } from "~/database/db.server";
 import { decryptSecret, encryptSecret } from "~/utils/secret-box.server";
 import { callClaude, ClaudeError, DEFAULT_MODEL } from "./claude.server";
+import { DESCRIPTION_LENGTH } from "./models";
 import { researchPrice } from "./price-research.server";
 import { PHOTO_TOOL } from "./prompts";
+
+/** A description length within what's allowed; anything else becomes the default. */
+export function clampDescriptionLength(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DESCRIPTION_LENGTH.default;
+  }
+  return Math.min(
+    DESCRIPTION_LENGTH.max,
+    Math.max(DESCRIPTION_LENGTH.min, Math.round(value))
+  );
+}
 
 /** The row, with the key decrypted. Server use only: never send this to the browser. */
 export async function getAiSettingsRow(organizationId: string) {
@@ -16,6 +28,7 @@ export async function getAiSettingsRow(organizationId: string) {
     apiKey: decryptSecret(row?.apiKey ?? ""),
     model: row?.model || DEFAULT_MODEL,
     workspaceId: row?.workspaceId ?? "",
+    descriptionLength: clampDescriptionLength(row?.descriptionLength),
     webSearch: row?.webSearch ?? false,
     draftReceipts: row?.draftReceipts ?? true,
     lastError: row?.lastError ?? null,
@@ -41,6 +54,7 @@ export async function saveAiSettings(
     apiKey: string;
     model: string;
     workspaceId: string;
+    descriptionLength: number;
     webSearch: boolean;
     draftReceipts: boolean;
   }
@@ -50,6 +64,7 @@ export async function saveAiSettings(
     enabled: input.enabled,
     model: input.model.trim() || DEFAULT_MODEL,
     workspaceId: input.workspaceId.trim(),
+    descriptionLength: clampDescriptionLength(input.descriptionLength),
     webSearch: input.webSearch,
     draftReceipts: input.draftReceipts,
     // Blank keeps the saved key

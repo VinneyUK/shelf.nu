@@ -10,6 +10,7 @@ vi.mock("~/database/db.server", () => ({ db }));
 
 import { encryptSecret } from "~/utils/secret-box.server";
 import {
+  clampDescriptionLength,
   getAiSettings,
   saveAiSettings,
   testWebSearch,
@@ -21,6 +22,7 @@ const row = (extra = {}) => ({
   apiKey: encryptSecret("sk-ant-real"),
   model: "claude-sonnet-5-5",
   workspaceId: "",
+  descriptionLength: 300,
   webSearch: true,
   draftReceipts: true,
   lastError: null,
@@ -47,6 +49,7 @@ describe("AI settings", () => {
       apiKey: " sk-ant-new ",
       model: "claude-sonnet-5-5",
       workspaceId: "",
+      descriptionLength: 300,
       webSearch: true,
       draftReceipts: true,
     });
@@ -59,6 +62,7 @@ describe("AI settings", () => {
       apiKey: "",
       model: "claude-sonnet-5-5",
       workspaceId: "",
+      descriptionLength: 300,
       webSearch: false,
       draftReceipts: true,
     });
@@ -103,5 +107,51 @@ describe("Test web search", () => {
       where: { organizationId: "o1" },
       data: { lastError: msg },
     });
+  });
+});
+
+describe("the description length setting", () => {
+  it("is 300 until someone changes it", async () => {
+    expect((await getAiSettings("o1")).descriptionLength).toBe(300);
+    db.aiSettings.findUnique.mockResolvedValue(null);
+    expect((await getAiSettings("o1")).descriptionLength).toBe(300);
+  });
+  it("is read back as saved", async () => {
+    db.aiSettings.findUnique.mockResolvedValue(row({ descriptionLength: 150 }));
+    expect((await getAiSettings("o1")).descriptionLength).toBe(150);
+  });
+  it("is saved within the allowed range", async () => {
+    const save = (descriptionLength: number) =>
+      saveAiSettings("o1", {
+        enabled: true,
+        apiKey: "",
+        model: "m",
+        workspaceId: "",
+        descriptionLength,
+        webSearch: false,
+        draftReceipts: true,
+      });
+    await save(150);
+    expect(db.aiSettings.upsert.mock.calls[0][0].update.descriptionLength).toBe(
+      150
+    );
+    await save(5000);
+    expect(db.aiSettings.upsert.mock.calls[1][0].update.descriptionLength).toBe(
+      1000
+    );
+    await save(10);
+    expect(db.aiSettings.upsert.mock.calls[2][0].update.descriptionLength).toBe(
+      100
+    );
+  });
+  it("is kept sensible whatever it's given", () => {
+    expect(clampDescriptionLength(undefined)).toBe(300);
+    expect(clampDescriptionLength(null)).toBe(300);
+    expect(clampDescriptionLength(Number.NaN)).toBe(300);
+    expect(clampDescriptionLength(Infinity)).toBe(300);
+    expect(clampDescriptionLength(250.4)).toBe(250);
+    expect(clampDescriptionLength(100)).toBe(100);
+    expect(clampDescriptionLength(1000)).toBe(1000);
+    expect(clampDescriptionLength(-5)).toBe(100);
   });
 });

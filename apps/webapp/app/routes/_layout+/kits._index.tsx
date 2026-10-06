@@ -264,8 +264,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     };
 
     const modelName = {
-      singular: "kit",
-      plural: "kits",
+      singular: "box",
+      plural: "boxes",
     };
 
     return data(

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Switch } from "~/components/forms/switch";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
-import { MODELS } from "~/modules/ai/models";
+import { DESCRIPTION_LENGTH, MODELS } from "~/modules/ai/models";
 import {
   getAiSettings,
   saveAiSettings,
@@ -49,6 +49,19 @@ const SaveSchema = z.object({
   enabled: z.enum(["true", "false"]).transform((v) => v === "true"),
   draftReceipts: z.enum(["true", "false"]).transform((v) => v === "true"),
   webSearch: z.enum(["true", "false"]).transform((v) => v === "true"),
+  descriptionLength: z.coerce
+    .number({
+      invalid_type_error: "Enter the length as a number of characters.",
+    })
+    .int("Enter a whole number of characters.")
+    .min(
+      DESCRIPTION_LENGTH.min,
+      `At least ${DESCRIPTION_LENGTH.min} characters.`
+    )
+    .max(
+      DESCRIPTION_LENGTH.max,
+      `At most ${DESCRIPTION_LENGTH.max} characters.`
+    ),
   apiKey: z.string().default(""),
   model: z.string().trim().min(1, "Choose a model.").max(100),
   workspaceId: z
@@ -224,6 +237,25 @@ export default function AiSettings() {
                 <option value={settings.model}>{settings.model}</option>
               )}
             </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+            Description length (characters)
+            <input
+              name="descriptionLength"
+              type="number"
+              min={DESCRIPTION_LENGTH.min}
+              max={DESCRIPTION_LENGTH.max}
+              step={50}
+              defaultValue={settings.descriptionLength}
+              className={inputClass}
+            />
+            <span className="font-normal text-gray-600">
+              The longest a drafted description may be. About 150 is a single
+              short line, 300 is two or three sentences, 600 is a short
+              paragraph. Claude is told to keep to it, and anything longer is
+              trimmed at the end of a sentence. Between {DESCRIPTION_LENGTH.min}{" "}
+              and {DESCRIPTION_LENGTH.max}.
+            </span>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
             Workspace ID (only if Anthropic asks for it)

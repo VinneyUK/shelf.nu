@@ -56,6 +56,8 @@ const LABEL_MAPS = new Set(["columnsLabelsMap"]);
 
 /** JSX attributes whose value is wording a person sees. */
 const WORDING_ATTRIBUTES = new Set([
+  "singular", // a list's name for one of its rows ("kit"): the search label, heading and empty text
+  "plural",
   "contentLabel", // the heading of a dropdown list ("Locations")
   "header", // a table column heading
   "title",

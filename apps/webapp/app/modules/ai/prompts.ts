@@ -3,6 +3,7 @@
  * easy to test. Part of the AI feature; not in upstream Shelf.
  */
 import type { ContentBlock, Tool } from "./claude.server";
+import { DESCRIPTION_LENGTH } from "./models";
 
 export type CategoryOption = {
   id: string;
@@ -25,13 +26,25 @@ const NAME_MAX = 120;
 /** Shelf's own limit on an asset description */
 const DESCRIPTION_MAX = 1000;
 
-/** How a photographed item is described: a catalogue entry, then its setting. */
-const CATALOGUE_STYLE = [
-  "Write the description as a catalogue entry, in the style of a good product description, in two paragraphs separated by a blank line.",
-  "First paragraph (three to five sentences): what the item is and what it is for; its brand and model if identifiable; its key features and specifications that are visible, or that you are confident belong to that exact model; colour and finish; size if apparent; its condition, including any wear, marks or missing parts; any accessories or parts that are included; any visible text, model or serial number.",
-  'Second paragraph, starting "In the photo:" (one or two sentences): where the item is and what is around it, such as the surface it sits on and the things next to it, so that its setting is recorded.',
-  "Keep the whole description under 800 characters, and don't put the price in it.",
-].join("\n");
+/**
+ * What a description of a photographed item covers. A short product description
+ * of the item itself: not its surroundings. The length is the person's setting.
+ */
+export function descriptionGuide(maxChars: number) {
+  const length =
+    maxChars <= 160
+      ? "one or two short sentences"
+      : maxChars <= 320
+      ? "two or three sentences"
+      : maxChars <= 520
+      ? "three or four sentences"
+      : "a short paragraph";
+  return [
+    "Write the description like a good, short product description: what the item is, its brand and model if identifiable, its key features (only those that are visible, or that you are confident belong to that exact model), its colour or finish, and its condition if that is notable.",
+    "Describe the item only: not its surroundings, and not what is next to it. Don't put the price in it.",
+    `Keep it to ${length}, and under ${maxChars} characters in total.`,
+  ].join("\n");
+}
 const MAX_ITEMS = 5;
 
 const itemProperties = {
@@ -54,7 +67,7 @@ const itemProperties = {
   },
 };
 
-export const PHOTO_TOOL: Tool = {
+export const photoTool = (maxChars: number): Tool => ({
   name: "record_items",
   description: "Record the items seen in the photo for the home inventory.",
   input_schema: {
@@ -69,8 +82,7 @@ export const PHOTO_TOOL: Tool = {
             ...itemProperties,
             description: {
               type: "string",
-              description:
-                'A catalogue entry in two paragraphs separated by a blank line: first the item itself (what it is, brand and model, key features, colour, condition, accessories), then "In the photo: …" describing its surroundings. Under 800 characters. Only what is visible, or certain for that exact model.',
+              description: `A short product description of the item only: what it is, brand and model, key features, colour, condition. Not its surroundings. Under ${maxChars} characters. Only what is visible, or certain for that exact model.`,
             },
             estimatedValue: {
               type: ["number", "null"],
@@ -84,7 +96,10 @@ export const PHOTO_TOOL: Tool = {
     },
     required: ["items"],
   },
-};
+});
+
+/** The tool at the default length (used where the length does not matter). */
+export const PHOTO_TOOL = photoTool(DESCRIPTION_LENGTH.default);
 
 export const RECEIPT_TOOL: Tool = {
   name: "record_purchase",
@@ -133,13 +148,16 @@ const categoryList = (categories: CategoryOption[]) =>
         .join("\n")
     : "(no categories yet: use null)";
 
-export const photoSystemPrompt = (currency: string) =>
+export const photoSystemPrompt = (
+  currency: string,
+  maxChars: number = DESCRIPTION_LENGTH.default
+) =>
   [
     "You help catalogue a household's belongings for a home inventory, in the UK.",
-    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a catalogue description (described below), the estimated price to buy it NEW today from a UK retailer (its replacement value, not what it would sell for second-hand) in " +
+    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a short description (described below), the estimated price to buy it NEW today from a UK retailer (its replacement value, not what it would sell for second-hand) in " +
       currency +
       " as a single number, and the best matching category from the list given. If it is no longer sold new, use the price of the closest current equivalent.",
-    CATALOGUE_STYLE,
+    descriptionGuide(maxChars),
     "Never invent details that aren't visible. State a specification only if it is visible or you are confident it belongs to that exact model. If you can't tell the model, say what it looks like instead. If you can't estimate a value, use null.",
     "Normally return ONE item. Return more only when several distinct items are clearly shown, up to " +
       MAX_ITEMS +
@@ -235,6 +253,26 @@ const asParagraphs = (v: unknown, max: number) =>
         .slice(0, max)
     : "";
 
+/**
+ * Fits a description within `max` characters. Anything over is cut at the last
+ * whole sentence if that keeps at least half of it, else at a word, with "…".
+ */
+export function fitDescription(text: string, max: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  const cut = trimmed.slice(0, max);
+  const stops = [...cut.matchAll(/[.!?](?=\s|$)/g)];
+  const lastStop = stops.at(-1)?.index;
+  if (lastStop !== undefined && lastStop + 1 >= max / 2) {
+    return cut.slice(0, lastStop + 1).trim();
+  }
+  const lastSpace = cut.lastIndexOf(" ");
+  // no space to cut at (one very long word): leave room for the "…"
+  const atWord =
+    lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, max - 1);
+  return atWord.replace(/[\s,;:–-]+$/, "") + "…";
+}
+
 const asText = (v: unknown, max: number) =>
   typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
@@ -266,7 +304,8 @@ function cleanItem(
   categories: CategoryOption[],
   extras: Partial<DraftFields>,
   price: number | null,
-  estimated: boolean
+  estimated: boolean,
+  maxChars: number
 ): DraftFields | null {
   if (!raw || typeof raw !== "object") return null;
   const item = raw as Record<string, unknown>;
@@ -282,8 +321,10 @@ function cleanItem(
       ? Math.floor(item.quantity)
       : 1;
   const description =
-    asParagraphs(item.description, DESCRIPTION_MAX - 40) +
-    (quantity > 1 ? ` Bought ${quantity} of these.` : "");
+    fitDescription(
+      asParagraphs(item.description, DESCRIPTION_MAX - 40),
+      maxChars
+    ) + (quantity > 1 ? ` Bought ${quantity} of these.` : "");
   return {
     name,
     description: description.trim().slice(0, DESCRIPTION_MAX),
@@ -300,7 +341,8 @@ function cleanItem(
 /** The photo result as draft fields: at most five items, each checked. */
 export function cleanPhotoResult(
   result: Record<string, unknown>,
-  categories: CategoryOption[]
+  categories: CategoryOption[],
+  maxChars: number = DESCRIPTION_LENGTH.default
 ): DraftFields[] {
   const items = Array.isArray(result.items)
     ? result.items.slice(0, MAX_ITEMS)
@@ -312,7 +354,8 @@ export function cleanPhotoResult(
         categories,
         {},
         cleanAmount((raw as Record<string, unknown> | null)?.estimatedValue),
-        true
+        true,
+        maxChars
       )
     )
     .filter((i): i is DraftFields => i !== null);
@@ -321,7 +364,8 @@ export function cleanPhotoResult(
 /** The receipt result as draft fields: the price is what was paid, not an estimate. */
 export function cleanReceiptResult(
   result: Record<string, unknown>,
-  categories: CategoryOption[]
+  categories: CategoryOption[],
+  maxChars: number = DESCRIPTION_LENGTH.default
 ): DraftFields[] {
   const items = Array.isArray(result.items) ? result.items.slice(0, 20) : [];
   const vendor = asText(result.vendor, 80) || null;
@@ -333,7 +377,8 @@ export function cleanReceiptResult(
         categories,
         { vendor, purchasedOn },
         cleanAmount((raw as Record<string, unknown> | null)?.price),
-        false
+        false,
+        maxChars
       )
     )
     .filter((i): i is DraftFields => i !== null);

@@ -4,6 +4,9 @@ import {
   cleanDate,
   cleanPhotoResult,
   cleanReceiptResult,
+  descriptionGuide,
+  fitDescription,
+  photoTool,
   descriptionWithPurchase,
   PHOTO_TOOL,
   RECEIPT_TOOL,
@@ -175,35 +178,41 @@ describe("description with purchase", () => {
   });
 });
 
-describe("catalogue-style descriptions", () => {
-  it("asks for a product description of the item, then a paragraph on its surroundings", () => {
-    const p = photoSystemPrompt("GBP");
-    expect(p).toMatch(/catalogue entry/);
-    expect(p).toMatch(/good product description/);
-    expect(p).toMatch(/two paragraphs separated by a blank line/);
-    expect(p).toMatch(/starting "In the photo:"/);
-    expect(p).toMatch(/what is around it/);
-    expect(p).toMatch(/key features and specifications/);
-    expect(p).toMatch(/accessories or parts that are included/);
-    expect(p).toMatch(/under 800 characters/);
-    expect(p).toMatch(/don't put the price in it/);
+describe("the description guide", () => {
+  it("asks for a short product description of the item only, never its surroundings", () => {
+    const guide = descriptionGuide(300);
+    expect(guide).toMatch(/short product description/);
+    expect(guide).toMatch(/brand and model if identifiable/);
+    expect(guide).toMatch(/key features/);
+    expect(guide).toMatch(/Describe the item only: not its surroundings/);
+    expect(guide).toMatch(/Don't put the price in it/);
+    expect(guide).not.toMatch(/In the photo/);
+    expect(photoSystemPrompt("GBP")).not.toMatch(/In the photo/);
+    expect(JSON.stringify(PHOTO_TOOL)).not.toMatch(/In the photo/);
   });
-  it("won't have specifications made up", () => {
-    const p = photoSystemPrompt("GBP");
-    expect(p).toMatch(/Never invent details/);
-    expect(p).toMatch(
-      /only if it is visible or you are confident it belongs to that exact model/
+  it("scales the wording to the length asked for", () => {
+    expect(descriptionGuide(150)).toMatch(
+      /one or two short sentences, and under 150 characters/
+    );
+    expect(descriptionGuide(300)).toMatch(
+      /two or three sentences, and under 300 characters/
+    );
+    expect(descriptionGuide(500)).toMatch(
+      /three or four sentences, and under 500 characters/
+    );
+    expect(descriptionGuide(800)).toMatch(
+      /a short paragraph, and under 800 characters/
     );
   });
-  it("sets the same expectation in the tool the model fills in", () => {
-    const tool = JSON.stringify(PHOTO_TOOL);
-    expect(tool).toMatch(/catalogue entry in two paragraphs/);
-    expect(tool).toMatch(/In the photo/);
-    expect(tool).toMatch(/Under 800 characters/);
+  it("puts the chosen length in the system prompt and in the tool the model fills in", () => {
+    expect(photoSystemPrompt("GBP", 150)).toMatch(/under 150 characters/);
+    expect(JSON.stringify(photoTool(150))).toMatch(/Under 150 characters/);
+    // short by default: 300
+    expect(photoSystemPrompt("GBP")).toMatch(/under 300 characters/);
+    expect(JSON.stringify(PHOTO_TOOL)).toMatch(/Under 300 characters/);
   });
-  it("leaves receipts alone: there is no scene to describe", () => {
-    expect(receiptSystemPrompt("GBP")).not.toMatch(/In the photo/);
-    expect(JSON.stringify(RECEIPT_TOOL)).not.toMatch(/In the photo/);
+  it("leaves receipts alone: they are not asked for a product description", () => {
+    expect(receiptSystemPrompt("GBP")).not.toMatch(/product description/);
     expect(JSON.stringify(RECEIPT_TOOL)).toMatch(/One to three sentences/);
   });
   it("lets the web research inform the features as well as the price", () => {
@@ -217,32 +226,130 @@ describe("catalogue-style descriptions", () => {
   });
 });
 
-describe("keeping the description's paragraphs", () => {
-  const clean = (description: string) =>
+describe("fitting a description to its length", () => {
+  const sentences =
+    "The case is black. It has 24 keys. It connects over USB. It is lightly used.";
+
+  it("leaves a description that already fits", () => {
+    expect(fitDescription("A short one.", 300)).toBe("A short one.");
+    expect(fitDescription("  padded  ", 300)).toBe("padded");
+    expect(fitDescription("x".repeat(50), 50)).toBe("x".repeat(50)); // exactly the limit
+  });
+  it("cuts at the end of a whole sentence", () => {
+    expect(fitDescription(sentences, 45)).toBe(
+      "The case is black. It has 24 keys."
+    );
+    expect(fitDescription(sentences, 60)).toBe(
+      "The case is black. It has 24 keys. It connects over USB."
+    );
+  });
+  it("cuts at a word, with an ellipsis, when no sentence keeps at least half", () => {
+    const out = fitDescription(
+      "A very long opening sentence that runs well past the limit without stopping",
+      40
+    );
+    expect(out.endsWith("…")).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out).not.toMatch(/\s…$/);
+  });
+  it("never exceeds the limit, even for a single huge word", () => {
+    expect(fitDescription("x".repeat(500), 100).length).toBeLessThanOrEqual(
+      100
+    );
+    for (const max of [100, 150, 300, 600]) {
+      expect(
+        fitDescription(sentences.repeat(20), max).length
+      ).toBeLessThanOrEqual(max);
+    }
+  });
+  it("doesn't mistake a decimal point or a model number for the end of a sentence", () => {
+    const out = fitDescription(
+      "Runs on USB 3.2 at up to 5.5 Gbps and weighs 1.2 kg in total, with a braided cable included in the box",
+      60
+    );
+    expect(out).not.toMatch(/\d\.$/);
+  });
+});
+
+describe("the description length in the results", () => {
+  const long = "Sentence number one is here. ".repeat(40);
+  const photo = (max?: number) =>
     cleanPhotoResult(
       {
         items: [
-          { name: "Thing", description, estimatedValue: 10, categoryId: null },
+          {
+            name: "Thing",
+            description: long,
+            estimatedValue: 10,
+            categoryId: null,
+          },
+        ],
+      },
+      categories,
+      max
+    )[0].description;
+
+  it("trims a photo's description to the chosen length, ending on a sentence", () => {
+    const out = photo(150);
+    expect(out.length).toBeLessThanOrEqual(150);
+    expect(out.endsWith(".")).toBe(true);
+  });
+  it("is 300 by default", () => {
+    expect(photo().length).toBeLessThanOrEqual(300);
+    expect(photo().length).toBeGreaterThan(150);
+  });
+  it("can be longer when asked", () => {
+    expect(photo(900).length).toBeGreaterThan(300);
+    expect(photo(900).length).toBeLessThanOrEqual(900);
+  });
+  it("applies to receipts too", () => {
+    const [item] = cleanReceiptResult(
+      {
+        items: [
+          {
+            name: "Cable",
+            description: long,
+            price: 5,
+            quantity: 1,
+            categoryId: null,
+          },
+        ],
+      },
+      categories,
+      150
+    );
+    expect(item.description.length).toBeLessThanOrEqual(150);
+  });
+  it("keeps a paragraph break if the model writes one, and tidies spacing", () => {
+    const [item] = cleanPhotoResult(
+      {
+        items: [
+          {
+            name: "Thing",
+            description: "  A   keyboard.  \n\n\n\n  Boxed.\n\n   \n",
+            estimatedValue: 1,
+            categoryId: null,
+          },
         ],
       },
       categories
-    )[0].description;
-
-  it("keeps the break between the item and its setting", () => {
-    expect(
-      clean("A 24-key MIDI keyboard.\n\nIn the photo: on a black desk mat.")
-    ).toBe("A 24-key MIDI keyboard.\n\nIn the photo: on a black desk mat.");
+    );
+    expect(item.description).toBe("A keyboard.\n\nBoxed.");
   });
-  it("tidies stray spacing, extra blank lines and empty paragraphs", () => {
-    expect(
-      clean("  A   keyboard.  \n\n\n\n  In the   photo: a desk.\n\n   \n")
-    ).toBe("A keyboard.\n\nIn the photo: a desk.");
-  });
-  it("turns a single line break into a space, so a paragraph never splits mid-sentence", () => {
-    expect(clean("A keyboard\nwith 24 keys.")).toBe("A keyboard with 24 keys.");
-  });
-  it("still stays within Shelf's limit", () => {
-    const long = ("Sentence. ".repeat(60) + "\n\n").repeat(5);
-    expect(clean(long).length).toBeLessThanOrEqual(1000);
+  it("turns a single line break into a space, so a sentence never splits", () => {
+    const [item] = cleanPhotoResult(
+      {
+        items: [
+          {
+            name: "Thing",
+            description: "A keyboard\nwith 24 keys.",
+            estimatedValue: 1,
+            categoryId: null,
+          },
+        ],
+      },
+      categories
+    );
+    expect(item.description).toBe("A keyboard with 24 keys.");
   });
 });

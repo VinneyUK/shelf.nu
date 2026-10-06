@@ -527,13 +527,11 @@ describe("looking the price up on the web first", () => {
 
   it("researches first, then drafts with what it found in hand", async () => {
     on();
-    const research = vi
-      .fn()
-      .mockResolvedValue({
-        text: "Item: ROLI Piano M\nNew price (GBP): 150",
-        searches: 2,
-        error: null,
-      });
+    const research = vi.fn().mockResolvedValue({
+      text: "Item: ROLI Piano M\nNew price (GBP): 150",
+      searches: 2,
+      error: null,
+    });
     const call = vi.fn().mockResolvedValue(items);
     await processDraft("d1", call, research);
     expect(research).toHaveBeenCalledTimes(1);
@@ -560,13 +558,11 @@ describe("looking the price up on the web first", () => {
   });
   it("never lets a failed lookup stop the draft: it carries on from memory and says so", async () => {
     on();
-    const research = vi
-      .fn()
-      .mockResolvedValue({
-        text: null,
-        searches: 0,
-        error: "Web search isn't switched on for this Anthropic account.",
-      });
+    const research = vi.fn().mockResolvedValue({
+      text: null,
+      searches: 0,
+      error: "Web search isn't switched on for this Anthropic account.",
+    });
     const call = vi.fn().mockResolvedValue(items);
     await processDraft("d1", call, research);
     expect(call).toHaveBeenCalledTimes(1);
@@ -586,13 +582,11 @@ describe("looking the price up on the web first", () => {
   });
   it("uses a partial answer and keeps its warning", async () => {
     on();
-    const research = vi
-      .fn()
-      .mockResolvedValue({
-        text: "Item: keyboard\nNew price (GBP): 140",
-        searches: 1,
-        error: "Anthropic's web search is rate-limited right now.",
-      });
+    const research = vi.fn().mockResolvedValue({
+      text: "Item: keyboard\nNew price (GBP): 140",
+      searches: 1,
+      error: "Anthropic's web search is rate-limited right now.",
+    });
     const call = vi.fn().mockResolvedValue(items);
     await processDraft("d1", call, research);
     expect(textOf(call)).toMatch(/140/);
@@ -606,19 +600,17 @@ describe("looking the price up on the web first", () => {
     const research = vi
       .fn()
       .mockResolvedValue({ text: null, searches: 0, error: "x".repeat(400) });
-    const call = vi
-      .fn()
-      .mockResolvedValue({
-        items: [
-          {
-            name: "Thing",
-            description: "",
-            estimatedValue: 1,
-            categoryId: null,
-            notes: "n".repeat(250),
-          },
-        ],
-      });
+    const call = vi.fn().mockResolvedValue({
+      items: [
+        {
+          name: "Thing",
+          description: "",
+          estimatedValue: 1,
+          categoryId: null,
+          notes: "n".repeat(250),
+        },
+      ],
+    });
     await processDraft("d1", call, research);
     expect(
       mocks.draft.update.mock.calls[0][0].data.notes.length
@@ -633,6 +625,119 @@ describe("looking the price up on the web first", () => {
       fileName: "r.pdf",
     });
     const research = vi.fn();
+    const call = vi.fn().mockResolvedValue({
+      vendor: "Amazon",
+      purchaseDate: null,
+      items: [
+        {
+          name: "Cable",
+          description: "",
+          price: 5,
+          quantity: 1,
+          categoryId: null,
+        },
+      ],
+    });
+    await processDraft("d1", call, research);
+    expect(research).not.toHaveBeenCalled();
+  });
+});
+
+describe("the description length in a photo draft", () => {
+  const working = {
+    id: "d1",
+    organizationId: "o1",
+    status: "working",
+    source: "photo",
+    fileBytes: Buffer.from([1, 2]),
+    fileType: "image/jpeg",
+    fileName: "a.jpg",
+    createdById: "u1",
+    emailReceiptId: null,
+    sourceText: null,
+  };
+  const long = "It is a black keyboard with twenty four keys. ".repeat(20);
+  const settings = (extra: Record<string, unknown>) =>
+    mocks.getAiSettingsRow.mockResolvedValue({
+      enabled: true,
+      apiKey: "sk-test",
+      model: "claude-sonnet-5-5",
+      workspaceId: "",
+      webSearch: false,
+      draftReceipts: true,
+      lastError: null,
+      ...extra,
+    });
+  beforeEach(() => mocks.draft.findUnique.mockResolvedValue(working));
+
+  it("tells Claude the length, in both the instructions and the tool it fills in", async () => {
+    settings({ descriptionLength: 150 });
+    const call = vi
+      .fn()
+      .mockResolvedValue({
+        items: [
+          {
+            name: "Keyboard",
+            description: "Short.",
+            estimatedValue: 1,
+            categoryId: null,
+          },
+        ],
+      });
+    await processDraft("d1", call);
+    expect(call.mock.calls[0][0].system).toMatch(/under 150 characters/);
+    expect(JSON.stringify(call.mock.calls[0][0].tool)).toMatch(
+      /Under 150 characters/
+    );
+  });
+  it("trims what comes back to the chosen length, even if Claude goes over", async () => {
+    settings({ descriptionLength: 150 });
+    const call = vi
+      .fn()
+      .mockResolvedValue({
+        items: [
+          {
+            name: "Keyboard",
+            description: long,
+            estimatedValue: 1,
+            categoryId: null,
+          },
+        ],
+      });
+    await processDraft("d1", call);
+    const saved = mocks.draft.update.mock.calls[0][0].data
+      .description as string;
+    expect(saved.length).toBeLessThanOrEqual(150);
+    expect(saved.endsWith(".")).toBe(true);
+  });
+  it("is 300 when nothing has been set", async () => {
+    settings({});
+    const call = vi
+      .fn()
+      .mockResolvedValue({
+        items: [
+          {
+            name: "Keyboard",
+            description: long,
+            estimatedValue: 1,
+            categoryId: null,
+          },
+        ],
+      });
+    await processDraft("d1", call);
+    expect(call.mock.calls[0][0].system).toMatch(/under 300 characters/);
+    expect(
+      (mocks.draft.update.mock.calls[0][0].data.description as string).length
+    ).toBeLessThanOrEqual(300);
+  });
+  it("trims a receipt's description to the same length", async () => {
+    settings({ descriptionLength: 150 });
+    mocks.draft.findUnique.mockResolvedValue({
+      ...working,
+      source: "receipt",
+      fileType: "application/pdf",
+      fileName: "r.pdf",
+    });
     const call = vi
       .fn()
       .mockResolvedValue({
@@ -641,14 +746,16 @@ describe("looking the price up on the web first", () => {
         items: [
           {
             name: "Cable",
-            description: "",
+            description: long,
             price: 5,
             quantity: 1,
             categoryId: null,
           },
         ],
       });
-    await processDraft("d1", call, research);
-    expect(research).not.toHaveBeenCalled();
+    await processDraft("d1", call);
+    expect(
+      (mocks.draft.update.mock.calls[0][0].data.description as string).length
+    ).toBeLessThanOrEqual(150);
   });
 });

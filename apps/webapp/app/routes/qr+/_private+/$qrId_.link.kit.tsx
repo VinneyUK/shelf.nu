@@ -155,8 +155,8 @@ export const loader = async ({
     }
 
     const modelName = {
-      singular: "kit",
-      plural: "kits",
+      singular: "box",
+      plural: "boxes",
     };
 
     return payload({
