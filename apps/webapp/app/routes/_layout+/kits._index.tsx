@@ -33,6 +33,7 @@ import { GrayBadge } from "~/components/shared/gray-badge";
 import { InfoTooltip } from "~/components/shared/info-tooltip";
 import { Td, Th } from "~/components/table";
 import { TeamMemberBadge } from "~/components/user/team-member-badge";
+import { MoneyTd } from "~/components/value-totals/money-cells"; // fork
 import { db } from "~/database/db.server";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useIsAvailabilityView } from "~/hooks/use-is-availability-view";
@@ -49,6 +50,7 @@ import {
   updateKitsWithBookingCustodians,
 } from "~/modules/kit/service.server";
 import type { KITS_INCLUDE_FIELDS } from "~/modules/kit/types";
+import { boxFigures } from "~/modules/value-totals/service.server"; // fork
 import calendarStyles from "~/styles/layout/calendar.css?url";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { getFiltersFromRequest, setCookie } from "~/utils/cookies.server";
@@ -258,7 +260,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     }
 
     kits = await updateKitsWithBookingCustodians(kits);
-
+    // fork: the value of what is in each box on this page
+    const values = await boxFigures(
+      organizationId,
+      kits.map((kit) => kit.id)
+    );
     const header = {
       title: "Boxes",
     };
@@ -278,7 +284,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         // name and `user.email` shipped in this payload regardless, so a
         // restricted viewer read them straight out of `/kits.data` while the
         // page showed "private". Redact server-side.
-        items: redactCustodianForViewer(kits, { canSeeAllCustody, userId }),
+        items: redactCustodianForViewer(kits, { canSeeAllCustody, userId }).map(
+          (kit) => ({ ...kit, value: values.get(kit.id)?.recorded ?? 0 })
+        ),
         page,
         totalItems: totalKits,
         totalPages,
@@ -455,6 +463,7 @@ export default function KitsIndexPage() {
                 <Th>Place</Th>
                 <Th>Description</Th>
                 <Th>Assets</Th>
+                <Th title="The recorded value of what is in the box">Value</Th>
                 {custodyEnabled ? ( // customise feature
                   <Th className="flex items-center gap-1 whitespace-nowrap">
                     Custodian{" "}
@@ -541,7 +550,7 @@ function ListContent({
         location: typeof LOCATION_WITH_HIERARCHY;
       }
     >;
-  }>;
+  }> & { value?: number }; // fork: the value of what is in the box
   bulkActions?: ReactNode;
 }) {
   const { boxIds } = useLoaderData<typeof loader>(); // labels feature
@@ -649,6 +658,7 @@ function ListContent({
         ) : null}
       </Td>
       <Td>{item._count.assetKits}</Td>
+      <MoneyTd value={item.value ?? 0} />
       {custodyEnabled ? ( // customise feature
         <Td>
           <TeamMemberBadge teamMember={item?.custody?.custodian} />

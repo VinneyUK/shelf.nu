@@ -2703,6 +2703,8 @@ model WorkspaceCustomisation {
   showTimesInDates   Boolean @default(false)
   /// Deleting the most recent asset gives its number back (SAM-0020 is used again); a deleted middle number is never reused
   reuseLatestNumber  Boolean @default(true)
+  /// Marking an asset as sold moves it into a box called "Sold"
+  soldBoxEnabled     Boolean @default(true)
   updatedAt        DateTime @updatedAt
 }
 
@@ -2770,6 +2772,8 @@ model AssetSale {
   soldOn         DateTime @db.Date
   /// In the workspace currency; null if no price was entered
   price          Float?
+  /// The box the asset was in before it went into the Sold box, so un-selling can put it back
+  previousKitId  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

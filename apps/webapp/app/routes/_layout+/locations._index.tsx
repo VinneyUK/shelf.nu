@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
-import { data } from "react-router";
+import { data, useLoaderData } from "react-router";
 import ImageWithPreview from "~/components/image-with-preview/image-with-preview";
 
 import Header from "~/components/layout/header";
@@ -15,10 +15,17 @@ import { LocationDescriptionColumn } from "~/components/location/location-descri
 import LocationQuickActions from "~/components/location/location-quick-actions";
 import { Button } from "~/components/shared/button";
 import { Td, Th } from "~/components/table";
+import {
+  DifferenceTd,
+  MoneyTd,
+  TotalsRow,
+} from "~/components/value-totals/money-cells"; // fork
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import type { LOCATION_LIST_INCLUDE } from "~/modules/location/service.server";
 import { getLocations } from "~/modules/location/service.server";
 import { LOCATION_SORTING_OPTIONS } from "~/modules/location/utils";
+import { type Figures, NO_FIGURES } from "~/modules/value-totals/figures"; // fork
+import { placeTotals } from "~/modules/value-totals/service.server"; // fork
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import {
   setCookie,
@@ -61,6 +68,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       orderBy,
       orderDirection,
     });
+    // fork: the money columns and the totals row (every place matching the search)
+    const {
+      figures,
+      totals,
+      children: totalChildren,
+      boxes: totalBoxes,
+    } = await placeTotals({ organizationId, search });
     const totalPages = Math.ceil(totalLocations / perPage);
 
     const header: HeaderData = {
@@ -74,7 +88,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     return data(
       payload({
         header,
-        items: locations,
+        items: locations.map((location) => ({
+          ...location,
+          figures: figures.get(location.id) ?? NO_FIGURES,
+        })),
+        totals,
+        totalChildren,
+        totalBoxes,
         search,
         page,
         totalItems: totalLocations,
@@ -99,6 +119,8 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => [
 
 export default function LocationsIndexPage() {
   const { isBaseOrSelfService } = useUserRoleHelper();
+  const { items, totals, totalChildren, totalBoxes } =
+    useLoaderData<typeof loader>();
 
   return (
     <>
@@ -109,7 +131,6 @@ export default function LocationsIndexPage() {
           aria-label={`new place`}
           data-test-id="createNewLocation"
         >
-          
           New place
         </Button>
       </Header>
@@ -143,8 +164,32 @@ export default function LocationsIndexPage() {
               <Th className="whitespace-nowrap">Child places</Th>
               <Th>Assets</Th>
               <Th>Boxes</Th>
+              <Th>Recorded value</Th>
+              <Th>Sell price</Th>
+              <Th title="Sell price minus recorded value, for the items that have been sold">
+                Difference
+              </Th>
               <Th>Actions</Th>
             </>
+          }
+          footerRow={
+            items.length > 0 ? (
+              <TotalsRow leading={isBaseOrSelfService ? 0 : 1}>
+                <Td>Total</Td>
+                <Td>{null}</Td>
+                <Td>{null}</Td>
+                <Td>{totalChildren}</Td>
+                <Td>{totals.assets}</Td>
+                <Td>{totalBoxes}</Td>
+                <MoneyTd value={totals.recorded} />
+                <MoneyTd value={totals.soldFor} dashWhenZero />
+                <DifferenceTd
+                  difference={totals.difference}
+                  soldFor={totals.soldFor}
+                />
+                <Td>{null}</Td>
+              </TotalsRow>
+            ) : undefined
           }
         />
       </ListContentWrapper>
@@ -155,7 +200,9 @@ export default function LocationsIndexPage() {
 const ListItemContent = ({
   item,
 }: {
-  item: Prisma.LocationGetPayload<{ include: typeof LOCATION_LIST_INCLUDE }>;
+  item: Prisma.LocationGetPayload<{ include: typeof LOCATION_LIST_INCLUDE }> & {
+    figures: Figures; // fork: recorded value, sell price, difference
+  };
 }) => (
   <>
     <Td className="w-full p-0 md:p-0">
@@ -204,6 +251,12 @@ const ListItemContent = ({
     <Td>{item._count.children}</Td>
     <Td>{item._count.assetLocations}</Td>
     <Td>{item._count.kits}</Td>
+    <MoneyTd value={item.figures.recorded} />
+    <MoneyTd value={item.figures.soldFor} dashWhenZero />
+    <DifferenceTd
+      difference={item.figures.difference}
+      soldFor={item.figures.soldFor}
+    />
     <Td>
       <LocationQuickActions
         location={{

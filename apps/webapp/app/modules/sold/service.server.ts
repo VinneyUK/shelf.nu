@@ -61,6 +61,17 @@ export async function markAssetsSold({
     userId,
     action: `marked this asset as **sold** (${when}${forPrice}).`,
   });
+  // fork: sold assets go into the Sold box. A failure here never stops the sale.
+  try {
+    const { moveToSoldBox } = await import("./sold-box.server");
+    await moveToSoldBox({
+      organizationId,
+      userId,
+      assetIds: assets.map((a) => a.id),
+    });
+  } catch {
+    // moveToSoldBox logs its own failures
+  }
   return assets.length;
 }
 
@@ -76,7 +87,8 @@ export async function markAssetsNotSold({
 }) {
   const sold = await db.assetSale.findMany({
     where: { assetId: { in: assetIds }, organizationId },
-    select: { assetId: true },
+    // previousKitId: where it was before the Sold box, read before the sale is deleted
+    select: { assetId: true, previousKitId: true },
   });
   const { count } = await db.assetSale.deleteMany({
     where: { assetId: { in: assetIds }, organizationId },
@@ -87,6 +99,17 @@ export async function markAssetsNotSold({
     userId,
     action: "marked this asset as **not sold**.",
   });
+  // fork: take them out of the Sold box, back to where they came from
+  try {
+    const { moveBackFromSoldBox } = await import("./sold-box.server");
+    await moveBackFromSoldBox({
+      organizationId,
+      userId,
+      previousBoxes: new Map(sold.map((s) => [s.assetId, s.previousKitId])),
+    });
+  } catch {
+    // moveBackFromSoldBox logs its own failures
+  }
   return count;
 }
 

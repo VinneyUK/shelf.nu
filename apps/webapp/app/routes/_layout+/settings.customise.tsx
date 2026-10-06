@@ -69,6 +69,8 @@ const CustomiseSchema = z.object({
   imagePreviewOnHover: flag,
   showTimesInDates: flag,
   reuseLatestNumber: flag,
+  soldBoxEnabled: flag,
+
   labelsEnabled: flag,
   custodyEnabled: flag,
   locationsEnabled: flag,
@@ -187,6 +189,7 @@ export default function CustomiseSettings() {
   const [reuseNumber, setReuseNumber] = useState<boolean>(
     settings.reuseLatestNumber
   );
+  const [soldBox, setSoldBox] = useState<boolean>(settings.soldBoxEnabled);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -222,6 +225,7 @@ export default function CustomiseSettings() {
         name="reuseLatestNumber"
         value={String(reuseNumber)}
       />
+      <input type="hidden" name="soldBoxEnabled" value={String(soldBox)} />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -351,6 +355,37 @@ export default function CustomiseSettings() {
               old emails, exports and labels can't end up pointing at a
               different asset. Off: numbers are never reused, as in Shelf
               itself.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">Sold items</h3>
+        <div className="flex items-start gap-4 py-4">
+          <Switch
+            id="soldBoxEnabled"
+            checked={soldBox}
+            onCheckedChange={(checked) => {
+              setSoldBox(checked);
+              changed();
+            }}
+            aria-labelledby="soldBoxEnabled-label"
+            aria-describedby="soldBoxEnabled-desc"
+          />
+          <div>
+            <label
+              id="soldBoxEnabled-label"
+              htmlFor="soldBoxEnabled"
+              className="font-medium text-gray-900"
+            >
+              Put sold items in a Sold box
+            </label>
+            <p id="soldBoxEnabled-desc" className="text-sm text-gray-600">
+              On: marking an asset as sold moves it into a box called Sold (made
+              the first time), leaving the box it was in. Marking it as not sold
+              puts it back in the box it came from. Needs Boxes to be switched
+              on. Quantity-tracked assets stay where they are.
             </p>
           </div>
         </div>

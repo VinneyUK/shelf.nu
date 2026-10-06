@@ -28,6 +28,8 @@ export type Customisations = {
   showTimesInDates: boolean;
   /** Deleting the latest asset gives its number back */
   reuseLatestNumber: boolean;
+  /** Marking an asset as sold moves it into a box called "Sold" */
+  soldBoxEnabled: boolean;
   /** AI feature: switched on with a key saved (set in Settings → AI, not on the Customise page) */
   aiEnabled: boolean;
 };
@@ -47,6 +49,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   qrDownloadsEnabled: true,
   showTimesInDates: false,
   reuseLatestNumber: true,
+  soldBoxEnabled: true,
   aiEnabled: false,
 };
 

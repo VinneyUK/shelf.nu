@@ -4,7 +4,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, Link, Outlet } from "react-router";
+import { data, Link, Outlet, useLoaderData } from "react-router";
 import { z } from "zod";
 import BulkActionsDropdown from "~/components/category/bulk-actions-dropdown";
 import CategoryQuickActions from "~/components/category/category-quick-actions";
@@ -18,11 +18,19 @@ import { Filters } from "~/components/list/filters";
 import { Badge } from "~/components/shared/badge";
 import { Button } from "~/components/shared/button";
 import { Th, Td } from "~/components/table";
+import {
+  DifferenceTd,
+  MoneyTd,
+  TotalsRow,
+  useMoney,
+} from "~/components/value-totals/money-cells"; // fork
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import {
   deleteCategory,
   getCategories,
 } from "~/modules/category/service.server";
+import { type Figures, NO_FIGURES } from "~/modules/value-totals/figures"; // fork
+import { categoryTotals } from "~/modules/value-totals/service.server"; // fork
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import {
   setCookie,
@@ -69,8 +77,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       perPage,
       search,
     });
+    // fork: the money columns and the totals row (every category matching the search)
+    const { figures, totals, uncategorised } = await categoryTotals({
+      organizationId,
+      search,
+    });
     const totalPages = Math.ceil(totalCategories / perPage);
-
     const header: HeaderData = {
       title: "Categories",
     };
@@ -82,7 +94,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     return data(
       payload({
         header,
-        items: categories,
+        items: categories.map((category) => ({
+          ...category,
+          figures: figures.get(category.id) ?? NO_FIGURES,
+        })),
+        totals,
+        uncategorised,
         search,
         page,
         totalItems: totalCategories,
@@ -150,6 +167,8 @@ export const ErrorBoundary = () => <ErrorContent />;
 
 export default function CategoriesPage() {
   const { isBaseOrSelfService } = useUserRoleHelper();
+  const { items, totals, uncategorised } = useLoaderData<typeof loader>();
+  const money = useMoney();
 
   return (
     <>
@@ -181,8 +200,35 @@ export default function CategoriesPage() {
             <>
               <Th>Description</Th>
               <Th>Assets</Th>
+              <Th>Recorded value</Th>
+              <Th>Sell price</Th>
+              <Th title="Sell price minus recorded value, for the items that have been sold">
+                Difference
+              </Th>
               <Th>Actions</Th>
             </>
+          }
+          footerRow={
+            items.length > 0 ? (
+              <TotalsRow leading={isBaseOrSelfService ? 0 : 1}>
+                <Td>Total</Td>
+                <Td className="whitespace-normal text-xs font-normal text-gray-600">
+                  {uncategorised.assets > 0
+                    ? `Doesn't include ${uncategorised.assets} asset${
+                        uncategorised.assets === 1 ? "" : "s"
+                      } with no category (${money(uncategorised.recorded)}).`
+                    : null}
+                </Td>
+                <Td>{totals.assets}</Td>
+                <MoneyTd value={totals.recorded} />
+                <MoneyTd value={totals.soldFor} dashWhenZero />
+                <DifferenceTd
+                  difference={totals.difference}
+                  soldFor={totals.soldFor}
+                />
+                <Td>{null}</Td>
+              </TotalsRow>
+            ) : undefined
           }
         />
       </ListContentWrapper>
@@ -197,6 +243,7 @@ const CategoryItem = ({
     _count: {
       assets: number;
     };
+    figures: Figures; // fork: recorded value, sell price, difference
   };
 }) => (
   <>
@@ -216,6 +263,12 @@ const CategoryItem = ({
       ) : null}
     </Td>
     <Td>{item._count.assets}</Td>
+    <MoneyTd value={item.figures.recorded} />
+    <MoneyTd value={item.figures.soldFor} dashWhenZero />
+    <DifferenceTd
+      difference={item.figures.difference}
+      soldFor={item.figures.soldFor}
+    />
     <Td>
       <CategoryQuickActions category={item} />
     </Td>

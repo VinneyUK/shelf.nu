@@ -53,6 +53,8 @@ export interface IndexResponse {
 export type ListProps = {
   title?: string;
   ItemComponent: any;
+  /** fork: a row of totals, shown under the rows (a <tr>, matching the columns) */
+  footerRow?: ReactNode;
   headerChildren?: ReactNode;
   hideFirstHeaderColumn?: boolean;
   /** Function to be passed if the rows of the table should navigate */
@@ -91,6 +93,7 @@ export const List = React.forwardRef<HTMLDivElement, ListProps>(function List(
   {
     title,
     ItemComponent,
+    footerRow,
     headerChildren,
     hideFirstHeaderColumn = false,
     navigate,
@@ -173,6 +176,8 @@ export const List = React.forwardRef<HTMLDivElement, ListProps>(function List(
                 </ListItem>
               ))}
             </tbody>
+            {/* fork: an optional totals row under the rows */}
+            {footerRow ? <tfoot>{footerRow}</tfoot> : null}
           </Table>
           {!customPagination && <Pagination />}
         </>
