@@ -61,6 +61,7 @@ import { ClaudeError } from "./claude.server";
 import {
   addDraftFiles,
   createAssetFromDraft,
+  draftsSignature,
   processDraft,
   updateDraft,
 } from "./drafts.server";
@@ -672,18 +673,16 @@ describe("the description length in a photo draft", () => {
 
   it("tells Claude the length, in both the instructions and the tool it fills in", async () => {
     settings({ descriptionLength: 150 });
-    const call = vi
-      .fn()
-      .mockResolvedValue({
-        items: [
-          {
-            name: "Keyboard",
-            description: "Short.",
-            estimatedValue: 1,
-            categoryId: null,
-          },
-        ],
-      });
+    const call = vi.fn().mockResolvedValue({
+      items: [
+        {
+          name: "Keyboard",
+          description: "Short.",
+          estimatedValue: 1,
+          categoryId: null,
+        },
+      ],
+    });
     await processDraft("d1", call);
     expect(call.mock.calls[0][0].system).toMatch(/under 150 characters/);
     expect(JSON.stringify(call.mock.calls[0][0].tool)).toMatch(
@@ -692,18 +691,16 @@ describe("the description length in a photo draft", () => {
   });
   it("trims what comes back to the chosen length, even if Claude goes over", async () => {
     settings({ descriptionLength: 150 });
-    const call = vi
-      .fn()
-      .mockResolvedValue({
-        items: [
-          {
-            name: "Keyboard",
-            description: long,
-            estimatedValue: 1,
-            categoryId: null,
-          },
-        ],
-      });
+    const call = vi.fn().mockResolvedValue({
+      items: [
+        {
+          name: "Keyboard",
+          description: long,
+          estimatedValue: 1,
+          categoryId: null,
+        },
+      ],
+    });
     await processDraft("d1", call);
     const saved = mocks.draft.update.mock.calls[0][0].data
       .description as string;
@@ -712,18 +709,16 @@ describe("the description length in a photo draft", () => {
   });
   it("is 300 when nothing has been set", async () => {
     settings({});
-    const call = vi
-      .fn()
-      .mockResolvedValue({
-        items: [
-          {
-            name: "Keyboard",
-            description: long,
-            estimatedValue: 1,
-            categoryId: null,
-          },
-        ],
-      });
+    const call = vi.fn().mockResolvedValue({
+      items: [
+        {
+          name: "Keyboard",
+          description: long,
+          estimatedValue: 1,
+          categoryId: null,
+        },
+      ],
+    });
     await processDraft("d1", call);
     expect(call.mock.calls[0][0].system).toMatch(/under 300 characters/);
     expect(
@@ -738,24 +733,79 @@ describe("the description length in a photo draft", () => {
       fileType: "application/pdf",
       fileName: "r.pdf",
     });
-    const call = vi
-      .fn()
-      .mockResolvedValue({
-        vendor: "Amazon",
-        purchaseDate: null,
-        items: [
-          {
-            name: "Cable",
-            description: long,
-            price: 5,
-            quantity: 1,
-            categoryId: null,
-          },
-        ],
-      });
+    const call = vi.fn().mockResolvedValue({
+      vendor: "Amazon",
+      purchaseDate: null,
+      items: [
+        {
+          name: "Cable",
+          description: long,
+          price: 5,
+          quantity: 1,
+          categoryId: null,
+        },
+      ],
+    });
     await processDraft("d1", call);
     expect(
       (mocks.draft.update.mock.calls[0][0].data.description as string).length
     ).toBeLessThanOrEqual(150);
+  });
+});
+
+describe("the drafts fingerprint the page polls", () => {
+  const g = (status: string, n: number, at: number) => ({
+    status,
+    _count: { _all: n },
+    _max: { updatedAt: new Date(at) },
+  });
+
+  it("counts what's still being read: pending and working, not ready or failed", () => {
+    expect(
+      draftsSignature([
+        g("pending", 2, 1),
+        g("working", 1, 2),
+        g("ready", 4, 3),
+        g("failed", 1, 4),
+      ]).pending
+    ).toBe(3);
+    expect(draftsSignature([g("ready", 4, 3)]).pending).toBe(0);
+    expect(draftsSignature([]).pending).toBe(0);
+  });
+  it("changes when a draft is added, finishes, fails, or is edited", () => {
+    const before = draftsSignature([
+      g("pending", 2, 1000),
+      g("ready", 1, 500),
+    ]).signature;
+    // one finishes reading
+    expect(
+      draftsSignature([g("pending", 1, 2000), g("ready", 2, 2000)]).signature
+    ).not.toBe(before);
+    // one is edited (its time moves on, the counts don't)
+    expect(
+      draftsSignature([g("pending", 2, 1000), g("ready", 1, 9999)]).signature
+    ).not.toBe(before);
+    // one more is added
+    expect(
+      draftsSignature([g("pending", 3, 3000), g("ready", 1, 500)]).signature
+    ).not.toBe(before);
+  });
+  it("doesn't change when nothing has: the same drafts give the same fingerprint, in any order", () => {
+    const a = draftsSignature([
+      g("ready", 1, 500),
+      g("pending", 2, 1000),
+    ]).signature;
+    const b = draftsSignature([
+      g("pending", 2, 1000),
+      g("ready", 1, 500),
+    ]).signature;
+    expect(a).toBe(b);
+  });
+  it("copes with a group that has no time", () => {
+    expect(() =>
+      draftsSignature([
+        { status: "ready", _count: { _all: 1 }, _max: { updatedAt: null } },
+      ])
+    ).not.toThrow();
   });
 });

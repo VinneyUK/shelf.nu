@@ -3,7 +3,7 @@
  * person to check it. Create makes the asset; nothing is made before that.
  * Part of the AI feature; not in upstream Shelf.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -26,7 +26,7 @@ import { db } from "~/database/db.server";
 import {
   createAssetFromDraft,
   discardDrafts,
-  hasPendingDrafts,
+  getDraftsSignature,
   kickDraftProcessing,
   listDrafts,
   retryDraft,
@@ -54,7 +54,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       entity: PermissionEntity.asset,
       action: PermissionAction.create,
     });
-    const [settings, drafts, categories, pending] = await Promise.all([
+    const [settings, drafts, categories, status] = await Promise.all([
       getAiSettings(organizationId),
       listDrafts(organizationId),
       db.category.findMany({
@@ -62,10 +62,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
-      hasPendingDrafts(organizationId),
+      getDraftsSignature(organizationId),
     ]);
     // Anything left pending (a restart, a missed kick) is picked up whenever the page is open
-    if (pending) kickDraftProcessing();
+    if (status.pending > 0) kickDraftProcessing();
     return payload({
       header: {
         title: "Drafts",
@@ -75,7 +75,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       settings,
       drafts,
       categories,
-      pending,
+      pending: status.pending > 0,
+      // fingerprint of the open drafts: the page compares it with the status check
+      signature: status.signature,
       currency: currentOrganization.currency,
     });
   } catch (cause) {
@@ -192,7 +194,7 @@ const inputClass =
   "w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
 
 export default function DraftsPage() {
-  const { settings, drafts, categories, pending, currency } =
+  const { settings, drafts, categories, pending, signature, currency } =
     useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
   const bulk = useFetcher<Result>();
@@ -202,12 +204,32 @@ export default function DraftsPage() {
   const failed = drafts.filter((d) => d.status === "failed").length;
   const aiReady = settings.enabled && settings.hasKey;
 
-  // While Claude is reading, look again every few seconds
+  // While Claude is reading, ask a tiny endpoint whether anything has changed,
+  // and reload the page only when it has. (Reloading the whole page every few
+  // seconds would re-run Shelf's heavy app-wide loader each time.)
+  const status = useFetcher<{ signature?: string }>();
+    // the timer reads the latest values from here, so it isn't restarted by every render
+  const latest = useRef({ revalidator, status });
+  latest.current = { revalidator, status };
   useEffect(() => {
     if (!pending) return;
-    const timer = setInterval(() => void revalidator.revalidate(), 3000);
+    const timer = setInterval(() => {
+      const { revalidator: page, status: check } = latest.current;
+      if (document.visibilityState !== "visible") return; // not from a background tab
+      if (page.state !== "idle" || check.state !== "idle") return; // one thing at a time
+      void check.load("/api/drafts/status");
+    }, 4000);
     return () => clearInterval(timer);
-  }, [pending, revalidator]);
+  }, [pending]);
+  useEffect(() => {
+    if (
+      status.data?.signature &&
+      status.data.signature !== signature &&
+      revalidator.state === "idle"
+    ) {
+      void revalidator.revalidate();
+    }
+  }, [status.data, signature, revalidator]);
 
   return (
     <>
@@ -325,7 +347,6 @@ function DraftCard({
   currency: string;
 }) {
   const fetcher = useFetcher<Result>();
-  const revalidator = useRevalidator();
   const busy = isFormProcessing(fetcher.state);
   const reading = draft.status === "pending" || draft.status === "working";
   const isReceipt = draft.source === "receipt";
@@ -334,11 +355,6 @@ function DraftCard({
     new Intl.NumberFormat("en-GB", { style: "currency", currency })
       .formatToParts(0)
       .find((p) => p.type === "currency")?.value ?? currency;
-
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data && !fetcher.data.error)
-      void revalidator.revalidate();
-  }, [fetcher.state, fetcher.data, revalidator]);
 
   return (
     <Card className="my-0">

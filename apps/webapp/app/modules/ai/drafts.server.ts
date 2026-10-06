@@ -470,6 +470,43 @@ export async function countOpenDrafts(organizationId: string) {
   });
 }
 
+/** The fingerprint of a set of open drafts: changes whenever one is added, finishes, fails or is edited. */
+export function draftsSignature(
+  groups: {
+    status: string;
+    _count: { _all: number };
+    _max: { updatedAt: Date | null };
+  }[]
+) {
+  const pending = groups
+    .filter((g) => g.status === "pending" || g.status === "working")
+    .reduce((n, g) => n + g._count._all, 0);
+  const signature = [...groups]
+    .sort((a, b) => a.status.localeCompare(b.status))
+    .map(
+      (g) => `${g.status}:${g._count._all}:${g._max.updatedAt?.getTime() ?? 0}`
+    )
+    .join("|");
+  return { pending, signature };
+}
+
+/**
+ * How many drafts are still being read, and a fingerprint of the open drafts. One
+ * small query, so the page can check for changes often without reloading itself.
+ */
+export async function getDraftsSignature(organizationId: string) {
+  const groups = await db.assetDraft.groupBy({
+    by: ["status"],
+    where: {
+      organizationId,
+      status: { in: ["pending", "working", "ready", "failed", "creating"] },
+    },
+    _count: { _all: true },
+    _max: { updatedAt: true },
+  });
+  return draftsSignature(groups);
+}
+
 export async function hasPendingDrafts(organizationId: string) {
   return (
     (await db.assetDraft.count({

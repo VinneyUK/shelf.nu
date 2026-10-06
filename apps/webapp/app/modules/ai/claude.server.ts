@@ -8,6 +8,13 @@
  */
 
 const API_URL = "https://api.anthropic.com/v1/messages";
+/** The longest one request may take. A stalled call must not hold a drafting slot for ever. */
+export const CLAUDE_TIMEOUT_MS = 90_000;
+
+/** Whether a failed fetch was our own timeout. */
+export const isTimeout = (cause: unknown) =>
+  cause instanceof Error &&
+  (cause.name === "TimeoutError" || cause.name === "AbortError");
 const API_VERSION = "2023-06-01";
 
 import { DEFAULT_MODEL, MODELS } from "./models";
@@ -204,8 +211,18 @@ export async function callClaude({
             : {}),
         },
         body,
+        signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
       });
-    } catch {
+    } catch (cause) {
+      if (isTimeout(cause)) {
+        // not retried: a second attempt would only make the wait longer
+        lastError = new ClaudeError(
+          "Anthropic took too long to answer. Try again.",
+          undefined,
+          false
+        );
+        break;
+      }
       lastError = new ClaudeError(
         "Couldn't reach Anthropic. Check the server's internet connection.",
         undefined,

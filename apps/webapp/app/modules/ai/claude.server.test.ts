@@ -187,3 +187,32 @@ describe("workspace-scoped keys", () => {
     expect(e.retryable).toBe(false);
   });
 });
+
+describe("a stalled request", () => {
+  const stalled = () =>
+    Object.assign(new Error("The operation was aborted due to timeout"), {
+      name: "TimeoutError",
+    });
+
+  it("is given a time limit", async () => {
+    const f = vi.fn().mockResolvedValue(ok({ items: [] }));
+    await callClaude(args(f as never));
+    const signal = f.mock.calls[0][1].signal as AbortSignal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal.aborted).toBe(false);
+  });
+  it("ends with a plain message, and isn't retried (which would only add to the wait)", async () => {
+    const f = vi.fn().mockRejectedValue(stalled());
+    await expect(callClaude(args(f as never))).rejects.toThrow(
+      /took too long to answer/
+    );
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+  it("is told apart from a lost connection, which is still retried", async () => {
+    const f = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+    await expect(callClaude(args(f as never))).rejects.toThrow(
+      /Couldn't reach Anthropic/
+    );
+    expect(f).toHaveBeenCalledTimes(3);
+  });
+});

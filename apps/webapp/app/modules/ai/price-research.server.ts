@@ -14,11 +14,14 @@
 import {
   ClaudeError,
   explainFailure,
+  isTimeout,
   type ContentBlock,
 } from "./claude.server";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
+/** The longest one search request may take (a search turn is slower than a plain answer). */
+export const RESEARCH_TIMEOUT_MS = 120_000;
 /** Searches allowed per photo. Two or three is plenty to price one item. */
 export const MAX_SEARCHES = 3;
 /** Times a long search turn may be paused and continued */
@@ -133,8 +136,17 @@ export async function researchPrice({
             tools: [WEB_SEARCH_TOOL],
             messages,
           }),
+          signal: AbortSignal.timeout(RESEARCH_TIMEOUT_MS),
         });
-      } catch {
+      } catch (cause) {
+        if (isTimeout(cause)) {
+          failure = new ClaudeError(
+            "The price lookup took too long.",
+            undefined,
+            false
+          );
+          break;
+        }
         failure = new ClaudeError("Couldn't reach Anthropic.", undefined, true);
         continue;
       }

@@ -199,3 +199,22 @@ describe("the research prompts", () => {
     ).not.toMatch(/Price research/);
   });
 });
+
+describe("a stalled search", () => {
+  it("is given a time limit, and ends the lookup (without retrying) so the draft carries on", async () => {
+    const f = vi
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error("timeout"), { name: "TimeoutError" })
+      );
+    const r = await researchPrice(args(f));
+    expect(r).toMatchObject({
+      text: null,
+      error: "The price lookup took too long.",
+    });
+    expect(f).toHaveBeenCalledTimes(1);
+    const ok = vi.fn().mockResolvedValue(answer("x"));
+    await researchPrice(args(ok));
+    expect(ok.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+});
