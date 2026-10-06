@@ -1277,7 +1277,7 @@ export const AssetForm = ({
                   triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
                   defaultValue={locationId || undefined}
                   model={{ name: "location", queryKey: "name" }}
-                  contentLabel="Locations"
+                  contentLabel="Places"
                   label="Place"
                   hideLabel
                   initialDataKey="locations"
@@ -1294,7 +1294,7 @@ export const AssetForm = ({
                 triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
                 defaultValue={locationId || undefined}
                 model={{ name: "location", queryKey: "name" }}
-                contentLabel="Locations"
+                contentLabel="Places"
                 label="Place"
                 hideLabel
                 initialDataKey="locations"

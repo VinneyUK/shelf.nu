@@ -12,6 +12,8 @@ import { useAutoFocus } from "~/hooks/use-auto-focus";
 
 import { useDisabled } from "~/hooks/use-disabled";
 
+import { tagUseForAllowed } from "~/modules/customisation/catalogue";
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { createTag } from "~/modules/tag/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { sendNotification } from "~/utils/emitter/send-notification.server";
@@ -121,6 +123,7 @@ export default function NewTag() {
   const nameInputRef = useAutoFocus<HTMLInputElement>();
   const zo = useZorm("NewQuestionWizardScreen", NewTagFormSchema);
   const { tagUseFor, colorFromServer } = useLoaderData<typeof loader>();
+  const customisations = useCustomisations(); // customise feature
 
   const disabled = useDisabled();
   const actionData = useActionData<typeof action>();
@@ -166,7 +169,9 @@ export default function NewTag() {
             </div>
             <MultiSelect
               name="useFor"
-              items={tagUseFor}
+              items={tagUseFor.filter((item) =>
+                tagUseForAllowed(item.value, customisations)
+              )}
               labelKey="label"
               valueKey="value"
               label="Use for"

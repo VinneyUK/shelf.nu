@@ -102,7 +102,7 @@ const ASSET_INVENTORY_COLUMNS: ColumnDef<AssetInventoryRow>[] = [
   },
   {
     accessorKey: "location",
-    header: "Location",
+    header: "Place",
     cell: ({ row }) =>
       row.original.location || <span className="text-gray-400">—</span>,
   },

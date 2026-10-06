@@ -39,7 +39,7 @@ export const REPORTS: ReportDefinition[] = [
     filters: [
       { type: "status", label: "Status", multi: true },
       { type: "team_member", label: "Custodian", multi: false },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: true,
     exportable: true,
@@ -54,7 +54,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R3
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: true,
     exportable: true,
@@ -69,7 +69,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true,
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: false,
     exportable: true,
@@ -84,7 +84,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R9
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: true,
     exportable: true, // Monthly breakdown table can be exported
@@ -99,7 +99,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R6
     filters: [
       { type: "team_member", label: "Custodian", multi: false },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: false,
     exportable: true,
@@ -118,7 +118,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R1
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: true },
+      { type: "location", label: "Place", multi: true },
       { type: "status", label: "Status", multi: true },
     ],
     hasChart: false,
@@ -149,7 +149,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R8
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: true,
     exportable: true,
@@ -164,7 +164,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R4
     filters: [
       { type: "category", label: "Category", multi: true },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: false,
     exportable: true,
@@ -195,7 +195,7 @@ export const REPORTS: ReportDefinition[] = [
     enabled: true, // R5
     filters: [
       { type: "team_member", label: "Team Member", multi: false },
-      { type: "location", label: "Location", multi: false },
+      { type: "location", label: "Place", multi: false },
     ],
     hasChart: false,
     exportable: true,

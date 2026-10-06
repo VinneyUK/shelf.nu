@@ -220,6 +220,40 @@ export function columnsWithoutSwitchedOff<T extends { name: string }>(
   return columns.filter((col) => FEATURE_COLUMNS[col.name]?.(c) ?? true);
 }
 
+/**
+ * Filter options that only mean something with a feature switched on, so a
+ * switched-off feature leaves nothing behind in a dropdown. Saved filters and
+ * the data are untouched; the options come back when the feature does.
+ */
+type StatusFlags = Pick<Customisations, "custodyEnabled" | "bookingsEnabled">;
+
+/** An asset's status filter: "In custody" needs custody, "Checked out" needs bookings. */
+export function assetStatusAllowed(status: string, c: StatusFlags) {
+  if (status === "IN_CUSTODY") return c.custodyEnabled;
+  if (status === "CHECKED_OUT") return c.bookingsEnabled;
+  return true;
+}
+
+/** A tag can be for assets, or for bookings, which only exist with bookings on. */
+export function tagUseForAllowed(
+  useFor: string,
+  c: Pick<Customisations, "bookingsEnabled">
+) {
+  return useFor !== "BOOKING" || c.bookingsEnabled;
+}
+
+/**
+ * A Box's status filter. Boxes are Available, or In custody; with custody off
+ * there's nothing to choose between, so the filter has no options (and isn't shown).
+ */
+export function boxStatusFilterOptions(
+  c: Pick<Customisations, "custodyEnabled">
+) {
+  return c.custodyEnabled
+    ? (["AVAILABLE", "IN_CUSTODY"] as const)
+    : ([] as const);
+}
+
 /** Whether a report still means anything with these features switched off. */
 export function reportIsAvailable(
   report: { id: string; category: string },

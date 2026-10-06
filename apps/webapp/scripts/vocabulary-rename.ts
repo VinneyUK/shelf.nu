@@ -51,8 +51,13 @@ export function renameWords(text: string): string {
   return out;
 }
 
+/** Lookup tables whose every value is wording ("kit: \"Kit\"" is a heading). */
+const LABEL_MAPS = new Set(["columnsLabelsMap"]);
+
 /** JSX attributes whose value is wording a person sees. */
 const WORDING_ATTRIBUTES = new Set([
+  "contentLabel", // the heading of a dropdown list ("Locations")
+  "header", // a table column heading
   "title",
   "placeholder",
   "label",
@@ -215,6 +220,20 @@ function isWording(
   if (ts.isPropertyAssignment(parent)) {
     if (parent.name === node) return false; // an object key
     const key = parent.name.getText().replace(/^["']|["']$/g, "");
+    const declaration = parent.parent?.parent;
+    if (
+      declaration &&
+      ts.isVariableDeclaration(declaration) &&
+      LABEL_MAPS.has(declaration.name.getText())
+    )
+      return true;
+    // A `header` is wording only on a screen (a table heading). In an export or
+    // import it is the exact column name the importer reads, and must not change.
+    if (
+      key === "header" &&
+      !node.getSourceFile().fileName.includes("/components/")
+    )
+      return false;
     if (NEVER_KEYS.has(key))
       return key === "label" ? text.includes(" ") : false;
     if (WORDING_ATTRIBUTES.has(key)) return true;

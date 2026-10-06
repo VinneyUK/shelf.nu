@@ -404,7 +404,7 @@ function DraftCard({
               <textarea
                 name="description"
                 defaultValue={draft.description}
-                rows={2}
+                rows={7}
                 maxLength={1000}
                 className={inputClass}
               />

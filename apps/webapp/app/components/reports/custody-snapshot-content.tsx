@@ -130,7 +130,7 @@ export function CustodySnapshotContent({
       },
       {
         accessorKey: "location",
-        header: "Location",
+        header: "Place",
         cell: ({ row }) =>
           row.original.location || <span className="text-gray-400">—</span>,
       },

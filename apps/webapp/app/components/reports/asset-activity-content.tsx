@@ -60,6 +60,12 @@ const ASSET_ACTIVITY_COLUMNS: ColumnDef<AssetActivityRow>[] = [
         BOOKING_CHECKED_IN: "Checked in",
         LOCATION_CHANGED: "Place changed",
         CATEGORY_CHANGED: "Category changed",
+        BOX_CHANGED: "Box changed",
+        SOLD: "Sold",
+        LABEL: "Label",
+        ATTACHMENT: "Attachment",
+        RECEIPT: "Receipt attached",
+        AI_DRAFT: "Created from AI draft",
       };
       // Semantic colors for activity types
       const colors: Record<string, string> = {
@@ -71,6 +77,12 @@ const ASSET_ACTIVITY_COLUMNS: ColumnDef<AssetActivityRow>[] = [
         BOOKING_CHECKED_IN: "bg-green-100 text-green-700",
         LOCATION_CHANGED: "bg-blue-100 text-blue-700",
         CATEGORY_CHANGED: "bg-blue-100 text-blue-700",
+        BOX_CHANGED: "bg-blue-100 text-blue-700",
+        SOLD: "bg-amber-100 text-amber-700",
+        LABEL: "bg-gray-100 text-gray-700",
+        ATTACHMENT: "bg-gray-100 text-gray-700",
+        RECEIPT: "bg-gray-100 text-gray-700",
+        AI_DRAFT: "bg-violet-100 text-violet-700",
       };
       return (
         <span

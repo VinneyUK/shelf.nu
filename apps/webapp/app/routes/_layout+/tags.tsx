@@ -22,6 +22,7 @@ import TagQuickActions from "~/components/tag/tag-quick-actions";
 import TagUseForFilter from "~/components/tag/tag-use-for-filter";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { deleteTag, getTags } from "~/modules/tag/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import {
@@ -153,6 +154,7 @@ export const handle = {
 export const ErrorBoundary = () => <ErrorContent />;
 
 export default function CategoriesPage() {
+  const { bookingsEnabled } = useCustomisations(); // customise feature
   const { isBaseOrSelfService } = useUserRoleHelper();
 
   return (
@@ -170,7 +172,9 @@ export default function CategoriesPage() {
       <ListContentWrapper>
         <Filters
           slots={{
-            "right-of-search": <TagUseForFilter />,
+            // customise feature: tags are only for bookings with bookings on, so
+            // without them there is nothing to filter by
+            "right-of-search": bookingsEnabled ? <TagUseForFilter /> : null,
           }}
         />
         <Outlet />

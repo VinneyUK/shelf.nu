@@ -1,6 +1,8 @@
 import { TagUseFor } from "@prisma/client";
 import { useSearchParams } from "~/hooks/search-params";
 import { useDisabled } from "~/hooks/use-disabled";
+import { tagUseForAllowed } from "~/modules/customisation/catalogue";
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import {
   Select,
   SelectContent,
@@ -11,6 +13,7 @@ import {
 
 export default function TagUseForFilter() {
   const disabled = useDisabled();
+  const customisations = useCustomisations(); // customise feature
   const [searchParams, setSearchParams] = useSearchParams();
 
   const useFor = searchParams.get("useFor") ?? "ALL";
@@ -47,7 +50,12 @@ export default function TagUseForFilter() {
         align="start"
       >
         <div className=" max-h-[320px] overflow-auto">
-          {["ALL", ...Object.values(TagUseFor)].map((value) => (
+          {[
+            "ALL",
+            ...Object.values(TagUseFor).filter((useFor) =>
+              tagUseForAllowed(useFor, customisations)
+            ),
+          ].map((value) => (
             <SelectItem
               value={value}
               key={value}

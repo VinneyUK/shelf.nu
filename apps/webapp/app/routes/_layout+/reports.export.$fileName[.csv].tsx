@@ -778,6 +778,12 @@ function formatActivityType(type: string): string {
     BOOKING_CHECKED_IN: "Checked in",
     LOCATION_CHANGED: "Place changed",
     CATEGORY_CHANGED: "Category changed",
+    BOX_CHANGED: "Box changed",
+    SOLD: "Sold",
+    LABEL: "Label",
+    ATTACHMENT: "Attachment",
+    RECEIPT: "Receipt attached",
+    AI_DRAFT: "Created from AI draft",
   };
   return labels[type] || type;
 }

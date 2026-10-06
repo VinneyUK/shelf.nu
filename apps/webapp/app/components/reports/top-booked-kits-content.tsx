@@ -56,7 +56,7 @@ function AvgDurationHeader() {
 const TOP_BOOKED_KITS_COLUMNS: ColumnDef<TopBookedKitRow>[] = [
   {
     accessorKey: "kitName",
-    header: "Kit",
+    header: "Box",
     cell: ({ row }) => (
       <KitCell
         name={row.original.kitName}
@@ -133,7 +133,7 @@ const TOP_BOOKED_KITS_COLUMNS: ColumnDef<TopBookedKitRow>[] = [
   },
   {
     accessorKey: "location",
-    header: "Location",
+    header: "Place",
     cell: ({ row }) =>
       row.original.location || <span className="text-gray-400">—</span>,
   },

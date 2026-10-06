@@ -89,7 +89,7 @@ const IDLE_ASSETS_COLUMNS: ColumnDef<IdleAssetRow>[] = [
   },
   {
     accessorKey: "location",
-    header: "Location",
+    header: "Place",
     cell: ({ row }) =>
       row.original.location || <span className="text-gray-400">—</span>,
   },

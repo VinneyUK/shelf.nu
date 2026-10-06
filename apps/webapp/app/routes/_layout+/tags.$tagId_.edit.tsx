@@ -12,6 +12,8 @@ import { useAutoFocus } from "~/hooks/use-auto-focus";
 
 import { useDisabled } from "~/hooks/use-disabled";
 
+import { tagUseForAllowed } from "~/modules/customisation/catalogue";
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { getTag, updateTag } from "~/modules/tag/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { sendNotification } from "~/utils/emitter/send-notification.server";
@@ -128,6 +130,7 @@ export default function EditTag() {
   const nameInputRef = useAutoFocus<HTMLInputElement>();
   const zo = useZorm("NewQuestionWizardScreen", UpdateTagFormSchema);
   const { tag, tagUseFor, colorFromServer } = useLoaderData<typeof loader>();
+  const customisations = useCustomisations(); // customise feature
   const actionData = useActionData<typeof action>();
   const disabled = useDisabled();
 
@@ -181,7 +184,9 @@ export default function EditTag() {
                 value: useFor,
               }))}
               name="useFor"
-              items={tagUseFor}
+              items={tagUseFor.filter((item) =>
+                tagUseForAllowed(item.value, customisations)
+              )}
               labelKey="label"
               valueKey="value"
               label="Use for"

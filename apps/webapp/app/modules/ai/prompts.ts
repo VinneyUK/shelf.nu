@@ -24,6 +24,14 @@ export type DraftFields = {
 const NAME_MAX = 120;
 /** Shelf's own limit on an asset description */
 const DESCRIPTION_MAX = 1000;
+
+/** How a photographed item is described: a catalogue entry, then its setting. */
+const CATALOGUE_STYLE = [
+  "Write the description as a catalogue entry, in the style of a good product description, in two paragraphs separated by a blank line.",
+  "First paragraph (three to five sentences): what the item is and what it is for; its brand and model if identifiable; its key features and specifications that are visible, or that you are confident belong to that exact model; colour and finish; size if apparent; its condition, including any wear, marks or missing parts; any accessories or parts that are included; any visible text, model or serial number.",
+  'Second paragraph, starting "In the photo:" (one or two sentences): where the item is and what is around it, such as the surface it sits on and the things next to it, so that its setting is recorded.',
+  "Keep the whole description under 800 characters, and don't put the price in it.",
+].join("\n");
 const MAX_ITEMS = 5;
 
 const itemProperties = {
@@ -59,6 +67,11 @@ export const PHOTO_TOOL: Tool = {
           type: "object",
           properties: {
             ...itemProperties,
+            description: {
+              type: "string",
+              description:
+                'A catalogue entry in two paragraphs separated by a blank line: first the item itself (what it is, brand and model, key features, colour, condition, accessories), then "In the photo: …" describing its surroundings. Under 800 characters. Only what is visible, or certain for that exact model.',
+            },
             estimatedValue: {
               type: ["number", "null"],
               description:
@@ -123,10 +136,11 @@ const categoryList = (categories: CategoryOption[]) =>
 export const photoSystemPrompt = (currency: string) =>
   [
     "You help catalogue a household's belongings for a home inventory, in the UK.",
-    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a one-to-three sentence description (what it is, colour, condition, any visible model or serial text), the estimated price to buy it NEW today from a UK retailer (its replacement value, not what it would sell for second-hand) in " +
+    "For the photo, identify the main item and record: a short specific name (brand and model if visible, such as 'Anker Nano 2 65W USB-C Charger'), a catalogue description (described below), the estimated price to buy it NEW today from a UK retailer (its replacement value, not what it would sell for second-hand) in " +
       currency +
       " as a single number, and the best matching category from the list given. If it is no longer sold new, use the price of the closest current equivalent.",
-    "Never invent details that aren't visible. If you can't tell the model, say what it looks like instead. If you can't estimate a value, use null.",
+    CATALOGUE_STYLE,
+    "Never invent details that aren't visible. State a specification only if it is visible or you are confident it belongs to that exact model. If you can't tell the model, say what it looks like instead. If you can't estimate a value, use null.",
     "Normally return ONE item. Return more only when several distinct items are clearly shown, up to " +
       MAX_ITEMS +
       ".",
@@ -159,7 +173,7 @@ export function photoContent(
           categories
         )}\n\n` +
         (research?.trim()
-          ? `Price research from a web search (use it for the new price, with your own judgement, as it can be wrong. If it says unknown, estimate from what you know):\n${research
+          ? `Price research from a web search (use it for the new price, with your own judgement, as it can be wrong. If it says unknown, estimate from what you know. It also names the exact model, which you can use for the description's features):\n${research
               .trim()
               .slice(0, 1500)}\n\n`
           : "") +
@@ -210,6 +224,17 @@ export function receiptContent(
 
 // ------------------------------------------------------------------ results
 
+/** Text with its paragraph breaks kept: spaces collapse, a blank line separates paragraphs. */
+const asParagraphs = (v: unknown, max: number) =>
+  typeof v === "string"
+    ? v
+        .split(/\n\s*\n/)
+        .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, max)
+    : "";
+
 const asText = (v: unknown, max: number) =>
   typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
@@ -257,7 +282,7 @@ function cleanItem(
       ? Math.floor(item.quantity)
       : 1;
   const description =
-    asText(item.description, DESCRIPTION_MAX - 40) +
+    asParagraphs(item.description, DESCRIPTION_MAX - 40) +
     (quantity > 1 ? ` Bought ${quantity} of these.` : "");
   return {
     name,

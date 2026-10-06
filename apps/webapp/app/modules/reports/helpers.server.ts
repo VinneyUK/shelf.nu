@@ -23,6 +23,10 @@ import { DateTime } from "luxon";
 
 import { db } from "~/database/db.server";
 import {
+  classifyForkNote,
+  FORK_ACTIVITY_PHRASES,
+} from "~/modules/activity/fork-activity"; // fork
+import {
   MEASURABLE_BOOKING_STATUSES,
   getLatenessMs,
   isOnTime,
@@ -3322,7 +3326,7 @@ async function computeDistributionKpis(
     },
     {
       id: "total_locations",
-      label: "Locations",
+      label: "Places",
       value: locationCount.toLocaleString(),
       rawValue: locationCount,
       format: "number",
@@ -4224,16 +4228,6 @@ interface AssetActivityArgs {
  */
 /** Fork: at most this many events and notes are merged for the report window. */
 const MERGED_HISTORY_CAP = 5000;
-/** Fork: the phrases `addAssetActivity` writes (modules/activity), used to find its notes. */
-const FORK_ACTIVITY_PHRASES = [
-  "marked this asset as sold",
-  "marked this asset as not sold",
-  "printed a label",
-  "removed the label",
-  "attached **",
-  "deleted the attachment",
-  "from an emailed receipt",
-];
 /** "[Ant](/link) printed a **label**." → "printed a label." */
 function plainNoteText(content: string) {
   return content
@@ -4266,6 +4260,7 @@ export async function assetActivityReport(
       "ASSET_CATEGORY_CHANGED",
       "ASSET_MODEL_CHANGED",
       "ASSET_LOCATION_CHANGED",
+      "ASSET_KIT_CHANGED", // moved into or out of a box
       "ASSET_STATUS_CHANGED",
       "ASSET_VALUATION_CHANGED",
       "ASSET_QUANTITY_CHANGED",
@@ -4276,6 +4271,8 @@ export async function assetActivityReport(
       "CUSTODY_RELEASED",
       "BOOKING_CHECKED_OUT",
       "BOOKING_CHECKED_IN",
+      "BOOKING_PARTIAL_CHECKOUT",
+      "BOOKING_PARTIAL_CHECKIN",
     ];
 
     // Build where clause for ActivityEvent
@@ -4308,7 +4305,18 @@ export async function assetActivityReport(
         : (["CUSTODY_ASSIGNED", "CUSTODY_RELEASED"] as ActivityAction[])),
       ...(customisations.bookingsEnabled
         ? []
-        : (["BOOKING_CHECKED_OUT", "BOOKING_CHECKED_IN"] as ActivityAction[])),
+        : ([
+            "BOOKING_CHECKED_OUT",
+            "BOOKING_CHECKED_IN",
+            "BOOKING_PARTIAL_CHECKOUT",
+            "BOOKING_PARTIAL_CHECKIN",
+          ] as ActivityAction[])),
+      ...(customisations.locationsEnabled
+        ? []
+        : (["ASSET_LOCATION_CHANGED"] as ActivityAction[])),
+      ...(customisations.kitsEnabled
+        ? []
+        : (["ASSET_KIT_CHANGED"] as ActivityAction[])),
     ]);
     where.action = { in: assetActions.filter((a) => !switchedOff.has(a)) };
 
@@ -4402,7 +4410,7 @@ export async function assetActivityReport(
           thumbnailImage: asset?.thumbnailImage || null,
           mainImage: asset?.mainImage || null,
           assetModel: asset?.assetModel ?? null,
-          activityType: "UPDATED" as const,
+          activityType: classifyForkNote(note.content) ?? ("UPDATED" as const),
           description: plainNoteText(note.content),
           occurredAt: note.createdAt,
           performedBy: note.user
@@ -4448,21 +4456,33 @@ export async function assetActivityReport(
       (actionCounts.get("CUSTODY_RELEASED") || 0);
     const bookingActivities =
       (actionCounts.get("BOOKING_CHECKED_OUT") || 0) +
-      (actionCounts.get("BOOKING_CHECKED_IN") || 0);
+      (actionCounts.get("BOOKING_CHECKED_IN") || 0) +
+      (actionCounts.get("BOOKING_PARTIAL_CHECKOUT") || 0) +
+      (actionCounts.get("BOOKING_PARTIAL_CHECKIN") || 0);
 
     // Find most active asset
+    // Fork: the fork's own activity (notes) counts towards "Most Active" too
     const assetActivityCounts = await db.activityEvent.groupBy({
       by: ["assetId"],
       where,
       _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-      take: 1,
     });
-
+    const perAsset = new Map<string, number>();
+    for (const group of assetActivityCounts) {
+      if (group.assetId) perAsset.set(group.assetId, group._count.id);
+    }
+    for (const note of forkNotes) {
+      if (note.assetId) {
+        perAsset.set(note.assetId, (perAsset.get(note.assetId) ?? 0) + 1);
+      }
+    }
+    const [mostActiveId, mostActiveCount] = [...perAsset.entries()].sort(
+      (a, b) => b[1] - a[1]
+    )[0] ?? [null, 0];
     let mostActiveName = "—";
-    if (assetActivityCounts.length > 0 && assetActivityCounts[0].assetId) {
+    if (mostActiveId) {
       const mostActiveAsset = await db.asset.findFirst({
-        where: { id: assetActivityCounts[0].assetId, organizationId },
+        where: { id: mostActiveId, organizationId },
         select: { title: true },
       });
       mostActiveName = mostActiveAsset?.title || "—";
@@ -4500,7 +4520,7 @@ export async function assetActivityReport(
         id: "most_active_asset",
         label: "Most Active",
         value: mostActiveName,
-        rawValue: assetActivityCounts[0]?._count?.id || 0,
+        rawValue: mostActiveCount,
         format: "number",
         delta: null,
         deltaType: "neutral",
@@ -4548,13 +4568,19 @@ function mapActionToActivityType(action: ActivityAction): AssetActivityType {
       return "CATEGORY_CHANGED";
     case "ASSET_LOCATION_CHANGED":
       return "LOCATION_CHANGED";
+    case "ASSET_KIT_CHANGED":
+      return "BOX_CHANGED";
     case "CUSTODY_ASSIGNED":
       return "CUSTODY_ASSIGNED";
     case "CUSTODY_RELEASED":
       return "CUSTODY_RELEASED";
     case "BOOKING_CHECKED_OUT":
       return "BOOKING_CHECKED_OUT";
+    case "BOOKING_PARTIAL_CHECKOUT":
+      return "BOOKING_CHECKED_OUT";
     case "BOOKING_CHECKED_IN":
+      return "BOOKING_CHECKED_IN";
+    case "BOOKING_PARTIAL_CHECKIN":
       return "BOOKING_CHECKED_IN";
     default:
       return "UPDATED";
@@ -4575,6 +4601,7 @@ function buildActivityDescription(event: {
     ASSET_CATEGORY_CHANGED: "Category changed",
     ASSET_MODEL_CHANGED: "Asset model changed",
     ASSET_LOCATION_CHANGED: "Place changed",
+    ASSET_KIT_CHANGED: "Box changed",
     ASSET_STATUS_CHANGED: "Status changed",
     ASSET_VALUATION_CHANGED: "Valuation changed",
     ASSET_QUANTITY_CHANGED: "Quantity changed",
@@ -4585,6 +4612,8 @@ function buildActivityDescription(event: {
     CUSTODY_RELEASED: "Custody released",
     BOOKING_CHECKED_OUT: "Checked out",
     BOOKING_CHECKED_IN: "Checked in",
+    BOOKING_PARTIAL_CHECKOUT: "Partly checked out",
+    BOOKING_PARTIAL_CHECKIN: "Partly checked in",
   };
 
   const label =

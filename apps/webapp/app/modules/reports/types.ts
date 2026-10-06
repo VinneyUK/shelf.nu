@@ -632,7 +632,14 @@ export type AssetActivityType =
   | "BOOKING_CHECKED_OUT"
   | "BOOKING_CHECKED_IN"
   | "LOCATION_CHANGED"
-  | "CATEGORY_CHANGED";
+  | "CATEGORY_CHANGED"
+  // fork: moved into or out of a box, and what the fork's own features log
+  | "BOX_CHANGED"
+  | "SOLD"
+  | "LABEL"
+  | "ATTACHMENT"
+  | "RECEIPT"
+  | "AI_DRAFT";
 
 /** Row type for the Asset Activity Summary report */
 export interface AssetActivityRow {

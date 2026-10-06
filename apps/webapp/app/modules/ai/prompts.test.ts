@@ -6,6 +6,8 @@ import {
   cleanReceiptResult,
   descriptionWithPurchase,
   PHOTO_TOOL,
+  RECEIPT_TOOL,
+  receiptSystemPrompt,
   photoContent,
   photoSystemPrompt,
 } from "./prompts";
@@ -170,5 +172,77 @@ describe("description with purchase", () => {
     expect(once).toBe("A cable. Bought from Amazon on 30/09/2026.");
     expect(descriptionWithPurchase(once, "Amazon", d)).toBe(once);
     expect(descriptionWithPurchase("A cable.", null, null)).toBe("A cable.");
+  });
+});
+
+describe("catalogue-style descriptions", () => {
+  it("asks for a product description of the item, then a paragraph on its surroundings", () => {
+    const p = photoSystemPrompt("GBP");
+    expect(p).toMatch(/catalogue entry/);
+    expect(p).toMatch(/good product description/);
+    expect(p).toMatch(/two paragraphs separated by a blank line/);
+    expect(p).toMatch(/starting "In the photo:"/);
+    expect(p).toMatch(/what is around it/);
+    expect(p).toMatch(/key features and specifications/);
+    expect(p).toMatch(/accessories or parts that are included/);
+    expect(p).toMatch(/under 800 characters/);
+    expect(p).toMatch(/don't put the price in it/);
+  });
+  it("won't have specifications made up", () => {
+    const p = photoSystemPrompt("GBP");
+    expect(p).toMatch(/Never invent details/);
+    expect(p).toMatch(
+      /only if it is visible or you are confident it belongs to that exact model/
+    );
+  });
+  it("sets the same expectation in the tool the model fills in", () => {
+    const tool = JSON.stringify(PHOTO_TOOL);
+    expect(tool).toMatch(/catalogue entry in two paragraphs/);
+    expect(tool).toMatch(/In the photo/);
+    expect(tool).toMatch(/Under 800 characters/);
+  });
+  it("leaves receipts alone: there is no scene to describe", () => {
+    expect(receiptSystemPrompt("GBP")).not.toMatch(/In the photo/);
+    expect(JSON.stringify(RECEIPT_TOOL)).not.toMatch(/In the photo/);
+    expect(JSON.stringify(RECEIPT_TOOL)).toMatch(/One to three sentences/);
+  });
+  it("lets the web research inform the features as well as the price", () => {
+    const img = { type: "text", text: "(img)" } as const;
+    const text = (
+      photoContent(img, [], "GBP", "Item: keyboard")[1] as { text: string }
+    ).text;
+    expect(text).toMatch(
+      /exact model, which you can use for the description's features/
+    );
+  });
+});
+
+describe("keeping the description's paragraphs", () => {
+  const clean = (description: string) =>
+    cleanPhotoResult(
+      {
+        items: [
+          { name: "Thing", description, estimatedValue: 10, categoryId: null },
+        ],
+      },
+      categories
+    )[0].description;
+
+  it("keeps the break between the item and its setting", () => {
+    expect(
+      clean("A 24-key MIDI keyboard.\n\nIn the photo: on a black desk mat.")
+    ).toBe("A 24-key MIDI keyboard.\n\nIn the photo: on a black desk mat.");
+  });
+  it("tidies stray spacing, extra blank lines and empty paragraphs", () => {
+    expect(
+      clean("  A   keyboard.  \n\n\n\n  In the   photo: a desk.\n\n   \n")
+    ).toBe("A keyboard.\n\nIn the photo: a desk.");
+  });
+  it("turns a single line break into a space, so a paragraph never splits mid-sentence", () => {
+    expect(clean("A keyboard\nwith 24 keys.")).toBe("A keyboard with 24 keys.");
+  });
+  it("still stays within Shelf's limit", () => {
+    const long = ("Sentence. ".repeat(60) + "\n\n").repeat(5);
+    expect(clean(long).length).toBeLessThanOrEqual(1000);
   });
 });

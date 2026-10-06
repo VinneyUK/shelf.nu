@@ -144,7 +144,7 @@ const NAVIGATION_COMMANDS: QuickCommand[] = [
   },
   {
     id: "kits",
-    label: "Kits",
+    label: "Boxes",
     description: "Browse and manage asset boxes",
     href: "/kits",
     keywords: ["packages", "bundles", "collections"],

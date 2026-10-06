@@ -7,6 +7,9 @@ import {
   AI_PAGE,
 } from "./apply-to-menu";
 import {
+  assetStatusAllowed,
+  boxStatusFilterOptions,
+  tagUseForAllowed,
   type Customisations,
   DEFAULT_CUSTOMISATIONS,
   cleanHiddenMenuItems,
@@ -239,5 +242,46 @@ describe("custody switch", () => {
       ).toBeNull();
     }
     expect(redirectForSwitchedOffPage("/assets/a1/overview", c)).toBeNull();
+  });
+});
+
+describe("filter options follow the switches", () => {
+  const on = { custodyEnabled: true, bookingsEnabled: true };
+  const off = { custodyEnabled: false, bookingsEnabled: false };
+
+  it("offers In custody only with custody on, and Checked out only with bookings on", () => {
+    expect(assetStatusAllowed("IN_CUSTODY", on)).toBe(true);
+    expect(assetStatusAllowed("IN_CUSTODY", off)).toBe(false);
+    expect(assetStatusAllowed("CHECKED_OUT", on)).toBe(true);
+    expect(assetStatusAllowed("CHECKED_OUT", off)).toBe(false);
+    // each follows its own feature, not the other's
+    expect(
+      assetStatusAllowed("IN_CUSTODY", {
+        custodyEnabled: true,
+        bookingsEnabled: false,
+      })
+    ).toBe(true);
+    expect(
+      assetStatusAllowed("CHECKED_OUT", {
+        custodyEnabled: false,
+        bookingsEnabled: true,
+      })
+    ).toBe(true);
+  });
+  it("always offers Available and anything else", () => {
+    expect(assetStatusAllowed("AVAILABLE", off)).toBe(true);
+    expect(assetStatusAllowed("SOLD", off)).toBe(true);
+  });
+  it("offers the Booking tag type only with bookings on", () => {
+    expect(tagUseForAllowed("BOOKING", { bookingsEnabled: true })).toBe(true);
+    expect(tagUseForAllowed("BOOKING", { bookingsEnabled: false })).toBe(false);
+    expect(tagUseForAllowed("ASSET", { bookingsEnabled: false })).toBe(true);
+  });
+  it("gives a Box status filter only when there's something to choose between", () => {
+    expect(boxStatusFilterOptions({ custodyEnabled: true })).toEqual([
+      "AVAILABLE",
+      "IN_CUSTODY",
+    ]);
+    expect(boxStatusFilterOptions({ custodyEnabled: false })).toEqual([]);
   });
 });

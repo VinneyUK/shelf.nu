@@ -36,6 +36,8 @@ import {
   TooltipTrigger,
 } from "~/components/shared/tooltip";
 import { useFormatPrefs } from "~/hooks/use-format-prefs";
+import { assetStatusAllowed } from "~/modules/customisation/catalogue";
+import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { SOLD_STATUS } from "~/modules/sold/constants";
 import type { AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import {
@@ -883,11 +885,15 @@ function StatusEnumField({
   name,
   disabled = false,
 }: Omit<EnumFieldProps, "options">) {
+  const customisations = useCustomisations(); // customise feature
   const options: EnumOption[] = [
-    ...Object.values(AssetStatus).map((status) => ({
-      id: status,
-      label: userFriendlyAssetStatus(status),
-    })),
+    // "In custody" needs custody, "Checked out" needs bookings
+    ...Object.values(AssetStatus)
+      .filter((status) => assetStatusAllowed(status, customisations))
+      .map((status) => ({
+        id: status,
+        label: userFriendlyAssetStatus(status),
+      })),
     { id: SOLD_STATUS, label: "Sold" }, // sold feature
   ];
 
@@ -1433,7 +1439,7 @@ function LocationEnumField({
       closeOnSelect={true}
       triggerWrapperClassName="w-full text-gray-700"
       className="z-[999999]"
-      contentLabel="Location"
+      contentLabel="Place"
     />
   );
 }
@@ -1560,7 +1566,7 @@ function KitEnumField({
       closeOnSelect={true}
       triggerWrapperClassName="w-full text-gray-700"
       className="z-[999999]"
-      contentLabel="Kit"
+      contentLabel="Box"
     />
   );
 }

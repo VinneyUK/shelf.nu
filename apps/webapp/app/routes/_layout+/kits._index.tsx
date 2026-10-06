@@ -42,6 +42,7 @@ import { getLocationsForCreateAndEdit } from "~/modules/asset/service.server";
 import type { EntityForCodeResolution } from "~/modules/barcode/display";
 import { resolveDisplayCode } from "~/modules/barcode/display";
 import { getBoxIds } from "~/modules/box-numbers/service.server"; // labels feature
+import { boxStatusFilterOptions } from "~/modules/customisation/catalogue";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   getPaginatedAndFilterableKits,
@@ -339,7 +340,6 @@ export default function KitsIndexPage() {
       <Header>
         {canCreateKit && (
           <Button to="new" role="link" aria-label="new box">
-            
             New box
           </Button>
         )}
@@ -348,14 +348,16 @@ export default function KitsIndexPage() {
       <ListContentWrapper>
         <Filters
           slots={{
-            "left-of-search": (
-              <StatusFilter
-                statusItems={{
-                  [KitStatus.AVAILABLE]: KitStatus.AVAILABLE,
-                  [KitStatus.IN_CUSTODY]: KitStatus.IN_CUSTODY,
-                }}
-              />
-            ),
+            // customise feature: with custody off there is nothing to choose between
+            "left-of-search":
+              boxStatusFilterOptions({ custodyEnabled }).length > 0 ? (
+                <StatusFilter
+                  statusItems={{
+                    [KitStatus.AVAILABLE]: KitStatus.AVAILABLE,
+                    [KitStatus.IN_CUSTODY]: KitStatus.IN_CUSTODY,
+                  }}
+                />
+              ) : null,
             "right-of-search": null,
           }}
         >
