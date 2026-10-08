@@ -50,6 +50,8 @@ export interface CommonButtonProps {
    * when the link is not hovered.
    */
   onlyNewTabIconOnHover?: boolean;
+  /** fork: no new-tab arrow at all (an icon-only button already says what it is) */
+  hideNewTabIcon?: boolean;
   error?: string;
   hideErrorText?: boolean;
   children?: ReactNode;
@@ -199,6 +201,7 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
       children,
       onlyIconOnMobile,
       onlyNewTabIconOnHover = false,
+      hideNewTabIcon = false, // fork
       error,
       hideErrorText = false,
       tooltip,
@@ -296,7 +299,7 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
             `}</style>
 
             <span>{children}</span>
-            {newTab && (
+            {newTab && !hideNewTabIcon && (
               <ExternalLinkIcon
                 className={tw(
                   "external-link-icon mt-px",

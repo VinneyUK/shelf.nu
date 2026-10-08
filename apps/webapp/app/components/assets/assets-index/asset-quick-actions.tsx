@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { PencilIcon, QrCodeIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { GlobeIcon, PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
 import { PrintLabelButton } from "~/components/labels/print-label-button"; // labels feature
 import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
@@ -108,10 +108,11 @@ export default function AssetQuickActions({
           to={webSearchUrl(searchEngine, asset.title)}
           target="_blank"
           rel="noopener noreferrer"
+          hideNewTabIcon
           aria-label="Search the web for this asset"
           tooltip={`Search ${searchEngineLabel} for this asset`}
         >
-          <SearchIcon className="size-4" />
+          <GlobeIcon className="size-4" />
         </Button>
       </When>
 
