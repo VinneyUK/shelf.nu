@@ -13,6 +13,8 @@ import {
   type Customisations,
   DEFAULT_CUSTOMISATIONS,
   cleanHiddenMenuItems,
+  SEARCH_ENGINE_IDS,
+  type SearchEngineId,
 } from "./catalogue";
 
 type OrganizationFlags = { auditsEnabled: boolean | null };
@@ -56,6 +58,11 @@ export async function getWorkspaceCustomisations(
       row?.reuseLatestNumber ?? DEFAULT_CUSTOMISATIONS.reuseLatestNumber,
     soldBoxEnabled:
       row?.soldBoxEnabled ?? DEFAULT_CUSTOMISATIONS.soldBoxEnabled,
+    searchEngine: (SEARCH_ENGINE_IDS as readonly string[]).includes(
+      row?.searchEngine ?? ""
+    )
+      ? (row!.searchEngine as SearchEngineId)
+      : DEFAULT_CUSTOMISATIONS.searchEngine,
   };
 }
 
@@ -112,6 +119,7 @@ export async function saveCustomisePageSettings(
         showTimesInDates: settings.showTimesInDates,
         reuseLatestNumber: settings.reuseLatestNumber,
         soldBoxEnabled: settings.soldBoxEnabled,
+        searchEngine: settings.searchEngine,
       },
       update: {
         bookingsEnabled: settings.bookingsEnabled,
@@ -127,6 +135,7 @@ export async function saveCustomisePageSettings(
         showTimesInDates: settings.showTimesInDates,
         reuseLatestNumber: settings.reuseLatestNumber,
         soldBoxEnabled: settings.soldBoxEnabled,
+        searchEngine: settings.searchEngine,
       },
     }),
     db.organization.update({

@@ -14,6 +14,7 @@ import {
 import { useAssetIndexViewState } from "~/hooks/use-asset-index-view-state";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import { assetStatusAllowed } from "~/modules/customisation/catalogue";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { SOLD_STATUS } from "~/modules/sold/constants"; // sold feature
 import { userHasCustodyViewPermission } from "~/utils/permissions/custody-and-bookings-permissions.validator.client";
@@ -34,7 +35,8 @@ export function AssetIndexFilters({
 }: {
   disableTeamMemberFilter?: boolean;
 }) {
-  const { custodyEnabled } = useCustomisations(); // customise feature
+  const customisations = useCustomisations(); // customise feature
+  const { custodyEnabled } = customisations;
   /** Used for filtering based on user type */
   const filterParams: string[] = ["category", "tag", "location"];
   if (!disableTeamMemberFilter) {
@@ -58,7 +60,18 @@ export function AssetIndexFilters({
         slots={{
           // sold feature
           "left-of-search": (
-            <StatusFilter statusItems={{ ...AssetStatus, SOLD: SOLD_STATUS }} />
+            <StatusFilter
+              statusItems={{
+                ...Object.fromEntries(
+                  Object.values(AssetStatus)
+                    .filter((status) =>
+                      assetStatusAllowed(status, customisations)
+                    )
+                    .map((status) => [status, status])
+                ),
+                SOLD: SOLD_STATUS,
+              }}
+            />
           ),
           "right-of-search": (
             <div className="flex items-center gap-2">
@@ -124,9 +137,7 @@ export function AssetIndexFilters({
             <DynamicDropdown
               trigger={
                 <div className="flex cursor-pointer items-center gap-2">
-                  
-                  Places{" "}
-                  <ChevronRight className="hidden rotate-90 md:inline" />
+                  Places <ChevronRight className="hidden rotate-90 md:inline" />
                 </div>
               }
               model={{ name: "location", queryKey: "name" }}

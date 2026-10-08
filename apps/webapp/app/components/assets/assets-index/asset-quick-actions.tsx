@@ -1,10 +1,14 @@
 import type { CSSProperties } from "react";
-import { CopyIcon, PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, QrCodeIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { PrintLabelButton } from "~/components/labels/print-label-button"; // labels feature
 import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import type { AssetsFromViewItem } from "~/modules/asset/types";
+import {
+  SEARCH_ENGINES,
+  webSearchUrl,
+} from "~/modules/customisation/catalogue"; // customise feature
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import {
   PermissionAction,
@@ -30,7 +34,9 @@ export default function AssetQuickActions({
   asset,
 }: AssetQuickActionsProps) {
   const { roles } = useUserRoleHelper();
-  const { qrDownloadsEnabled } = useCustomisations(); // customise feature
+  const { qrDownloadsEnabled, searchEngine } = useCustomisations(); // customise feature
+  const searchEngineLabel =
+    SEARCH_ENGINES.find((e) => e.id === searchEngine)?.label ?? "the web";
 
   return (
     <div className={tw("flex items-center gap-2", className)} style={style}>
@@ -94,15 +100,18 @@ export default function AssetQuickActions({
           action: PermissionAction.update,
         })}
       >
+        {/* fork: searches the web for the asset (was: duplicate) */}
         <Button
           size="sm"
           variant="secondary"
           className={"p-2"}
-          to={`/assets/${asset.id}/overview/duplicate`}
-          aria-label="Duplicate asset"
-          tooltip="Duplicate asset"
+          to={webSearchUrl(searchEngine, asset.title)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Search the web for this asset"
+          tooltip={`Search ${searchEngineLabel} for this asset`}
         >
-          <CopyIcon className="size-4" />
+          <SearchIcon className="size-4" />
         </Button>
       </When>
 

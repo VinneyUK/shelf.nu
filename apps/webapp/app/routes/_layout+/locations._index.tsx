@@ -164,7 +164,7 @@ export default function LocationsIndexPage() {
               <Th className="whitespace-nowrap">Child places</Th>
               <Th>Assets</Th>
               <Th>Boxes</Th>
-              <Th>Recorded value</Th>
+              <Th>Value</Th>
               <Th>Sell price</Th>
               <Th title="Sell price minus recorded value, for the items that have been sold">
                 Difference

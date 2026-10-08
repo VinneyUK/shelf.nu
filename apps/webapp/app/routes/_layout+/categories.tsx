@@ -200,7 +200,7 @@ export default function CategoriesPage() {
             <>
               <Th>Description</Th>
               <Th>Assets</Th>
-              <Th>Recorded value</Th>
+              <Th>Value</Th>
               <Th>Sell price</Th>
               <Th title="Sell price minus recorded value, for the items that have been sold">
                 Difference

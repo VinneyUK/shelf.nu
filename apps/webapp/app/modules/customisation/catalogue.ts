@@ -4,6 +4,31 @@
  * upstream Shelf.
  */
 
+/** The search engines on offer for the "Search the web" button (customise feature). */
+export const SEARCH_ENGINES = [
+  { id: "google", label: "Google", url: "https://www.google.com/search?q=" },
+  { id: "duckduckgo", label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
+  { id: "bing", label: "Bing", url: "https://www.bing.com/search?q=" },
+  {
+    id: "ebay",
+    label: "eBay UK",
+    url: "https://www.ebay.co.uk/sch/i.html?_nkw=",
+  },
+  { id: "amazon", label: "Amazon UK", url: "https://www.amazon.co.uk/s?k=" },
+] as const;
+export type SearchEngineId = (typeof SEARCH_ENGINES)[number]["id"];
+export const SEARCH_ENGINE_IDS = SEARCH_ENGINES.map((e) => e.id) as [
+  SearchEngineId,
+  ...SearchEngineId[],
+];
+
+/** The address that searches the web for `query` with the chosen engine. */
+export function webSearchUrl(engine: string, query: string) {
+  const found =
+    SEARCH_ENGINES.find((e) => e.id === engine) ?? SEARCH_ENGINES[0];
+  return found.url + encodeURIComponent(query.trim());
+}
+
 export type Customisations = {
   /** Bookings, the calendar and everything that books assets */
   bookingsEnabled: boolean;
@@ -30,6 +55,8 @@ export type Customisations = {
   reuseLatestNumber: boolean;
   /** Marking an asset as sold moves it into a box called "Sold" */
   soldBoxEnabled: boolean;
+  /** Which search engine the "Search the web" button on an asset uses */
+  searchEngine: SearchEngineId;
   /** AI feature: switched on with a key saved (set in Settings → AI, not on the Customise page) */
   aiEnabled: boolean;
 };
@@ -50,6 +77,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   showTimesInDates: false,
   reuseLatestNumber: true,
   soldBoxEnabled: true,
+  searchEngine: "google",
   aiEnabled: false,
 };
 

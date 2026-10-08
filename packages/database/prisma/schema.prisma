@@ -2705,6 +2705,8 @@ model WorkspaceCustomisation {
   reuseLatestNumber  Boolean @default(true)
   /// Marking an asset as sold moves it into a box called "Sold"
   soldBoxEnabled     Boolean @default(true)
+  /// Which search engine the "Search the web" button on an asset uses
+  searchEngine       String  @default("google")
   updatedAt        DateTime @updatedAt
 }
 

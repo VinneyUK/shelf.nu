@@ -24,7 +24,6 @@ import { PrintedLabelCard } from "~/components/labels/printed-label-card"; // la
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
-import { ScanDetails } from "~/components/location/scan-details";
 import When from "~/components/when/when";
 import { db } from "~/database/db.server";
 import { usePosition } from "~/hooks/use-position";
@@ -743,13 +742,7 @@ export default function KitDetails() {
               }}
             />
           ) : null}
-          {userHasPermission({
-            roles,
-            entity: PermissionEntity.scan,
-            action: PermissionAction.read,
-          }) ? (
-            <ScanDetails lastScan={lastScan} />
-          ) : null}
+          {/* fork: the last-scan map is removed throughout */}
         </div>
       </div>
     </>

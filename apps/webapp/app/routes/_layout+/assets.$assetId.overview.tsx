@@ -30,7 +30,6 @@ import ContextualModal from "~/components/layout/contextual-modal";
 import type { HeaderData } from "~/components/layout/header/types";
 import { LocationBadge } from "~/components/location/location-badge";
 import { LocationSelect } from "~/components/location/location-select";
-import { ScanDetails } from "~/components/location/scan-details";
 import { MarkdownViewer } from "~/components/markdown/markdown-viewer";
 import { Badge } from "~/components/shared/badge";
 import { Button } from "~/components/shared/button";
@@ -938,7 +937,6 @@ export default function AssetOverview() {
                  */
                 <li className="group/field w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
                   <span className="w-1/4 text-[14px] font-medium text-gray-900">
-                    
                     Place
                   </span>
                   <div className="relative mt-1 flex items-start gap-2 md:mt-0 md:w-3/5">
@@ -974,7 +972,6 @@ export default function AssetOverview() {
                                           target="_blank"
                                           className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
                                         >
-                                          
                                           via box
                                         </Button>
                                       </TooltipTrigger>
@@ -986,11 +983,9 @@ export default function AssetOverview() {
                                           {viaKit.name}
                                         </p>
                                         <p className="mt-1 text-xs text-gray-500">
-                                          
-                                          These units are at this place
-                                          because the asset is in this box.
-                                          Change the box&apos;s place to move
-                                          them.
+                                          These units are at this place because
+                                          the asset is in this box. Change the
+                                          box&apos;s place to move them.
                                         </p>
                                       </TooltipContent>
                                     </Tooltip>
@@ -1005,7 +1000,6 @@ export default function AssetOverview() {
                         </ul>
                       ) : (
                         <span className="text-gray-600">
-                          
                           No places · {asset.quantity ?? 0}{" "}
                           {asset.unitOfMeasure || "units"} unplaced
                         </span>
@@ -1726,7 +1720,6 @@ export default function AssetOverview() {
                                         target="_blank"
                                         className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 no-underline hover:bg-blue-100 hover:text-blue-800"
                                       >
-                                        
                                         via box
                                       </Button>
                                     </TooltipTrigger>
@@ -1738,7 +1731,6 @@ export default function AssetOverview() {
                                         {p.viaKit.name}
                                       </p>
                                       <p className="mt-1 text-xs text-gray-500">
-                                        
                                         These units are at this place because
                                         the asset is in this box. Change the
                                         box&apos;s place to move them.
@@ -1908,15 +1900,7 @@ export default function AssetOverview() {
               sequentialId={asset.sequentialId}
             />
           )}
-          <When
-            truthy={userHasPermission({
-              roles,
-              entity: PermissionEntity.scan,
-              action: PermissionAction.read,
-            })}
-          >
-            <ScanDetails lastScan={lastScan} />
-          </When>
+          {/* fork: the last-scan map is removed throughout */}
         </div>
       </div>
     </div>

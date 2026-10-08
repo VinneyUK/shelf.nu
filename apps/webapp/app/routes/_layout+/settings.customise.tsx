@@ -17,6 +17,10 @@ import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import { HIDEABLE_MENU_ITEMS } from "~/modules/customisation/catalogue";
 import {
+  SEARCH_ENGINE_IDS,
+  SEARCH_ENGINES,
+} from "~/modules/customisation/catalogue"; // customise feature
+import {
   getCustomisePageSettings,
   saveCustomisePageSettings,
 } from "~/modules/customisation/service.server";
@@ -70,6 +74,7 @@ const CustomiseSchema = z.object({
   showTimesInDates: flag,
   reuseLatestNumber: flag,
   soldBoxEnabled: flag,
+  searchEngine: z.enum(SEARCH_ENGINE_IDS),
 
   labelsEnabled: flag,
   custodyEnabled: flag,
@@ -190,6 +195,9 @@ export default function CustomiseSettings() {
     settings.reuseLatestNumber
   );
   const [soldBox, setSoldBox] = useState<boolean>(settings.soldBoxEnabled);
+  const [searchEngine, setSearchEngine] = useState<string>(
+    settings.searchEngine
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -226,6 +234,7 @@ export default function CustomiseSettings() {
         value={String(reuseNumber)}
       />
       <input type="hidden" name="soldBoxEnabled" value={String(soldBox)} />
+      <input type="hidden" name="searchEngine" value={searchEngine} />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -389,6 +398,33 @@ export default function CustomiseSettings() {
             </p>
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">
+          Search the web
+        </h3>
+        <p className="text-sm text-gray-600">
+          The search button on each asset in the list looks the asset's name up
+          with this search engine, in a new tab.
+        </p>
+        <label className="mt-3 flex flex-col gap-1 text-sm font-medium text-gray-900">
+          Search engine
+          <select
+            value={searchEngine}
+            onChange={(e) => {
+              setSearchEngine(e.target.value);
+              changed();
+            }}
+            className="w-full max-w-xs rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            {SEARCH_ENGINES.map((engine) => (
+              <option key={engine.id} value={engine.id}>
+                {engine.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </Card>
 
       <Card>

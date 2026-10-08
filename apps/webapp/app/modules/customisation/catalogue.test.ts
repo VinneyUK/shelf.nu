@@ -8,6 +8,8 @@ import {
 } from "./apply-to-menu";
 import {
   assetStatusAllowed,
+  SEARCH_ENGINES,
+  webSearchUrl,
   boxStatusFilterOptions,
   tagUseForAllowed,
   type Customisations,
@@ -283,5 +285,27 @@ describe("filter options follow the switches", () => {
       "IN_CUSTODY",
     ]);
     expect(boxStatusFilterOptions({ custodyEnabled: false })).toEqual([]);
+  });
+});
+
+describe("the web search button", () => {
+  it("builds a search for the asset's name with the chosen engine", () => {
+    expect(webSearchUrl("google", "ROLI LUMI Keys")).toBe(
+      "https://www.google.com/search?q=ROLI%20LUMI%20Keys"
+    );
+    expect(webSearchUrl("duckduckgo", "a & b")).toBe(
+      "https://duckduckgo.com/?q=a%20%26%20b"
+    );
+    expect(webSearchUrl("ebay", " Poly Sync 20 ")).toBe(
+      "https://www.ebay.co.uk/sch/i.html?_nkw=Poly%20Sync%2020"
+    );
+  });
+  it("falls back to Google for an engine it doesn't know", () => {
+    expect(webSearchUrl("altavista", "x")).toMatch(
+      /^https:\/\/www\.google\.com/
+    );
+  });
+  it("offers only https engines", () => {
+    for (const e of SEARCH_ENGINES) expect(e.url).toMatch(/^https:\/\//);
   });
 });

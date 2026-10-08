@@ -19,8 +19,6 @@ import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
 import { ActionsDropdown } from "~/components/location/actions-dropdown";
 import { LocationTree } from "~/components/location/location-tree";
-import { ShelfMap } from "~/components/location/map";
-import { MapPlaceholder } from "~/components/location/map-placeholder";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import TextualDivider from "~/components/shared/textual-divider";
@@ -41,7 +39,6 @@ import {
 } from "~/utils/cookies.server";
 import { sendNotification } from "~/utils/emitter/send-notification.server";
 import { makeShelfError } from "~/utils/error";
-import { geolocate } from "~/utils/geolocate.server";
 import {
   payload,
   error,
@@ -100,30 +97,11 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
       title: location.name,
     };
 
-    // Use cached coordinates from database, or geocode and cache if not available
-    let mapData: { lat: number; lon: number } | null = null;
-    if (location.latitude !== null && location.longitude !== null) {
-      mapData = { lat: location.latitude, lon: location.longitude };
-    } else if (location.address) {
-      // Fallback: geocode and cache coordinates for existing locations
-      mapData = await geolocate(location.address);
-      if (mapData) {
-        // Update the database with the geocoded coordinates
-        await db.location.update({
-          where: { id: location.id, organizationId },
-          data: {
-            latitude: mapData.lat,
-            longitude: mapData.lon,
-          },
-        });
-      }
-    }
-
+    // fork: maps are removed throughout; no geocoding either
     return data(
       payload({
         location,
         header,
-        mapData,
         breadcrumbs: parentBreadcrumbs,
         childLocations,
         totalAssetsWithinLocation,
@@ -191,13 +169,8 @@ type LocationBreadcrumb = {
 };
 
 export default function LocationPage() {
-  const {
-    location,
-    mapData,
-    breadcrumbs,
-    childLocations,
-    totalAssetsWithinLocation,
-  } = useLoaderData<typeof loader>();
+  const { location, breadcrumbs, childLocations, totalAssetsWithinLocation } =
+    useLoaderData<typeof loader>();
 
   const matches = useMatches();
   const currentRoute: RouteHandleWithName = matches[matches.length - 1];
@@ -255,7 +228,6 @@ export default function LocationPage() {
           {childLocations?.length ? (
             <Card>
               <div className="text-sm font-semibold text-gray-900">
-                
                 Child places
               </div>
               <div className="mt-3 text-sm text-gray-700">
@@ -276,45 +248,6 @@ export default function LocationPage() {
             <span className=" text-xs font-medium text-gray-600">Address</span>
             <span className="font-medium">{location.address ?? "-"}</span>
           </div>
-
-          {mapData ? (
-            <div className="mb-10 mt-4 border">
-              <ShelfMap latitude={mapData.lat} longitude={mapData.lon} />
-              <div className="border border-gray-200 p-4 text-center text-text-xs text-gray-600">
-                <p>
-                  <Button
-                    to={`https://www.google.com/maps/search/?api=1&query=${mapData.lat},${mapData.lon}&zoom=15&markers=${mapData.lat},${mapData.lon}`}
-                    variant="link"
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                  >
-                    See in Google Maps
-                  </Button>
-                </p>
-                <p className="mt-2 text-xs">
-                  Geocoding by{" "}
-                  <a
-                    href="https://nominatim.openstreetmap.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 underline"
-                  >
-                    OpenStreetMap Nominatim
-                  </a>
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-10 mt-4 border">
-              <MapPlaceholder
-                description={
-                  location.address
-                    ? "We couldn't geolocate your address. Please try formatting it differently."
-                    : "Add an address to see it on the map."
-                }
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>
