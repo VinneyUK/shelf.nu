@@ -508,7 +508,7 @@ const ListAssetContent = ({
                 }}
                 alt={`Image of ${item.title}`}
                 className="size-full rounded-[4px] border object-cover"
-                withPreview
+                linkTo={`/assets/${item.id}`} // fork: click goes to the asset
               />
             </div>
             <div className="min-w-[180px]">
@@ -571,7 +571,7 @@ const ListAssetContent = ({
                       const kitEntries = Array.from(kitRowsByKitId.values());
                       return (
                         <span className="ml-2 inline-flex items-center gap-2 text-xs font-normal text-gray-500">
-                          · {atLocation} {unit}  at this place
+                          · {atLocation} {unit} at this place
                           {kitEntries.length > 0 ? (
                             <TooltipProvider delayDuration={150}>
                               <Tooltip>
@@ -620,15 +620,12 @@ const ListAssetContent = ({
                                     ))}
                                   </ul>
                                   <p className="mt-1 text-xs text-gray-500">
-                                    
                                     These units are at this place because the
                                     asset is in {""}
                                     {kitEntries.length === 1
                                       ? "this box"
                                       : "these boxes"}
-                                    
-                                    . Change the box&apos;s place to move
-                                    them.
+                                    . Change the box&apos;s place to move them.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>

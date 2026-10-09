@@ -181,7 +181,7 @@ export function AdvancedIndexColumn({
                   }}
                   alt={`Image of ${item.title}`}
                   className="size-10 shrink-0 rounded-[4px] border object-cover"
-                  withPreview={true}
+                  linkTo={`/assets/${item.id}`} // fork: click goes to the asset
                   hoverPreview={imagePreviewOnHover} // customise feature
                 />
               ) : null}

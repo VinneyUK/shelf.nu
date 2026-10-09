@@ -34,6 +34,10 @@ export type BaseAssetImageProps = {
   useThumbnail?: boolean;
   /** customise feature: show the full image in a card while hovering */
   hoverPreview?: boolean;
+  /** fork: clicking the hover preview goes here (the asset page) instead of enlarging */
+  linkTo?: string;
+  /** fork: clicking the image (or its hover preview) goes here instead of opening the enlarged image */
+  linkTo?: string;
   rest?: HTMLImageElement;
 };
 

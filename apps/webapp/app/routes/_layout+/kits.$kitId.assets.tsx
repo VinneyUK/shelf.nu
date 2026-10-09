@@ -290,7 +290,7 @@ function ListContent({ item }: { item: ListItemForKitPage }) {
                 }}
                 alt={`Image of ${item.title}`}
                 className="size-full rounded-[4px] border object-cover"
-                withPreview
+                linkTo={`/assets/${item.id}`} // fork: click goes to the asset
               />
             </div>
             <div className="min-w-[180px]">
@@ -325,7 +325,7 @@ function ListContent({ item }: { item: ListItemForKitPage }) {
                           ?.quantity ?? 0;
                       return (
                         <span className="ml-2 text-xs text-gray-500">
-                          · {inKit} {unit}  in box
+                          · {inKit} {unit} in box
                         </span>
                       );
                     })()

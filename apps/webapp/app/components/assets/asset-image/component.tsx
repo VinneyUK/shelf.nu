@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState, useCallback, useRef } from "react";
 
+import { Link } from "react-router";
 import { Dialog, DialogPortal } from "~/components/layout/dialog";
 import { Button } from "~/components/shared/button";
 import {
@@ -148,6 +149,7 @@ export const AssetImage = ({
   withPreview = false,
   useThumbnail = true,
   hoverPreview = false, // customise feature
+  linkTo, // fork
   alt,
   ...rest
 }: AssetImageProps) => {
@@ -536,12 +538,24 @@ export const AssetImage = ({
             // Purely visual: the click-to-enlarge preview stays the accessible way in
             aria-hidden="true"
           >
-            <img
-              src={previewImageUrl}
-              alt=""
-              className="block max-h-80 max-w-80 rounded object-contain"
-              decoding="async"
-            />
+            {linkTo ? (
+              // fork: the big preview is a link to the asset, not an enlarger
+              <Link to={linkTo} prefetch="intent">
+                <img
+                  src={previewImageUrl}
+                  alt=""
+                  className="block max-h-80 max-w-80 rounded object-contain"
+                  decoding="async"
+                />
+              </Link>
+            ) : (
+              <img
+                src={previewImageUrl}
+                alt=""
+                className="block max-h-80 max-w-80 rounded object-contain"
+                decoding="async"
+              />
+            )}
           </HoverCardContent>
         </HoverCard>
       ) : (

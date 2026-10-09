@@ -187,7 +187,7 @@ export const AssetsList = ({
                         }}
                         alt={`Image of ${resource.title}`}
                         className="size-14 shrink-0 rounded border object-cover"
-                        withPreview
+                        linkTo={`/assets/${resource.id}`} // fork: click goes to the asset
                       />
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <ResourceTitleLink
@@ -304,7 +304,7 @@ export const ListAssetContent = ({
                 }}
                 alt={`Image of ${item.title}`}
                 className="size-full rounded-[4px] border object-cover"
-                withPreview
+                linkTo={`/assets/${item.id}`} // fork: click goes to the asset
                 hoverPreview={imagePreviewOnHover} // customise feature
               />
 
