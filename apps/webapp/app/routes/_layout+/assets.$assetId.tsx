@@ -13,6 +13,7 @@ import ActionsDropdown from "~/components/assets/actions-dropdown";
 import { AssetImage } from "~/components/assets/asset-image/component";
 import BookingActionsDropdown from "~/components/assets/booking-actions-dropdown";
 
+import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import Header from "~/components/layout/header";
 import type { HeaderData } from "~/components/layout/header/types";
 import HorizontalTabs from "~/components/layout/horizontal-tabs";
@@ -598,7 +599,14 @@ export default function AssetDetailsPage() {
               availableToBook={asset.availableToBook}
               asset={asset}
             />
-            {/* labels feature: the Labelled pill was here; the green ID chip and the Label card already say it */}
+            {/* labels feature: the asset's ID chip, as on a box: click copies,
+                double-click opens the label menu, green once a label is printed */}
+            {asset.sequentialId ? (
+              <AssetIdChip
+                assetId={asset.id}
+                sequentialId={asset.sequentialId}
+              />
+            ) : null}
           </div>
         }
       >

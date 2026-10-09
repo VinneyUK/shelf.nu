@@ -9,15 +9,24 @@
  */
 import type { ReactNode } from "react";
 import { Link, useLoaderData } from "react-router";
+import {
+  AttachmentsHover,
+  useAttachmentCount,
+} from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { AssetImage } from "~/components/assets/asset-image";
-import { AssetStatusBadge } from "~/components/assets/asset-status-badge/asset-status-badge";
 import { CategoryBadge } from "~/components/assets/category-badge";
+import { InlineStatusCell } from "~/components/inline-edit/inline-status-cell"; // inline editing
+import { useLabelledAt } from "~/components/labels/labelled-badge"; // labels feature
 import { EmptyState } from "~/components/list/empty-state";
 import { DateS } from "~/components/shared/date";
 import { Tag as TagBadge } from "~/components/shared/tag";
+import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
+import { useSale } from "~/components/sold/use-sale"; // sold feature
+import { TeamMemberBadge } from "~/components/user/team-member-badge";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import type { AssetsFromViewItem } from "~/modules/asset/types";
 import { getPrimaryLocation } from "~/modules/asset/utils";
+import { formatCustodyList } from "~/modules/custody/utils";
 import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { formatCurrency } from "~/utils/currency";
 import AssetQuickActions from "./asset-quick-actions";
@@ -35,7 +44,13 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function AssetTile({ item }: { item: AssetsFromViewItem }) {
-  const { locationsEnabled, kitsEnabled } = useCustomisations();
+  const { locationsEnabled, kitsEnabled, custodyEnabled, labelsEnabled } =
+    useCustomisations();
+  const attachments = useAttachmentCount(item.id); // attachments feature
+  const labelledAt = useLabelledAt(item.id); // labels feature
+  const { primary: custody, total: custodians } = formatCustodyList(
+    item.custody
+  );
   const organization = useCurrentOrganization();
   const location = getPrimaryLocation(item);
   const kit = item.assetKits?.[0]?.kit ?? null;
@@ -49,6 +64,15 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
         })
       : null;
   const isQty = item.type === "QUANTITY_TRACKED";
+  const sale = useSale(item.id); // sold feature
+  const soldFor =
+    sale && sale.price !== null
+      ? formatCurrency({
+          value: sale.price,
+          currency: organization?.currency ?? "GBP",
+          locale: "en-GB",
+        })
+      : null;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
@@ -72,13 +96,20 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
             its pale colour reads against any photo */}
         <div className="pointer-events-none absolute right-2 top-2 flex max-w-[85%] flex-wrap justify-end gap-1">
           {[
-            <AssetStatusBadge
+            // the same sold-aware status as the list rows: Sold (with the date), and
+            // the inline editor to mark it sold or available
+            <InlineStatusCell
               key="status"
-              id={item.id}
+              assetId={item.id}
               status={item.status}
-              availableToBook={item.availableToBook}
-              asset={item}
-            />,
+            >
+              <StatusOrSold
+                id={item.id}
+                status={item.status}
+                availableToBook={item.availableToBook}
+                asset={item}
+              />
+            </InlineStatusCell>,
             item.category ? (
               <CategoryBadge key="category" category={item.category} />
             ) : null,
@@ -122,6 +153,17 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
             <DateS date={item.createdAt} />
           </Fact>
           {value ? <Fact label="Value">{value}</Fact> : null}
+          {sale ? (
+            <Fact label="Sold for">
+              {soldFor ?? "—"}
+              {sale.soldOn ? (
+                <span className="text-gray-500">
+                  {" "}
+                  on <DateS date={sale.soldOn} />
+                </span>
+              ) : null}
+            </Fact>
+          ) : null}
           {isQty ? (
             <Fact label="Quantity">
               {item.quantity ?? 0}
@@ -132,6 +174,28 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
             <Fact label="Place">{location.name}</Fact>
           ) : null}
           {kitsEnabled && kit ? <Fact label="Box">{kit.name}</Fact> : null}
+          {custodyEnabled && custody ? (
+            <Fact label="Custodian">
+              <TeamMemberBadge teamMember={custody.custodian} />
+              {custodians > 1 ? (
+                <span className="ml-1 text-gray-500">+{custodians - 1}</span>
+              ) : null}
+            </Fact>
+          ) : null}
+          {labelsEnabled && labelledAt ? (
+            <Fact label="Labelled">
+              <DateS date={labelledAt} />
+            </Fact>
+          ) : null}
+          {attachments > 0 ? (
+            <Fact label="Attachments">
+              <AttachmentsHover assetId={item.id} count={attachments}>
+                <span className="underline decoration-dotted">
+                  {attachments}
+                </span>
+              </AttachmentsHover>
+            </Fact>
+          ) : null}
         </div>
       </div>
 

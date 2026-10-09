@@ -23,7 +23,7 @@ export const attachmentCountsLookup = createSharedLookup<{
   counts?: Record<string, number>;
 }>("/api/asset-attachments/counts");
 
-function useAttachmentCount(assetId: string): number {
+export function useAttachmentCount(assetId: string): number {
   return attachmentCountsLookup.useData()?.counts?.[assetId] ?? 0;
 }
 
@@ -39,7 +39,7 @@ type ListedAttachment = {
  * Hovering (or focusing) the paperclip lists the asset's attachments, each
  * opening in a new tab. The list loads the first time it's opened.
  */
-function AttachmentsHover({
+export function AttachmentsHover({
   assetId,
   count,
   children,
