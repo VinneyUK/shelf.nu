@@ -15,7 +15,6 @@ import {
 } from "~/components/asset-attachment/attachment-count"; // attachments feature
 import { AssetImage } from "~/components/assets/asset-image";
 import { CategoryBadge } from "~/components/assets/category-badge";
-import { InlineStatusCell } from "~/components/inline-edit/inline-status-cell"; // inline editing
 import { useLabelledAt } from "~/components/labels/labelled-badge"; // labels feature
 import { EmptyState } from "~/components/list/empty-state";
 import { DateS } from "~/components/shared/date";
@@ -96,20 +95,14 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
             its pale colour reads against any photo */}
         <div className="pointer-events-none absolute right-2 top-2 flex max-w-[85%] flex-wrap justify-end gap-1">
           {[
-            // the same sold-aware status as the list rows: Sold (with the date), and
-            // the inline editor to mark it sold or available
-            <InlineStatusCell
+            // the sold-aware status the rows use, as a plain chip (no inline editor here)
+            <StatusOrSold
               key="status"
-              assetId={item.id}
+              id={item.id}
               status={item.status}
-            >
-              <StatusOrSold
-                id={item.id}
-                status={item.status}
-                availableToBook={item.availableToBook}
-                asset={item}
-              />
-            </InlineStatusCell>,
+              availableToBook={item.availableToBook}
+              asset={item}
+            />,
             item.category ? (
               <CategoryBadge key="category" category={item.category} />
             ) : null,
