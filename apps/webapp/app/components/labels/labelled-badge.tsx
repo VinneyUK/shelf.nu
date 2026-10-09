@@ -65,15 +65,35 @@ export function AssetLabelledBadge({
   );
 }
 
+/** How often, and how long, to look again after a print or remove was asked for. */
+const POLL_MS = 3000;
+const POLL_FOR_MS = 120_000;
+
 /**
- * After queueing a label: refresh now, and again as the print finishes (it
- * takes a few seconds), so the green chip and Labelled state follow it.
+ * After queueing a label (or removing one): keep looking until the labelled
+ * state actually changes. Labels print on a background pass every 10 seconds
+ * and the printer takes a while, so a fixed few retries used to miss it; this
+ * polls every 3 seconds for up to two minutes, and stops as soon as the given
+ * ids have changed (or, with no ids, as soon as anything has).
  */
-export function refreshLabelledSoon() {
-  void labelledLookup.refresh();
-  for (const ms of [4000, 10000, 25000]) {
-    setTimeout(() => void labelledLookup.refresh(), ms);
-  }
+export function refreshLabelledSoon(ids: string[] = []) {
+  const before = { ...(labelledLookup.peek()?.labelled ?? {}) };
+  const changed = () => {
+    const now = labelledLookup.peek()?.labelled ?? {};
+    if (ids.length === 0) {
+      const keys = new Set([...Object.keys(before), ...Object.keys(now)]);
+      return [...keys].some((k) => before[k] !== now[k]);
+    }
+    return ids.every((id) => before[id] !== now[id]);
+  };
+  const started = Date.now();
+  const tick = () => {
+    void labelledLookup.refresh().then(() => {
+      if (changed() || Date.now() - started > POLL_FOR_MS) return;
+      setTimeout(tick, POLL_MS);
+    });
+  };
+  tick();
 }
 
 /** Every labelled asset and box, for working out what a selection holds. */

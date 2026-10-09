@@ -23,7 +23,11 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 
 const AssetSettingsSchema = z.object({
-  mode: z.enum(Object.values(AssetIndexMode) as [AssetIndexMode]),
+  // fork: "TILE" is the simple view shown as tiles
+  mode: z.enum([
+    ...(Object.values(AssetIndexMode) as [AssetIndexMode]),
+    "TILE",
+  ]),
 });
 
 export async function action({ context, request }: ActionFunctionArgs) {
@@ -59,7 +63,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
         await changeMode({
           userId,
           organizationId,
-          mode,
+          mode: mode === "TILE" ? AssetIndexMode.SIMPLE : mode,
+          tileView: mode === "TILE",
         });
 
         // Redirect to the assets page, so the loader takes care of setting the correct search params and filters based on the mode

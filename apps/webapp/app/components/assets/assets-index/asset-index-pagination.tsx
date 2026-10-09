@@ -23,7 +23,7 @@ export function AssetIndexPagination() {
   const { isMd } = useViewportHeight();
   const { state } = useSidebar();
 
-  const { modeIsSimple, modeIsAdvanced } = useAssetIndexViewState();
+  const { modeIsSimple, modeIsAdvanced, tileView } = useAssetIndexViewState();
   const disabledButtonStyles =
     "cursor-not-allowed pointer-events-none bg-gray-50 text-gray-800";
 
@@ -83,12 +83,26 @@ export function AssetIndexPagination() {
               <input type="hidden" name="intent" value="changeMode" />
 
               <ButtonGroup>
+                {/* fork: the simple view as a grid of tiles */}
                 <Button
                   type="submit"
                   variant="secondary"
                   className={tw(
                     "h-[34px]",
-                    modeIsSimple ? disabledButtonStyles : ""
+                    tileView ? disabledButtonStyles : ""
+                  )}
+                  name="mode"
+                  value="TILE"
+                  aria-label="Switch to tile view"
+                >
+                  Tile
+                </Button>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className={tw(
+                    "h-[34px]",
+                    modeIsSimple && !tileView ? disabledButtonStyles : ""
                   )}
                   name="mode"
                   value="SIMPLE"

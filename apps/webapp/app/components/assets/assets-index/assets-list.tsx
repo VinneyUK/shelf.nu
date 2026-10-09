@@ -9,6 +9,7 @@ import { InlineStatusCell } from "~/components/inline-edit/inline-status-cell"; 
 import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
+import { EmptyState } from "~/components/list/empty-state";
 import { LocationBadge } from "~/components/location/location-badge";
 import { Button } from "~/components/shared/button";
 import { EmptyTableValue } from "~/components/shared/empty-table-value";
@@ -48,6 +49,7 @@ import { AdvancedAssetRow } from "./advanced-asset-row";
 import { AdvancedTableHeader } from "./advanced-table-header";
 import { AssetIndexPagination } from "./asset-index-pagination";
 import AssetQuickActions from "./asset-quick-actions";
+import { AssetTiles } from "./asset-tiles"; // fork: tile view
 import { AssetIndexFilters } from "./filters";
 import { ListItemTagsColumn } from "./list-item-tags-column";
 import AvailabilityCalendar from "../../availability-calendar/availability-calendar";
@@ -69,7 +71,7 @@ export const AssetsList = ({
   const { custodyEnabled } = useCustomisations(); // customise feature
   const { items } = useLoaderData<AssetIndexLoaderData>();
   // We use the hook because it handles optimistic UI
-  const { modeIsSimple } = useAssetIndexViewState();
+  const { modeIsSimple, tileView } = useAssetIndexViewState();
   const { isAvailabilityView, shouldShowAvailabilityView } =
     useIsAvailabilityView();
   const columns = useAssetIndexColumns();
@@ -212,6 +214,18 @@ export const AssetsList = ({
                     </div>
                   );
                 }}
+              />
+              <AssetIndexPagination />
+            </>
+          ) : tileView ? (
+            // fork: the simple view as a grid of tiles
+            <>
+              <AssetTiles
+                emptyState={
+                  customEmptyStateContent ? (
+                    <EmptyState customContent={customEmptyStateContent} />
+                  ) : undefined
+                }
               />
               <AssetIndexPagination />
             </>

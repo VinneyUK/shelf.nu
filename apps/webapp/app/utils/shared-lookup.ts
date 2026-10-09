@@ -62,7 +62,14 @@ export function createSharedLookup<T>(url: string, ttlMs = 5_000) {
     /** Reload now, e.g. after marking something sold. */
     refresh() {
       loadedAt = 0;
+      // A refresh asked for while a load is in flight must not be lost: it
+      // runs again once that load finishes, so it sees anything newer.
+      if (inFlight) return inFlight.then(() => load());
       return load();
+    },
+    /** The current data without subscribing (for polling loops). */
+    peek(): T | null {
+      return data;
     },
   };
 }

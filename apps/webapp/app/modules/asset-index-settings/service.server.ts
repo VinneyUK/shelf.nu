@@ -229,15 +229,18 @@ export async function changeMode({
   userId,
   organizationId,
   mode,
+  tileView,
 }: {
   userId: string;
   organizationId: string;
   mode: AssetIndexMode;
+  /** fork: the simple view as tiles */
+  tileView?: boolean;
 }) {
   try {
     const updatedAssetIndexSettings = await db.assetIndexSettings.update({
       where: { userId_organizationId: { userId, organizationId } },
-      data: { mode },
+      data: { mode, ...(tileView === undefined ? {} : { tileView }) },
     });
 
     return updatedAssetIndexSettings;

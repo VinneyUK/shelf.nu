@@ -14,6 +14,7 @@ export function useAssetIndexViewState() {
     return {
       mode: null,
       modeIsSimple: true,
+      tileView: false,
       modeIsAdvanced: false,
       settings: null,
       isAssetIndexPage: false,
@@ -24,6 +25,8 @@ export function useAssetIndexViewState() {
   return {
     mode,
     modeIsSimple: mode === "SIMPLE",
+    // fork: the simple view shown as tiles
+    tileView: mode === "SIMPLE" && Boolean(data?.settings?.tileView),
     modeIsAdvanced: mode === "ADVANCED",
     settings: data?.settings,
     isAssetIndexPage: true,

@@ -36,7 +36,7 @@ export function PrintedLabelCard({ assetId }: { assetId: string }) {
   if (!label) return null;
 
   return (
-    <Card className="my-3 py-3 md:border">
+    <Card className="mb-3 mt-0 py-3 md:border">
       <h3 className="mb-2 text-sm font-semibold text-gray-900">Label</h3>
       <div className="flex flex-col gap-2">
         <LabelPreview

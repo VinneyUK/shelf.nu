@@ -24,8 +24,8 @@ export function PrintLabelButton({
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success)
-      refreshLabelledSoon();
-  }, [fetcher.state, fetcher.data]);
+      refreshLabelledSoon([id]);
+  }, [fetcher.state, fetcher.data, id]);
 
   if (!labelsEnabled) return null;
   const label = labelledAt ? "Re-print label" : "Print label";

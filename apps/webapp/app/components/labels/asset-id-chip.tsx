@@ -65,8 +65,8 @@ export function AssetIdChip({
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success)
-      refreshLabelledSoon();
-  }, [fetcher.state, fetcher.data]);
+      refreshLabelledSoon([assetId]);
+  }, [fetcher.state, fetcher.data, assetId]);
   useEffect(
     () => () => {
       if (clickTimer.current) clearTimeout(clickTimer.current);
