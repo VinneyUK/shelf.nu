@@ -35,8 +35,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function AssetTile({ item }: { item: AssetsFromViewItem }) {
-  const { imagePreviewOnHover, locationsEnabled, kitsEnabled } =
-    useCustomisations();
+  const { locationsEnabled, kitsEnabled } = useCustomisations();
   const organization = useCurrentOrganization();
   const location = getPrimaryLocation(item);
   const kit = item.assetKits?.[0]?.kit ?? null;
@@ -53,21 +52,57 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
-      <Link to={href} className="block aspect-[4/3] bg-gray-50">
-        <AssetImage
-          asset={{
-            id: item.id,
-            mainImage: item.mainImage,
-            thumbnailImage: item.thumbnailImage,
-            mainImageExpiration: item.mainImageExpiration,
-            assetModel: item.assetModel ?? null,
-          }}
-          alt={`Image of ${item.title}`}
-          className="size-full object-cover"
-          hoverPreview={imagePreviewOnHover}
-          linkTo={href}
-        />
-      </Link>
+      <div className="relative aspect-[4/3] bg-gray-50">
+        <Link to={href} className="block size-full">
+          {/* the full-size image, not the small thumbnail: a tile is big enough to show it */}
+          <AssetImage
+            asset={{
+              id: item.id,
+              mainImage: item.mainImage,
+              thumbnailImage: item.thumbnailImage,
+              mainImageExpiration: item.mainImageExpiration,
+              assetModel: item.assetModel ?? null,
+            }}
+            alt={`Image of ${item.title}`}
+            className="size-full object-cover"
+            useThumbnail={false}
+          />
+        </Link>
+        {/* status, category and tags over the photo, each on a white backing so
+            its pale colour reads against any photo */}
+        <div className="pointer-events-none absolute right-2 top-2 flex max-w-[85%] flex-wrap justify-end gap-1">
+          {[
+            <AssetStatusBadge
+              key="status"
+              id={item.id}
+              status={item.status}
+              availableToBook={item.availableToBook}
+              asset={item}
+            />,
+            item.category ? (
+              <CategoryBadge key="category" category={item.category} />
+            ) : null,
+            ...(item.tags ?? []).map((tag) => (
+              <TagBadge
+                key={tag.id}
+                color={tag.color ?? undefined}
+                withDot={false}
+              >
+                {tag.name}
+              </TagBadge>
+            )),
+          ]
+            .filter(Boolean)
+            .map((chip, i) => (
+              <span
+                key={i}
+                className="pointer-events-auto rounded-full bg-white shadow-sm ring-1 ring-black/5"
+              >
+                {chip}
+              </span>
+            ))}
+        </div>
+      </div>
 
       <div className="flex flex-1 flex-col gap-3 p-3">
         <Link
@@ -76,26 +111,6 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
         >
           {item.title}
         </Link>
-
-        {/* status, category and tags as chips, on the white card so their colours read */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <AssetStatusBadge
-            id={item.id}
-            status={item.status}
-            availableToBook={item.availableToBook}
-            asset={item}
-          />
-          {item.category ? <CategoryBadge category={item.category} /> : null}
-          {item.tags?.map((tag) => (
-            <TagBadge
-              key={tag.id}
-              color={tag.color ?? undefined}
-              withDot={false}
-            >
-              {tag.name}
-            </TagBadge>
-          ))}
-        </div>
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3">
           {item.sequentialId ? (
