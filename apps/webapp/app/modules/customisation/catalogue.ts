@@ -42,6 +42,8 @@ export type Customisations = {
   imagePreviewOnHover: boolean;
   /** Label printing (labels feature) */
   labelsEnabled: boolean;
+  /** Filament feature: Bambu Lab spools */
+  filamentEnabled: boolean;
   /** Custody: assigning assets to people */
   custodyEnabled: boolean;
   locationsEnabled: boolean;
@@ -69,6 +71,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   hiddenMenuItems: [],
   imagePreviewOnHover: true,
   labelsEnabled: true,
+  filamentEnabled: true,
   custodyEnabled: true,
   locationsEnabled: true,
   kitsEnabled: true,
@@ -131,6 +134,7 @@ export function hiddenMenuMatches(c: Customisations): MenuMatch[] {
   if (!c.auditsEnabled) matches.push({ to: "/audits" });
   if (!c.remindersEnabled) matches.push({ to: "/reminders" });
   if (!c.labelsEnabled) matches.push({ to: "/labels" });
+  if (!c.filamentEnabled) matches.push({ to: "/filament" }); // filament feature
   if (!c.locationsEnabled) matches.push({ to: "/locations" });
   if (!c.kitsEnabled) matches.push({ to: "/kits" });
   if (!c.assetModelsEnabled) matches.push({ to: "/settings/asset-models" });
@@ -160,6 +164,7 @@ const REMINDER_PAGES = [
 ];
 const AUDIT_PAGES = [/^\/audits(\/|$)/];
 const LABEL_PAGES = [/^\/labels(\/|$)/];
+const FILAMENT_PAGES = [/^\/filament(\/|$)/]; // filament feature
 const LOCATION_PAGES = [
   /^\/locations(\/|$)/,
   /^\/assets\/[^/]+\/overview\/update-location(\/|$)/,
@@ -192,6 +197,7 @@ export function redirectForSwitchedOffPage(
     (!c.remindersEnabled && REMINDER_PAGES.some((re) => re.test(pathname))) ||
     (!c.auditsEnabled && AUDIT_PAGES.some((re) => re.test(pathname))) ||
     (!c.labelsEnabled && LABEL_PAGES.some((re) => re.test(pathname))) ||
+    (!c.filamentEnabled && FILAMENT_PAGES.some((re) => re.test(pathname))) ||
     (!c.custodyEnabled && CUSTODY_PAGES.some((re) => re.test(pathname))) ||
     (!c.locationsEnabled && LOCATION_PAGES.some((re) => re.test(pathname))) ||
     (!c.kitsEnabled && KIT_PAGES.some((re) => re.test(pathname))) ||

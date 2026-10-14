@@ -2694,6 +2694,8 @@ model WorkspaceCustomisation {
   imagePreviewOnHover Boolean @default(true)
   /// Label printing (menu item, print buttons, background printing)
   labelsEnabled    Boolean  @default(true)
+  /// Filament feature: the Filament page and its menu item
+  filamentEnabled  Boolean  @default(true)
   /// Custody (assigning assets to people)
   custodyEnabled   Boolean  @default(true)
   /// Locations, kits and asset models; Shelf's own QR code downloads
@@ -2904,6 +2906,65 @@ model AssetDraft {
   createdAssetId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Filament (fork): Bambu Lab spools, kept apart from assets.
+// ---------------------------------------------------------------------------
+model Spool {
+  id               String    @id @default(cuid())
+  organizationId   String
+  /// Bambu's product line, e.g. "PLA Basic", "PETG HF"
+  type             String
+  /// The base material, e.g. "PLA", "PETG" (from the product line)
+  material         String
+  colourName       String
+  /// "#RRGGBB"
+  colourHex        String
+  /// Filament on a full spool, in grams
+  weightGrams      Int       @default(1000)
+  remainingPercent Int       @default(100)
+  pricePaid        Float?
+  purchasedOn      DateTime? @db.Date
+  /// active | empty (reached 0%, waiting for you to confirm) | retired
+  status           String    @default("active")
+  /// 1 to 4 when loaded in the AMS
+  amsSlot          Int?
+  /// The spool's RFID tag (tray UUID), when the AMS has read it
+  tagUid           String?
+  /// manual | ams | receipt
+  source           String    @default("manual")
+  notes            String?
+  retiredAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([organizationId, tagUid])
+  @@index([organizationId, status])
+}
+
+/// A spool the AMS or a receipt has found, waiting for approval
+model SpoolCandidate {
+  id               String    @id @default(cuid())
+  organizationId   String
+  /// ams | receipt
+  source           String
+  type             String
+  material         String
+  colourName       String
+  colourHex        String
+  weightGrams      Int       @default(1000)
+  remainingPercent Int?
+  pricePaid        Float?
+  purchasedOn      DateTime? @db.Date
+  tagUid           String?
+  amsSlot          Int?
+  /// pending | approved | dismissed
+  status           String    @default("pending")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([organizationId, status])
 }

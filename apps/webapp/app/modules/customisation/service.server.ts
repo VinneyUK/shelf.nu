@@ -43,6 +43,8 @@ export async function getWorkspaceCustomisations(
     imagePreviewOnHover:
       row?.imagePreviewOnHover ?? DEFAULT_CUSTOMISATIONS.imagePreviewOnHover,
     labelsEnabled: row?.labelsEnabled ?? DEFAULT_CUSTOMISATIONS.labelsEnabled,
+    filamentEnabled:
+      row?.filamentEnabled ?? DEFAULT_CUSTOMISATIONS.filamentEnabled,
     custodyEnabled:
       row?.custodyEnabled ?? DEFAULT_CUSTOMISATIONS.custodyEnabled,
     locationsEnabled:
@@ -111,6 +113,7 @@ export async function saveCustomisePageSettings(
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
+        filamentEnabled: settings.filamentEnabled,
         custodyEnabled: settings.custodyEnabled,
         locationsEnabled: settings.locationsEnabled,
         kitsEnabled: settings.kitsEnabled,
@@ -127,6 +130,7 @@ export async function saveCustomisePageSettings(
         hiddenMenuItems,
         imagePreviewOnHover: settings.imagePreviewOnHover,
         labelsEnabled: settings.labelsEnabled,
+        filamentEnabled: settings.filamentEnabled,
         custodyEnabled: settings.custodyEnabled,
         locationsEnabled: settings.locationsEnabled,
         kitsEnabled: settings.kitsEnabled,

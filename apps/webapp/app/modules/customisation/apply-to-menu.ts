@@ -15,6 +15,7 @@ export const EMAIL_RECEIPTS_PAGE = "/settings/email-receipts";
 export const LABELS_PAGE = "/labels";
 export const AI_PAGE = "/settings/ai";
 export const DRAFTS_PAGE = "/drafts";
+export const FILAMENT_PAGE = "/filament";
 
 /**
  * labels feature: Labels goes after Reports, or at the end of the first
@@ -47,6 +48,23 @@ function withLabelsItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
 }
 
 /** AI feature: Drafts goes straight after Labels (or Reports), only once AI is switched on. */
+/** Filament feature: Filament goes after Drafts (or Labels, or Reports). */
+function withFilamentItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
+  if (items.some((i) => i.type === "child" && i.to === FILAMENT_PAGE))
+    return items;
+  const filament = {
+    type: "child",
+    title: "Filament",
+    to: FILAMENT_PAGE,
+    Icon,
+  } as NavItem;
+  const anchor = [DRAFTS_PAGE, LABELS_PAGE, "/reports"]
+    .map((to) => items.findIndex((i) => i.type === "child" && i.to === to))
+    .find((i) => i >= 0);
+  if (anchor === undefined) return [...items, filament];
+  return [...items.slice(0, anchor + 1), filament, ...items.slice(anchor + 1)];
+}
+
 function withDraftsItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
   if (items.some((i) => i.type === "child" && i.to === DRAFTS_PAGE))
     return items;
@@ -131,15 +149,20 @@ export function applyCustomisationsToMenu(
   menu: { topMenuItems: NavItem[]; bottomMenuItems: NavItem[] },
   c: Customisations,
   labelsIcon?: LucideIcon,
-  draftsIcon?: LucideIcon
+  draftsIcon?: LucideIcon,
+  filamentIcon?: LucideIcon
 ) {
   const withLabels = labelsIcon
     ? withLabelsItem(menu.topMenuItems, labelsIcon)
     : menu.topMenuItems;
-  const top =
+  const withDrafts =
     draftsIcon && c.aiEnabled
       ? withDraftsItem(withLabels, draftsIcon)
       : withLabels;
+  const top =
+    filamentIcon && c.filamentEnabled
+      ? withFilamentItem(withDrafts, filamentIcon)
+      : withDrafts;
   return {
     topMenuItems: tidy(withoutHidden(top, c)),
     bottomMenuItems: tidy(withoutHidden(menu.bottomMenuItems, c)),

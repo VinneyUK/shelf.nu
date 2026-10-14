@@ -77,6 +77,7 @@ const CustomiseSchema = z.object({
   searchEngine: z.enum(SEARCH_ENGINE_IDS),
 
   labelsEnabled: flag,
+  filamentEnabled: flag,
   custodyEnabled: flag,
   locationsEnabled: flag,
   kitsEnabled: flag,
@@ -158,6 +159,12 @@ const FEATURES = [
       "Barcode fields on assets (Code 128, EAN-13 and others), alongside Shelf's QR codes.",
   },
   {
+    name: "filamentEnabled",
+    title: "Filament",
+    description:
+      "Your Bambu Lab spools: the Filament page, what's in the AMS, what's left and what it cost.",
+  },
+  {
     name: "labelsEnabled",
     title: "Labels",
     description:
@@ -178,6 +185,7 @@ export default function CustomiseSettings() {
     auditsEnabled: settings.auditsEnabled,
     barcodesEnabled: settings.barcodesEnabled,
     labelsEnabled: settings.labelsEnabled,
+    filamentEnabled: settings.filamentEnabled,
     custodyEnabled: settings.custodyEnabled,
     locationsEnabled: settings.locationsEnabled,
     kitsEnabled: settings.kitsEnabled,

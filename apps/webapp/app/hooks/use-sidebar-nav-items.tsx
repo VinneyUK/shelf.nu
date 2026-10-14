@@ -21,6 +21,7 @@ import {
   type LucideIcon,
   PrinterIcon,
   SparklesIcon,
+  SpoolIcon,
 } from "lucide-react";
 import { useLoaderData } from "react-router";
 import { UpgradeMessage } from "~/components/marketing/upgrade-message";
@@ -299,7 +300,8 @@ export function useSidebarNavItems() {
     },
     customisations,
     PrinterIcon, // labels feature: the Labels menu item's icon
-    SparklesIcon // AI feature: the Drafts menu item's icon
+    SparklesIcon, // AI feature: the Drafts menu item's icon
+    SpoolIcon // filament feature
   ); // customise feature
 }
 

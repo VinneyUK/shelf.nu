@@ -309,3 +309,20 @@ describe("the web search button", () => {
     for (const e of SEARCH_ENGINES) expect(e.url).toMatch(/^https:\/\//);
   });
 });
+
+describe("the Filament switch", () => {
+  it("blocks the Filament page when it's off, and leaves it alone when it's on", () => {
+    expect(
+      redirectForSwitchedOffPage("/filament", {
+        ...DEFAULT_CUSTOMISATIONS,
+        filamentEnabled: false,
+      })
+    ).toBe("/home");
+    expect(
+      redirectForSwitchedOffPage("/filament", DEFAULT_CUSTOMISATIONS)
+    ).toBeNull();
+  });
+  it("is on unless switched off", () => {
+    expect(DEFAULT_CUSTOMISATIONS.filamentEnabled).toBe(true);
+  });
+});
