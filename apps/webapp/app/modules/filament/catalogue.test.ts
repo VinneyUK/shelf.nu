@@ -7,6 +7,7 @@ import {
   coloursFor,
   costPerKg,
   filamentKey,
+  filamentSlug,
   gramsLeft,
   groupSpools,
   materialOf,
@@ -171,5 +172,17 @@ describe("grouping by filament", () => {
       gramsLeft: 1500,
     });
     expect(groups[0].spools).toHaveLength(2);
+  });
+});
+
+describe("a filament's address", () => {
+  it("is readable, and tells Silk from Silk+", () => {
+    expect(filamentSlug("PLA Basic", "Pumpkin Orange")).toBe(
+      "pla-basic--pumpkin-orange"
+    );
+    expect(filamentSlug("PLA Silk+", "Gold")).toBe("pla-silk-plus--gold");
+    expect(filamentSlug("PLA Silk", "Gold")).not.toBe(
+      filamentSlug("PLA Silk+", "Gold")
+    );
   });
 });

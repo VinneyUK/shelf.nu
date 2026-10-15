@@ -13,8 +13,9 @@ type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 import { ShelfError } from "~/utils/error";
 import {
   catalogueEntry,
-  cleanHex,
   clampPercent,
+  cleanHex,
+  filamentSlug,
   materialOf,
   weighedPercent,
 } from "./catalogue";
@@ -374,4 +375,120 @@ export async function dismissCandidate(organizationId: string, id: string) {
     data: { status: "dismissed" },
   });
   if (count === 0) throw bad("That one has already been dealt with.", 404);
+}
+
+// ------------------------------------------------------- one filament's page
+
+/** Every spool of one filament (line and colour), oldest first, by its address. */
+export async function getFilamentBySlug(organizationId: string, slug: string) {
+  const spools = await db.spool.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "asc" },
+  });
+  return spools.filter((s) => filamentSlug(s.type, s.colourName) === slug);
+}
+
+export type FilamentInput = {
+  type: string;
+  colourName: string;
+  colourHex: string;
+  filamentCode: string | null;
+  weightGrams: number;
+  spoolWeightGrams: number | null;
+};
+
+/**
+ * Edits the filament itself (line, colour, code, spool size, empty spool) on
+ * every one of its spools. Returns its address, which changes with a rename.
+ */
+export async function updateFilament(
+  organizationId: string,
+  slug: string,
+  input: FilamentInput
+) {
+  const spools = await getFilamentBySlug(organizationId, slug);
+  if (spools.length === 0) throw bad("That filament doesn't exist.", 404);
+  const type = input.type.trim().slice(0, 60);
+  if (!type) throw bad("Choose the filament type.");
+  const colourName = input.colourName.trim().slice(0, 60);
+  if (!colourName) throw bad("Give the colour a name.");
+  const colourHex = cleanHex(input.colourHex);
+  if (!colourHex) throw bad("Choose a colour.");
+  if (
+    !Number.isFinite(input.weightGrams) ||
+    input.weightGrams <= 0 ||
+    input.weightGrams > 10000
+  ) {
+    throw bad("The spool size should be in grams, between 1 and 10,000.");
+  }
+  await db.spool.updateMany({
+    where: { organizationId, id: { in: spools.map((s) => s.id) } },
+    data: {
+      type,
+      material: materialOf(type),
+      colourName,
+      colourHex,
+      filamentCode:
+        input.filamentCode
+          ?.trim()
+          .replace(/[^A-Za-z0-9]/g, "")
+          .slice(0, 12) || null,
+      weightGrams: Math.round(input.weightGrams),
+      spoolWeightGrams:
+        input.spoolWeightGrams && input.spoolWeightGrams > 0
+          ? Math.round(input.spoolWeightGrams)
+          : catalogueEntry(type)?.spoolWeight ?? null,
+    },
+  });
+  return filamentSlug(type, colourName);
+}
+
+export type SpoolDetailsInput = {
+  remainingPercent: number;
+  pricePaid: number | null;
+  purchasedOn: Date | null;
+  amsSlot: number | null;
+  notes: string | null;
+};
+
+/** Edits one spool's own details: what's left, price, date, AMS slot, notes. */
+export async function updateSpoolDetails(
+  organizationId: string,
+  id: string,
+  input: SpoolDetailsInput
+) {
+  const existing = await db.spool.findFirst({ where: { id, organizationId } });
+  if (!existing) throw bad("That spool doesn't exist.", 404);
+  if (
+    input.pricePaid !== null &&
+    (!Number.isFinite(input.pricePaid) || input.pricePaid < 0)
+  ) {
+    throw bad("The price paid should be a positive amount.");
+  }
+  if (input.amsSlot !== null && ![1, 2, 3, 4].includes(input.amsSlot))
+    throw bad("The AMS has slots 1 to 4.");
+  const remainingPercent = clampPercent(input.remainingPercent);
+  const status =
+    existing.status === "retired"
+      ? "retired"
+      : remainingPercent === 0
+      ? "empty"
+      : "active";
+  return db.$transaction(async (tx) => {
+    await freeSlot(tx, organizationId, input.amsSlot, id);
+    return tx.spool.update({
+      where: { id, organizationId },
+      data: {
+        remainingPercent,
+        pricePaid:
+          input.pricePaid === null
+            ? null
+            : Math.round(input.pricePaid * 100) / 100,
+        purchasedOn: input.purchasedOn,
+        amsSlot: existing.status === "retired" ? null : input.amsSlot,
+        notes: input.notes?.trim().slice(0, 500) || null,
+        status,
+      },
+    });
+  });
 }

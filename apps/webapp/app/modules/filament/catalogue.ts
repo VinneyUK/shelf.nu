@@ -120,6 +120,18 @@ export function weighedPercent({
   return clampPercent(((grossGrams - spoolWeightGrams) / weightGrams) * 100);
 }
 
+/** A filament's address: "pla-silk-plus--champagne". Line and colour, readable and reversible enough. */
+export function filamentSlug(type: string, colourName: string) {
+  const part = (v: string) =>
+    v
+      .trim()
+      .toLowerCase()
+      .replace(/\+/g, "-plus")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  return `${part(type)}--${part(colourName)}`;
+}
+
 /** The key spools of the same filament share, for their picture. */
 export const filamentKey = (type: string, colourName: string) =>
   `${type.trim().toLowerCase()}|${colourName.trim().toLowerCase()}`;

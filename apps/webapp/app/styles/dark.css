@@ -215,6 +215,7 @@ html.dark .hover\:bg-error-600:hover { background-color: #D92D20; }
 html.dark .hover\:bg-error-800:hover { background-color: #912018; }
 html.dark .hover\:bg-gray-100:hover { background-color: #1c2229; }
 html.dark .hover\:bg-gray-200:hover { background-color: #262d36; }
+html.dark .hover\:bg-gray-25:hover { background-color: #12161b; }
 html.dark .hover\:bg-gray-300:hover { background-color: #343b45; }
 html.dark .hover\:bg-gray-50:hover { background-color: #161b22; }
 html.dark .hover\:bg-gray-50\/50:hover { background-color: rgb(22 27 34 / 0.5); }

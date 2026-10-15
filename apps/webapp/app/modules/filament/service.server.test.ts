@@ -31,10 +31,13 @@ import {
   approveCandidate,
   createSpool,
   createSpools,
+  getFilamentBySlug,
   keepSpool,
   proposeSpool,
   retireSpool,
+  updateFilament,
   updateSpool,
+  updateSpoolDetails,
   weighSpool,
 } from "./service.server";
 
@@ -264,5 +267,100 @@ describe("adding several and weighing", () => {
       spoolWeightGrams: 250,
     });
     await expect(weighSpool("o1", "s1", 0)).rejects.toThrow(/in grams/);
+  });
+});
+
+describe("a filament's own page", () => {
+  const spool = (id: string, type: string, colourName: string, extra = {}) => ({
+    id,
+    type,
+    colourName,
+    status: "active",
+    ...extra,
+  });
+  it("finds every spool of the filament by its address", async () => {
+    m.spool.findMany.mockResolvedValue([
+      spool("a", "PLA Basic", "Pumpkin Orange"),
+      spool("b", "PLA Matte", "Ivory White"),
+      spool("c", "PLA Basic", "pumpkin orange"),
+    ]);
+    expect(
+      (await getFilamentBySlug("o1", "pla-basic--pumpkin-orange")).map(
+        (s) => s.id
+      )
+    ).toEqual(["a", "c"]);
+  });
+  it("edits the filament on every one of its spools, and gives the new address after a rename", async () => {
+    m.spool.findMany.mockResolvedValue([
+      spool("a", "PLA Basic", "Pumpkin Orange"),
+      spool("c", "PLA Basic", "Pumpkin Orange"),
+    ]);
+    const next = await updateFilament("o1", "pla-basic--pumpkin-orange", {
+      type: "PLA Matte",
+      colourName: "Mandarin Orange",
+      colourHex: "#f99963",
+      filamentCode: " 11300 ",
+      weightGrams: 1000,
+      spoolWeightGrams: null,
+    });
+    expect(next).toBe("pla-matte--mandarin-orange");
+    expect(m.spool.updateMany).toHaveBeenLastCalledWith({
+      where: { organizationId: "o1", id: { in: ["a", "c"] } },
+      data: {
+        type: "PLA Matte",
+        material: "PLA",
+        colourName: "Mandarin Orange",
+        colourHex: "#F99963",
+        filamentCode: "11300",
+        weightGrams: 1000,
+        spoolWeightGrams: 250,
+      },
+    });
+  });
+  it("won't edit a filament that isn't there", async () => {
+    m.spool.findMany.mockResolvedValue([]);
+    await expect(
+      updateFilament("o1", "x--y", {
+        type: "PLA Basic",
+        colourName: "Red",
+        colourHex: "#ff0000",
+        filamentCode: null,
+        weightGrams: 1000,
+        spoolWeightGrams: null,
+      })
+    ).rejects.toThrow(/doesn't exist/);
+  });
+  it("edits one spool's own details, keeping one spool per AMS slot", async () => {
+    m.spool.findFirst.mockResolvedValue({ id: "a", status: "active" });
+    const saved = await updateSpoolDetails("o1", "a", {
+      remainingPercent: 0,
+      pricePaid: 19.994,
+      purchasedOn: null,
+      amsSlot: 3,
+      notes: " ",
+    });
+    expect(m.spool.updateMany).toHaveBeenLastCalledWith({
+      where: { organizationId: "o1", amsSlot: 3, NOT: { id: "a" } },
+      data: { amsSlot: null },
+    });
+    expect(saved).toMatchObject({
+      remainingPercent: 0,
+      status: "empty",
+      pricePaid: 19.99,
+      amsSlot: 3,
+      notes: null,
+    });
+  });
+  it("never loads a finished spool into the AMS", async () => {
+    m.spool.findFirst.mockResolvedValue({ id: "a", status: "retired" });
+    expect(
+      await updateSpoolDetails("o1", "a", {
+        remainingPercent: 0,
+        pricePaid: null,
+        purchasedOn: null,
+        amsSlot: 2,
+        notes: null,
+      })
+    ).toMatchObject({ status: "retired", amsSlot: null });
   });
 });
