@@ -7,7 +7,7 @@
  * added at once, what's left can be set by weighing, and each filament's
  * picture comes from the Bambu store.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -18,6 +18,7 @@ import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
+import { ButtonGroup } from "~/components/shared/button-group";
 import { Card } from "~/components/shared/card";
 import { DateS } from "~/components/shared/date";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
@@ -49,6 +50,7 @@ import {
   updateSpool,
   weighSpool,
 } from "~/modules/filament/service.server";
+import { resolveFilamentView } from "~/modules/filament/view.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { formatCurrency } from "~/utils/currency";
 import { makeShelfError } from "~/utils/error";
@@ -72,11 +74,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       entity: PermissionEntity.asset,
       action: PermissionAction.read,
     });
-    const [{ spools, candidates }, images] = await Promise.all([
-      getFilament(organizationId),
-      imageStatuses(organizationId),
-    ]);
-    return payload({
+    const [{ spools, candidates }, images, { view, setCookie }] =
+      await Promise.all([
+        getFilament(organizationId),
+        imageStatuses(organizationId),
+        resolveFilamentView(request),
+      ]);
+    const body = payload({
+      view,
       header: {
         title: "Filament",
         subHeading:
@@ -87,6 +92,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       images,
       summary: summarise(spools),
     });
+    return setCookie
+      ? data(body, { headers: { "Set-Cookie": setCookie } })
+      : body;
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
     throw data(error(reason), { status: reason.status });
@@ -982,6 +990,195 @@ function FilamentGroup({
   );
 }
 
+/** Tile or List, like the assets list. The choice is remembered. */
+function ViewSwitch({ view }: { view: "tile" | "list" }) {
+  const active =
+    "cursor-not-allowed pointer-events-none bg-gray-50 text-gray-800";
+  return (
+    <ButtonGroup>
+      <Button
+        to="?view=tile"
+        variant="secondary"
+        className={tw("h-[34px]", view === "tile" ? active : "")}
+        aria-label="Show as tiles"
+      >
+        Tile
+      </Button>
+      <Button
+        to="?view=list"
+        variant="secondary"
+        className={tw("h-[34px]", view === "list" ? active : "")}
+        aria-label="Show as a list"
+      >
+        List
+      </Button>
+    </ButtonGroup>
+  );
+}
+
+const barColour = (percent: number) => {
+  const tone = remainingTone(percent);
+  return tone === "low" || tone === "empty"
+    ? "bg-error-500"
+    : tone === "full"
+    ? "bg-success-500"
+    : "bg-primary-500";
+};
+
+/** A filament as a tile: its picture, how much is left on each spool, and its spools in a dialog. */
+function FilamentTile({
+  group,
+  images,
+}: {
+  group: ReturnType<typeof groupSpools<SpoolRow>>[number];
+  images: Images;
+}) {
+  const money = useMoney();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const image = images[group.key];
+  const slots = group.spools
+    .map((s) => s.amsSlot)
+    .filter((n): n is number => n !== null);
+  const priced = group.spools
+    .map((s) => costPerKg(s))
+    .filter((n): n is number => n !== null);
+  const perKg = priced.length
+    ? priced.reduce((a, b) => a + b, 0) / priced.length
+    : null;
+  const shown = group.spools.slice(0, 5);
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => dialog.current?.showModal()}
+        className="relative block aspect-square w-full bg-white"
+        aria-label={`Spools of ${group.colourName} ${group.type}`}
+      >
+        {image?.status === "found" ? (
+          <img
+            src={`/api/filament/image/${encodeURIComponent(group.key)}`}
+            alt=""
+            className="size-full object-contain p-3"
+            loading="lazy"
+          />
+        ) : (
+          <span className="flex size-full items-center justify-center bg-gray-50">
+            <Swatch hex={group.colourHex} size="size-24" />
+          </span>
+        )}
+        <span className="pointer-events-none absolute left-2 top-2 flex gap-1">
+          {slots.map((n) => (
+            <span
+              key={n}
+              className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-800 shadow-sm ring-1 ring-black/5"
+            >
+              AMS {n}
+            </span>
+          ))}
+        </span>
+        <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-800 shadow-sm ring-1 ring-black/5">
+          <span
+            aria-hidden="true"
+            className="size-2.5 rounded-full ring-1 ring-black/10"
+            style={{ background: group.colourHex }}
+          />
+          {group.spools.length} spool{group.spools.length === 1 ? "" : "s"}
+        </span>
+      </button>
+
+      <div className="flex flex-1 flex-col gap-2 border-t border-gray-100 p-3">
+        <div>
+          <div className="font-semibold text-gray-900">{group.colourName}</div>
+          <div className="text-xs text-gray-500">{group.type}</div>
+        </div>
+        <div className="flex flex-col gap-1" aria-label="Left on each spool">
+          {shown.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <div className="h-1.5 flex-1 rounded-full bg-gray-100">
+                <div
+                  className={tw(
+                    "h-1.5 rounded-full",
+                    barColour(s.remainingPercent)
+                  )}
+                  style={{ width: `${s.remainingPercent}%` }}
+                />
+              </div>
+              <span className="w-9 text-right text-xs tabular-nums text-gray-600">
+                {s.remainingPercent}%
+              </span>
+            </div>
+          ))}
+          {group.spools.length > shown.length ? (
+            <span className="text-xs text-gray-500">
+              and {group.spools.length - shown.length} more
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-auto flex items-baseline justify-between border-t border-gray-100 pt-2 text-sm">
+          <span className="tabular-nums text-gray-900">
+            {(group.gramsLeft / 1000).toFixed(2)} kg left
+          </span>
+          <span className="text-xs tabular-nums text-gray-500">
+            {perKg !== null ? `${money(perKg)}/kg` : ""}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-3 py-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => dialog.current?.showModal()}
+        >
+          Spools
+        </Button>
+        {image?.productUrl ? (
+          <a
+            href={image.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary-600 hover:underline"
+          >
+            Store
+          </a>
+        ) : null}
+      </div>
+
+      <dialog
+        ref={dialog}
+        className="w-full max-w-3xl rounded-lg p-0 backdrop:bg-black/40"
+        onClick={(e) => {
+          if (e.target === dialog.current) dialog.current?.close(); // a click on the backdrop closes it
+        }}
+      >
+        <div className="flex items-center gap-3 border-b border-gray-200 p-4">
+          <FilamentPicture {...group} images={images} size="size-10" />
+          <div className="flex-1">
+            <div className="font-semibold text-gray-900">
+              {group.colourName}
+            </div>
+            <div className="text-xs text-gray-500">{group.type}</div>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => dialog.current?.close()}
+          >
+            Close
+          </Button>
+        </div>
+        <ul className="divide-y divide-gray-100 p-2">
+          {group.spools.map((s, i) => (
+            <SpoolRowView key={s.id} spool={s} index={i} />
+          ))}
+        </ul>
+      </dialog>
+    </div>
+  );
+}
+
 function RetiredRow({ spool }: { spool: SpoolRow }) {
   const money = useMoney();
   const fetcher = useFetcher<Result>();
@@ -1019,7 +1216,7 @@ function RetiredRow({ spool }: { spool: SpoolRow }) {
 }
 
 export default function FilamentPage() {
-  const { spools, candidates, summary, images } =
+  const { spools, candidates, summary, images, view } =
     useLoaderData<typeof loader>();
   const money = useMoney();
   const [search, setSearch] = useState("");
@@ -1099,6 +1296,7 @@ export default function FilamentPage() {
                 className={tw(inputClass, "w-56")}
                 aria-label="Search spools"
               />
+              <ViewSwitch view={view} />
               <GetPictures images={images} spools={spools} />
               <AddSpool />
             </div>
@@ -1111,6 +1309,12 @@ export default function FilamentPage() {
             <p className="mt-3 text-sm text-gray-600">
               Nothing matches "{search}".
             </p>
+          ) : view === "tile" ? (
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {groups.map((g) => (
+                <FilamentTile key={g.key} group={g} images={images} />
+              ))}
+            </div>
           ) : (
             <ul className="mt-2 divide-y divide-gray-100">
               {groups.map((g) => (

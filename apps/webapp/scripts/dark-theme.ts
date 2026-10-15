@@ -440,6 +440,7 @@ export const MANUAL_TOKENS = new Set<string>([
   "[&>div>p:first-child]:text-gray-900", // covered in dark-theme-extras.ts
   "[&>div>p:last-child]:text-gray-600", // covered in dark-theme-extras.ts
   "]:hover:bg-gray-50", // the secondary Button's hover (two arbitrary variants, in button.tsx)
+  "backdrop:bg-black/40", // a dialog's dimmed backdrop: right in both themes (filament tiles)
 ]);
 
 export type Build = {
