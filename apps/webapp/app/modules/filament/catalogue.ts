@@ -1,48 +1,29 @@
+import { BAMBU_CATALOGUE, type CatalogueEntry } from "./bambu-catalogue";
 /**
  * Filament (fork): Bambu Lab's product lines and the sums behind the Filament
  * page. Pure, so it is used by both the server and the page.
  */
 
-/** Bambu Lab's filament lines, each with its base material. "Other" is typed in. */
-export const BAMBU_TYPES = [
-  ["PLA Basic", "PLA"],
-  ["PLA Basic Gradient", "PLA"],
-  ["PLA Matte", "PLA"],
-  ["PLA Silk+", "PLA"],
-  ["PLA Silk Multi-Color", "PLA"],
-  ["PLA Tough+", "PLA"],
-  ["PLA Translucent", "PLA"],
-  ["PLA Metal", "PLA"],
-  ["PLA Marble", "PLA"],
-  ["PLA Sparkle", "PLA"],
-  ["PLA Galaxy", "PLA"],
-  ["PLA Glow", "PLA"],
-  ["PLA Wood", "PLA"],
-  ["PLA Aero", "PLA"],
-  ["PLA-CF", "PLA"],
-  ["PETG HF", "PETG"],
-  ["PETG Translucent", "PETG"],
-  ["PETG-CF", "PETG"],
-  ["PET-CF", "PET"],
-  ["ABS", "ABS"],
-  ["ABS-GF", "ABS"],
-  ["ASA", "ASA"],
-  ["ASA Aero", "ASA"],
-  ["ASA-CF", "ASA"],
-  ["TPU 95A HF", "TPU"],
-  ["TPU for AMS", "TPU"],
-  ["PC", "PC"],
-  ["PC FR", "PC"],
-  ["PAHT-CF", "PA"],
-  ["PA6-CF", "PA"],
-  ["PA6-GF", "PA"],
+/** Lines Bambu sells that the catalogue has no colours for yet: typed in by hand. */
+const EXTRA_TYPES: [string, string][] = [
   ["PPA-CF", "PPA"],
-  ["PPS-CF", "PPS"],
-  ["Support for PLA/PETG", "Support"],
-  ["Support for ABS", "Support"],
-  ["Support for PA/PET", "Support"],
-  ["PVA", "PVA"],
-] as const;
+  ["ASA Aero", "ASA"],
+];
+
+/** Bambu Lab's filament lines, each with its base material. "Other" is typed in. */
+export const BAMBU_TYPES: readonly (readonly [string, string])[] = [
+  ...BAMBU_CATALOGUE.map((e) => [e.type, e.material] as const),
+  ...EXTRA_TYPES.filter(([t]) => !BAMBU_CATALOGUE.some((e) => e.type === t)),
+];
+
+/** A line's catalogue entry (colours, empty-spool weight, temperatures), if it has one. */
+export function catalogueEntry(type: string): CatalogueEntry | null {
+  const t = type.trim().toLowerCase();
+  return BAMBU_CATALOGUE.find((e) => e.type.toLowerCase() === t) ?? null;
+}
+
+/** Bambu's colours for a line, as [name, "#RRGGBB"]. */
+export const coloursFor = (type: string) => catalogueEntry(type)?.colours ?? [];
 
 /** The base material of a product line; an unknown line is its own first word. */
 export function materialOf(type: string): string {
@@ -119,4 +100,61 @@ export function summarise(spools: (Weighable & { status: string })[]) {
       Math.round(spools.reduce((n, s) => n + (s.pricePaid ?? 0), 0) * 100) /
       100,
   };
+}
+
+/**
+ * What's left, from the spool's weight on a kitchen scale: the gross weight
+ * less the empty spool, as a share of a full one. Null if it can't be worked out.
+ */
+export function weighedPercent({
+  grossGrams,
+  spoolWeightGrams,
+  weightGrams,
+}: {
+  grossGrams: number;
+  spoolWeightGrams: number | null;
+  weightGrams: number;
+}): number | null {
+  if (!Number.isFinite(grossGrams) || grossGrams <= 0) return null;
+  if (spoolWeightGrams === null || weightGrams <= 0) return null;
+  return clampPercent(((grossGrams - spoolWeightGrams) / weightGrams) * 100);
+}
+
+/** The key spools of the same filament share, for their picture. */
+export const filamentKey = (type: string, colourName: string) =>
+  `${type.trim().toLowerCase()}|${colourName.trim().toLowerCase()}`;
+
+/**
+ * Spools grouped by filament (line and colour), the way Spoolman lists them:
+ * one row per filament with the spool count and total left.
+ */
+export function groupSpools<
+  S extends Weighable & { type: string; colourName: string; colourHex: string },
+>(spools: S[]) {
+  const groups = new Map<
+    string,
+    {
+      key: string;
+      type: string;
+      colourName: string;
+      colourHex: string;
+      spools: S[];
+      gramsLeft: number;
+    }
+  >();
+  for (const s of spools) {
+    const key = filamentKey(s.type, s.colourName);
+    const g = groups.get(key) ?? {
+      key,
+      type: s.type,
+      colourName: s.colourName,
+      colourHex: s.colourHex,
+      spools: [],
+      gramsLeft: 0,
+    };
+    g.spools.push(s);
+    g.gramsLeft += gramsLeft(s);
+    groups.set(key, g);
+  }
+  return [...groups.values()];
 }

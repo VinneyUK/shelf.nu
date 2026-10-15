@@ -2934,6 +2934,10 @@ model Spool {
   amsSlot          Int?
   /// The spool's RFID tag (tray UUID), when the AMS has read it
   tagUid           String?
+  /// The code Bambu prints on the spool and box, e.g. "10101"
+  filamentCode     String?
+  /// The empty spool, in grams, for weighing what's left
+  spoolWeightGrams Int?
   /// manual | ams | receipt
   source           String    @default("manual")
   notes            String?
@@ -2960,6 +2964,7 @@ model SpoolCandidate {
   pricePaid        Float?
   purchasedOn      DateTime? @db.Date
   tagUid           String?
+  filamentCode     String?
   amsSlot          Int?
   /// pending | approved | dismissed
   status           String    @default("pending")
@@ -2967,4 +2972,23 @@ model SpoolCandidate {
   updatedAt        DateTime  @updatedAt
 
   @@index([organizationId, status])
+}
+
+/// A filament's picture from the Bambu store, shared by every spool of that line and colour
+model FilamentImage {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// "pla matte|charcoal": the line and colour, lower case
+  key            String
+  /// found | missing (no match in the store) | error (try again later)
+  status         String
+  bytes          Bytes?
+  contentType    String?
+  sourceUrl      String?
+  productUrl     String?
+  filamentCode   String?
+  message        String?
+  fetchedAt      DateTime @default(now())
+
+  @@unique([organizationId, key])
 }

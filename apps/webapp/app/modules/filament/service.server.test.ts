@@ -30,10 +30,12 @@ vi.mock("~/database/db.server", () => ({
 import {
   approveCandidate,
   createSpool,
+  createSpools,
   keepSpool,
   proposeSpool,
   retireSpool,
   updateSpool,
+  weighSpool,
 } from "./service.server";
 
 const input = {
@@ -194,5 +196,73 @@ describe("the inbox", () => {
     await expect(approveCandidate("o1", "c1", input)).rejects.toThrow(
       /already been dealt with/
     );
+  });
+});
+
+describe("adding several and weighing", () => {
+  it("adds several identical spools, only the first into the AMS slot", async () => {
+    const made = await createSpools("o1", { ...input, amsSlot: 2 }, 3);
+    expect(made).toHaveLength(3);
+    expect(made.map((s) => s.amsSlot)).toEqual([2, null, null]);
+    expect(await createSpools("o1", input, 99)).toHaveLength(20); // capped
+  });
+  it("fills in the empty-spool weight from the catalogue, and keeps the box code", async () => {
+    const s = await createSpools(
+      "o1",
+      { ...input, filamentCode: " 10100 " },
+      1
+    );
+    expect(s[0]).toMatchObject({
+      spoolWeightGrams: 250,
+      filamentCode: "10100",
+    });
+  });
+  it("sets what's left from the scale, less the empty spool", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      type: "PLA Basic",
+      weightGrams: 1000,
+      spoolWeightGrams: 250,
+    });
+    expect(await weighSpool("o1", "s1", 750)).toBe(50);
+    expect(m.spool.update.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { id: "s1", organizationId: "o1" },
+      data: { remainingPercent: 50, status: "active" },
+    });
+  });
+  it("marks a weighed-empty spool as run out, for you to confirm", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      type: "PLA Basic",
+      weightGrams: 1000,
+      spoolWeightGrams: 250,
+    });
+    await weighSpool("o1", "s1", 240);
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      remainingPercent: 0,
+      status: "empty",
+    });
+  });
+  it("says what's missing when it can't weigh", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      type: "Mystery",
+      weightGrams: 1000,
+      spoolWeightGrams: null,
+    });
+    await expect(weighSpool("o1", "s1", 700)).rejects.toThrow(
+      /empty spool's weight/
+    );
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      type: "PLA Basic",
+      weightGrams: 1000,
+      spoolWeightGrams: 250,
+    });
+    await expect(weighSpool("o1", "s1", 0)).rejects.toThrow(/in grams/);
   });
 });

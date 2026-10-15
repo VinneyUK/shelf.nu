@@ -11,7 +11,13 @@ import { db } from "~/database/db.server";
 /** The client inside db.$transaction (Shelf's client is an extended one). */
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 import { ShelfError } from "~/utils/error";
-import { cleanHex, clampPercent, materialOf } from "./catalogue";
+import {
+  catalogueEntry,
+  cleanHex,
+  clampPercent,
+  materialOf,
+  weighedPercent,
+} from "./catalogue";
 
 const label = "Assets" as const;
 const bad = (message: string, status: 400 | 404 = 400) =>
@@ -33,6 +39,10 @@ export type SpoolInput = {
   purchasedOn: Date | null;
   amsSlot: number | null;
   notes: string | null;
+  /** The code Bambu prints on the spool and box */
+  filamentCode?: string | null;
+  /** The empty spool, in grams; from the catalogue when not given */
+  spoolWeightGrams?: number | null;
 };
 
 /** Checks and tidies what was typed in. */
@@ -70,6 +80,15 @@ function clean(input: SpoolInput) {
     purchasedOn: input.purchasedOn,
     amsSlot: input.amsSlot,
     notes: input.notes?.trim().slice(0, 500) || null,
+    filamentCode:
+      input.filamentCode
+        ?.trim()
+        .replace(/[^A-Za-z0-9]/g, "")
+        .slice(0, 12) || null,
+    spoolWeightGrams:
+      input.spoolWeightGrams && input.spoolWeightGrams > 0
+        ? Math.round(input.spoolWeightGrams)
+        : catalogueEntry(type)?.spoolWeight ?? null,
   };
 }
 
@@ -104,6 +123,67 @@ export async function getFilament(organizationId: string) {
     }),
   ]);
   return { spools, candidates };
+}
+
+/**
+ * Adds several identical spools at once (a multi-roll order). Only the first
+ * goes into the AMS slot, if one was chosen.
+ */
+export async function createSpools(
+  organizationId: string,
+  input: SpoolInput,
+  quantity: number,
+  source = "manual"
+) {
+  const count = Math.max(1, Math.min(20, Math.round(quantity) || 1));
+  const created = [];
+  for (let i = 0; i < count; i++) {
+    created.push(
+      await createSpool(
+        organizationId,
+        i === 0 ? input : { ...input, amsSlot: null },
+        source
+      )
+    );
+  }
+  return created;
+}
+
+/** Sets what's left from the spool's weight on a scale. */
+export async function weighSpool(
+  organizationId: string,
+  id: string,
+  grossGrams: number
+) {
+  const spool = await db.spool.findFirst({ where: { id, organizationId } });
+  if (!spool) throw bad("That spool doesn't exist.", 404);
+  const tare =
+    spool.spoolWeightGrams ?? catalogueEntry(spool.type)?.spoolWeight ?? null;
+  if (tare === null) {
+    throw bad(
+      "Set the empty spool's weight first (edit the spool), so it can be taken off."
+    );
+  }
+  const percent = weighedPercent({
+    grossGrams,
+    spoolWeightGrams: tare,
+    weightGrams: spool.weightGrams,
+  });
+  if (percent === null)
+    throw bad("Enter the weight in grams, as shown on the scale.");
+  await db.spool.update({
+    where: { id, organizationId },
+    data: {
+      remainingPercent: percent,
+      status:
+        spool.status === "retired"
+          ? "retired"
+          : percent === 0
+          ? "empty"
+          : "active",
+    },
+  });
+  return percent;
 }
 
 export async function createSpool(

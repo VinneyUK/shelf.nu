@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { BAMBU_CATALOGUE } from "./bambu-catalogue";
 import {
   BAMBU_TYPES,
+  catalogueEntry,
   cleanHex,
+  coloursFor,
   costPerKg,
+  filamentKey,
   gramsLeft,
+  groupSpools,
   materialOf,
   remainingTone,
   summarise,
   valueLeft,
+  weighedPercent,
 } from "./catalogue";
 
 describe("Bambu product lines", () => {
@@ -79,5 +85,91 @@ describe("the sums", () => {
       },
     ]);
     expect(s).toEqual({ spools: 2, gramsLeft: 1500, valueLeft: 28, spent: 60 });
+  });
+});
+
+describe("the Bambu catalogue", () => {
+  it("has every line once, each colour with a hex code", () => {
+    expect(new Set(BAMBU_CATALOGUE.map((e) => e.type)).size).toBe(
+      BAMBU_CATALOGUE.length
+    );
+    for (const e of BAMBU_CATALOGUE)
+      for (const [, hex] of e.colours) expect(hex).toMatch(/^#[0-9A-F]{6}$/);
+    expect(
+      BAMBU_CATALOGUE.reduce((n, e) => n + e.colours.length, 0)
+    ).toBeGreaterThan(250);
+  });
+  it("gives a line's colours and its empty-spool weight", () => {
+    expect(coloursFor("PLA Basic").some(([n]) => n === "Jade White")).toBe(
+      true
+    );
+    expect(catalogueEntry("pla matte")?.spoolWeight).toBe(250);
+    expect(coloursFor("Not a line")).toEqual([]);
+  });
+});
+
+describe("weighing", () => {
+  it("takes off the empty spool and gives what's left", () => {
+    expect(
+      weighedPercent({
+        grossGrams: 750,
+        spoolWeightGrams: 250,
+        weightGrams: 1000,
+      })
+    ).toBe(50);
+    expect(
+      weighedPercent({
+        grossGrams: 1250,
+        spoolWeightGrams: 250,
+        weightGrams: 1000,
+      })
+    ).toBe(100);
+    expect(
+      weighedPercent({
+        grossGrams: 200,
+        spoolWeightGrams: 250,
+        weightGrams: 1000,
+      })
+    ).toBe(0);
+  });
+  it("can't without a weight or an empty-spool weight", () => {
+    expect(
+      weighedPercent({
+        grossGrams: 0,
+        spoolWeightGrams: 250,
+        weightGrams: 1000,
+      })
+    ).toBeNull();
+    expect(
+      weighedPercent({
+        grossGrams: 700,
+        spoolWeightGrams: null,
+        weightGrams: 1000,
+      })
+    ).toBeNull();
+  });
+});
+
+describe("grouping by filament", () => {
+  it("puts spools of the same line and colour together, with the total left", () => {
+    const s = (type: string, colourName: string, remainingPercent: number) => ({
+      type,
+      colourName,
+      colourHex: "#000000",
+      weightGrams: 1000,
+      remainingPercent,
+      pricePaid: null,
+    });
+    const groups = groupSpools([
+      s("PLA Matte", "Charcoal", 100),
+      s("PLA Matte", "charcoal", 50),
+      s("PLA Basic", "Black", 20),
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({
+      key: filamentKey("PLA Matte", "Charcoal"),
+      gramsLeft: 1500,
+    });
+    expect(groups[0].spools).toHaveLength(2);
   });
 });

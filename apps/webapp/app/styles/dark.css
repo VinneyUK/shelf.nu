@@ -104,6 +104,7 @@ html.dark .ring-blue-200 { --tw-ring-color: #213f70; }
 html.dark .ring-gray-200 { --tw-ring-color: #2b333d; }
 html.dark .ring-offset-white { --tw-ring-offset-color: #0f1216; }
 html.dark .ring-red-200 { --tw-ring-color: #692628; }
+html.dark .ring-white { --tw-ring-color: #262d36; }
 html.dark .text-amber-600 { color: #fbbf24; }
 html.dark .text-amber-700 { color: #fcd34d; }
 html.dark .text-amber-800 { color: #fde68a; }
