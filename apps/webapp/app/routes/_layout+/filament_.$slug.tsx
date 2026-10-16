@@ -9,7 +9,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, redirect, useFetcher, useLoaderData } from "react-router";
+import { data, Link, redirect, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import {
@@ -23,10 +23,12 @@ import {
   type Images,
   type Result,
 } from "~/components/filament/parts";
+import { ChevronRight } from "~/components/icons/library";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import { DateS } from "~/components/shared/date";
+import { useSearchParams } from "~/hooks/search-params";
 import {
   AMS_SLOTS,
   BAMBU_TYPES,
@@ -85,7 +87,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     const images = await imageStatuses(organizationId);
     const entry = catalogueEntry(first.type);
     return payload({
-      header: { title: `${first.colourName} · ${first.type}` },
+      header: { title: first.colourName },
       slug,
       filament: {
         type: first.type,
@@ -115,8 +117,18 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 }
 
 export const handle = {
-  // the filament's name, after "Filament", as on Shelf's own detail pages
-  breadcrumb: () => "single",
+  // "Filament > Hot Pink": Shelf's "single" crumb only knows assets, boxes and places
+  breadcrumb: (match: { data?: { header?: { title?: string } } }) => (
+    <span className="flex items-center gap-2">
+      <Link to="/filament" className="text-gray-600 hover:text-gray-900">
+        Filament
+      </Link>
+      <ChevronRight className="size-4 text-gray-400" aria-hidden="true" />
+      <span className="single-crumb">
+        {match?.data?.header?.title ?? "Filament"}
+      </span>
+    </span>
+  ),
 };
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [
@@ -267,7 +279,22 @@ type Spool = PageData["spools"][number];
 
 const label = "text-sm text-gray-500";
 
-/** One spool of this filament: state, what's left, price; weigh, edit, retire. */
+/** The column headings above the spools. */
+function SpoolHeadings() {
+  return (
+    <div className="hidden items-center gap-x-4 border-b border-gray-200 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-400 md:flex">
+      <span className="w-8">#</span>
+      <span className="w-28">Where</span>
+      <span className="min-w-40 flex-1">Left</span>
+      <span className="w-20 text-right">Weight</span>
+      <span className="w-20 text-right">Paid</span>
+      <span className="w-24 text-right">Bought</span>
+      <span className="w-[9.5rem]" />
+    </div>
+  );
+}
+
+/** One spool of this filament: where it is, what's left, what it cost; weigh, edit, retire. */
 function SpoolLine({
   spool,
   index,
@@ -302,11 +329,13 @@ function SpoolLine({
               Run out?
             </span>
           ) : spool.amsSlot ? (
-            <span className="rounded bg-primary-50 px-1.5 py-0.5 text-primary-700">
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">
               In AMS {spool.amsSlot}
             </span>
           ) : (
-            <span className="text-gray-500">On the shelf</span>
+            <span className="rounded bg-success-50 px-1.5 py-0.5 text-success-700">
+              On the shelf
+            </span>
           )}
         </span>
         <div className="flex min-w-40 flex-1 items-center gap-2">
@@ -323,16 +352,24 @@ function SpoolLine({
             {spool.remainingPercent}%
           </span>
         </div>
-        <span className="w-16 text-right text-sm tabular-nums text-gray-700">
-          {gramsLeft(spool)} g
+        <span className="w-20 text-right text-sm tabular-nums text-gray-700">
+          {(gramsLeft(spool) / 1000).toFixed(2)} kg
         </span>
         <span className="w-20 text-right text-sm tabular-nums text-gray-700">
-          {spool.pricePaid !== null ? money(spool.pricePaid) : "—"}
+          {spool.pricePaid !== null ? (
+            money(spool.pricePaid)
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
         </span>
-        <span className="w-24 text-right text-xs text-gray-500">
-          {spool.purchasedOn ? <DateS date={spool.purchasedOn} /> : ""}
+        <span className="w-24 text-right text-sm text-gray-700">
+          {spool.purchasedOn ? (
+            <DateS date={spool.purchasedOn} />
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
         </span>
-        <div className="flex gap-2">
+        <div className="flex w-[9.5rem] justify-end gap-2">
           {retired ? (
             <act.Form method="post">
               <input type="hidden" name="id" value={spool.id} />
@@ -392,7 +429,7 @@ function SpoolLine({
           <span className="text-xs text-gray-500">
             {tare
               ? `less the empty spool, ${tare} g`
-              : "set the empty spool's weight in Specs first"}
+              : "set the empty spool's weight in Filament details first"}
           </span>
           <Button type="submit" size="sm" disabled={busy || !tare}>
             Update
@@ -500,7 +537,7 @@ function SpoolLine({
               Retire
             </Button>
             <Button type="submit" size="sm" disabled={busy}>
-              Save
+              Save spool
             </Button>
           </div>
         </edit.Form>
@@ -512,93 +549,99 @@ function SpoolLine({
   );
 }
 
-/** Add more spools of this filament: how many, what they cost, when. */
+/** Add more spools of this filament (opened by the header's button, ?add=1). */
 function AddMore() {
   const fetcher = useFetcher<Result>();
-  const [open, setOpen] = useState(false);
+  const [, setParams] = useSearchParams();
+  const close = () =>
+    setParams((prev) => {
+      prev.delete("add");
+      return prev;
+    });
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data && !fetcher.data.error)
-      setOpen(false);
+      close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
-  if (!open) {
-    return (
-      <Button type="button" onClick={() => setOpen(true)}>
-        Add spools of this
-      </Button>
-    );
-  }
   return (
-    <fetcher.Form
-      method="post"
-      className="flex w-full flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3"
-    >
-      <input type="hidden" name="intent" value="add" />
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        How many
-        <input
-          name="quantity"
-          type="number"
-          min={1}
-          max={20}
-          defaultValue={1}
-          className={tw(inputClass, "w-20")}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        Price paid (each)
-        <input
-          name="pricePaid"
-          type="number"
-          min={0}
-          step={0.01}
-          className={tw(inputClass, "w-28")}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        Bought on
-        <input name="purchasedOn" type="date" className={inputClass} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        Left (%)
-        <input
-          name="remainingPercent"
-          type="number"
-          min={0}
-          max={100}
-          defaultValue={100}
-          className={tw(inputClass, "w-20")}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        In the AMS
-        <select name="amsSlot" defaultValue="" className={inputClass}>
-          <option value="">Not loaded</option>
-          {AMS_SLOTS.map((n) => (
-            <option key={n} value={n}>
-              Slot {n}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="ml-auto flex items-center gap-2">
-        <ResultLine fetcher={fetcher} />
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isFormProcessing(fetcher.state)}>
-          Add
-        </Button>
-      </div>
-    </fetcher.Form>
+    <Card className="my-0">
+      <fetcher.Form method="post" className="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="intent" value="add" />
+        <h3 className="w-full text-text-md font-semibold text-gray-900">
+          Add spools of this
+        </h3>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          How many
+          <input
+            name="quantity"
+            type="number"
+            min={1}
+            max={20}
+            defaultValue={1}
+            className={tw(inputClass, "w-20")}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          Price paid (each)
+          <input
+            name="pricePaid"
+            type="number"
+            min={0}
+            step={0.01}
+            className={tw(inputClass, "w-28")}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          Bought on
+          <input name="purchasedOn" type="date" className={inputClass} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          Left (%)
+          <input
+            name="remainingPercent"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={100}
+            className={tw(inputClass, "w-20")}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          In the AMS
+          <select name="amsSlot" defaultValue="" className={inputClass}>
+            <option value="">Not loaded</option>
+            {AMS_SLOTS.map((n) => (
+              <option key={n} value={n}>
+                Slot {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="ml-auto flex items-center gap-2">
+          <ResultLine fetcher={fetcher} />
+          <Button type="button" variant="secondary" onClick={close}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isFormProcessing(fetcher.state)}>
+            Add
+          </Button>
+        </div>
+      </fetcher.Form>
+    </Card>
   );
 }
 
 /** The filament's specs, edited once for every spool, Spoolman-style: label on the left, value on the right. */
-function Specs({ filament }: { filament: PageData["filament"] }) {
+function Specs({
+  filament,
+  storeCode,
+  spoolCount,
+}: {
+  filament: PageData["filament"];
+  /** The code the Bambu store gave for this filament, when none is saved yet */
+  storeCode: string | null;
+  spoolCount: number;
+}) {
   const fetcher = useFetcher<Result>();
   const known = BAMBU_TYPES.some(([t]) => t === filament.type);
   const [type, setType] = useState(known ? filament.type : OTHER);
@@ -621,9 +664,12 @@ function Specs({ filament }: { filament: PageData["filament"] }) {
     "grid grid-cols-[8rem_1fr] items-center gap-3 border-b border-gray-100 py-2";
   return (
     <Card className="my-0">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-        Specs, for every spool
+      <h3 className="text-text-md font-semibold text-gray-900">
+        Filament details
       </h3>
+      <p className="text-xs text-gray-500">
+        Changes apply to every spool of this filament.
+      </p>
       <fetcher.Form method="post" className="mt-2">
         <input type="hidden" name="intent" value="filament" />
         <div className={row}>
@@ -701,10 +747,15 @@ function Specs({ filament }: { filament: PageData["filament"] }) {
           <span className={label}>Code on the box</span>
           <input
             name="filamentCode"
-            defaultValue={filament.filamentCode ?? ""}
+            defaultValue={filament.filamentCode ?? storeCode ?? ""}
             placeholder="e.g. 10100"
             className={inputClass}
           />
+          {storeCode ? (
+            <span className="col-start-2 text-xs text-gray-500">
+              From the Bambu store. Save to keep it.
+            </span>
+          ) : null}
         </label>
         <label className={row}>
           <span className={label}>Spool size</span>
@@ -738,7 +789,7 @@ function Specs({ filament }: { filament: PageData["filament"] }) {
             size="sm"
             disabled={isFormProcessing(fetcher.state)}
           >
-            Save
+            {spoolCount === 1 ? "Save" : `Save for all ${spoolCount} spools`}
           </Button>
         </div>
       </fetcher.Form>
@@ -751,6 +802,7 @@ export default function FilamentDetail() {
     useLoaderData<typeof loader>();
   const money = useMoney();
   const picture = useFetcher<Result>();
+  const [params] = useSearchParams();
   const [showFinished, setShowFinished] = useState(false);
   const onHand = spools.filter((s) => s.status !== "retired");
   const finished = spools.filter((s) => s.status === "retired");
@@ -762,162 +814,180 @@ export default function FilamentDetail() {
   const perKg = priced.length
     ? priced.reduce((a, b) => a + b, 0) / priced.length
     : null;
+  const anyPrice = spools.some((s) => s.pricePaid !== null);
   const spent = spools.reduce((n, s) => n + (s.pricePaid ?? 0), 0);
   const image = (images as Images)[filament.key];
   const tare = filament.spoolWeightGrams ?? catalogue?.spoolWeight ?? null;
+  const code = filament.filamentCode ?? image?.filamentCode ?? null;
   const fact = (k: string, v: string | null) =>
     v ? (
       <div
         key={k}
-        className="grid grid-cols-[8rem_1fr] border-b border-gray-100 py-2 text-sm"
+        className="grid grid-cols-[7rem_1fr] border-b border-gray-100 py-2 text-sm last:border-0"
       >
-        <span className={label}>{k}</span>
+        <span className="text-gray-500">{k}</span>
         <span className="tabular-nums text-gray-900">{v}</span>
       </div>
     ) : null;
 
   return (
     <>
-      <Header />
-      <div className="mt-4 flex flex-col gap-4">
-        {/* the filament: picture, name, line, code */}
-        <Card className="my-0">
-          <div className="flex flex-wrap items-center gap-5">
+      <Header
+        slots={{
+          "left-of-title": (
             <FilamentPicture
               {...filament}
               images={images as Images}
-              size="size-28"
+              size="mr-4 size-14"
             />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-display-xs font-semibold text-gray-900">
-                {filament.colourName}
-              </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                <span>{filament.type}</span>
-                <span aria-hidden="true">·</span>
-                <span>Bambu Lab</span>
-                <span aria-hidden="true">·</span>
-                <span>1.75 mm</span>
-                {filament.filamentCode ? (
-                  <span className="rounded border border-gray-200 px-1.5 py-0.5 font-mono text-xs text-gray-700">
-                    {filament.filamentCode}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                {image?.productUrl ? (
-                  <a
-                    href={image.productUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 hover:underline"
-                  >
-                    See it on the Bambu store
-                  </a>
-                ) : (
-                  <picture.Form
-                    method="post"
-                    className="flex items-center gap-2"
-                  >
-                    <input type="hidden" name="intent" value="fetch-image" />
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      size="sm"
-                      disabled={isFormProcessing(picture.state)}
-                    >
-                      Get picture
-                    </Button>
-                    <ResultLine fetcher={picture} />
-                    {!picture.data && image?.message ? (
-                      <span className="text-xs text-gray-500">
-                        Last time: {image.message}
-                      </span>
-                    ) : null}
-                  </picture.Form>
-                )}
-              </div>
-            </div>
-            <AddMore />
+          ),
+        }}
+        subHeading={
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+            <span>{filament.type}</span>
+            <span aria-hidden="true">·</span>
+            <span>Bambu Lab</span>
+            <span aria-hidden="true">·</span>
+            <span>1.75 mm</span>
+            {code ? (
+              <span className="rounded border border-gray-200 px-1.5 py-0.5 font-mono text-xs text-gray-700">
+                {code}
+              </span>
+            ) : null}
           </div>
-        </Card>
+        }
+      >
+        <div className="flex items-center gap-2">
+          {image?.productUrl ? (
+            <Button
+              to={image.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="secondary"
+            >
+              Bambu store
+            </Button>
+          ) : (
+            <picture.Form method="post" className="flex items-center gap-2">
+              <input type="hidden" name="intent" value="fetch-image" />
+              <ResultLine fetcher={picture} />
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={isFormProcessing(picture.state)}
+              >
+                Get picture
+              </Button>
+            </picture.Form>
+          )}
+          <Button to="?add=1" disabled={params.get("add") === "1"}>
+            Add spools of this
+          </Button>
+        </div>
+      </Header>
 
-        <div className="grid items-start gap-4 lg:grid-cols-[1fr_380px]">
-          {/* its spools */}
-          <Card className="my-0 p-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                Spools · {onHand.length} · {(grams / 1000).toFixed(2)} kg left
-              </h3>
-              {finished.length > 0 ? (
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={showFinished}
-                    onChange={(e) => setShowFinished(e.target.checked)}
-                  />
-                  Show finished ({finished.length})
-                </label>
-              ) : null}
-            </div>
-            {shown.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-gray-600">
-                All of this filament's spools are finished.
-              </p>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {shown.map((s) => (
-                  <SpoolLine
-                    key={s.id}
-                    spool={s}
-                    index={spools.indexOf(s)}
-                    tare={tare}
-                  />
-                ))}
-              </ul>
-            )}
-          </Card>
+      <div className="mt-4 flex flex-col gap-4">
+        {params.get("add") === "1" ? <AddMore /> : null}
+        {!image?.productUrl && image?.message ? (
+          <p className="text-xs text-gray-500">Picture: {image.message}</p>
+        ) : null}
 
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="flex flex-col gap-4">
-            <Specs
-              key={`${filament.type}|${filament.colourName}`}
-              filament={filament}
-            />
-            <Card className="my-0">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                From Bambu's catalogue
-              </h3>
-              <div className="mt-2">
-                {fact("Material", filament.material)}
-                {fact("Diameter", "1.75 mm")}
-                {fact(
-                  "Density",
-                  catalogue?.density ? `${catalogue.density} g/cm³` : null
-                )}
-                {fact(
-                  "Nozzle",
-                  catalogue?.nozzleTemp ? `${catalogue.nozzleTemp} °C` : null
-                )}
-                {fact(
-                  "Bed",
-                  catalogue?.bedTemp ? `${catalogue.bedTemp} °C` : null
-                )}
-                {!catalogue ? (
-                  <p className="py-2 text-sm text-gray-500">
-                    This line isn't in the catalogue.
-                  </p>
+            <Card className="my-0 p-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+                <h3 className="text-text-md font-semibold text-gray-900">
+                  Spools{" "}
+                  <span className="font-normal text-gray-500">
+                    · {onHand.length} · {(grams / 1000).toFixed(2)} kg left
+                  </span>
+                </h3>
+                {finished.length > 0 ? (
+                  <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={showFinished}
+                      onChange={(e) => setShowFinished(e.target.checked)}
+                    />
+                    Show finished ({finished.length})
+                  </label>
                 ) : null}
               </div>
-              <h3 className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400">
-                Your figures
-              </h3>
-              <div className="mt-2">
-                {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
-                {fact("Spent", money(spent))}
-                {fact("Spools ever", String(spools.length))}
-              </div>
+              {shown.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-gray-600">
+                  All of this filament's spools are finished.
+                </p>
+              ) : (
+                <>
+                  <SpoolHeadings />
+                  <ul className="divide-y divide-gray-100">
+                    {shown.map((s) => (
+                      <SpoolLine
+                        key={s.id}
+                        spool={s}
+                        index={spools.indexOf(s)}
+                        tare={tare}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
             </Card>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="my-0">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                  From Bambu's catalogue
+                </h3>
+                <div className="mt-2">
+                  {fact("Material", filament.material)}
+                  {fact("Diameter", "1.75 mm")}
+                  {fact(
+                    "Density",
+                    catalogue?.density ? `${catalogue.density} g/cm³` : null
+                  )}
+                  {fact(
+                    "Nozzle",
+                    catalogue?.nozzleTemp ? `${catalogue.nozzleTemp} °C` : null
+                  )}
+                  {fact(
+                    "Bed",
+                    catalogue?.bedTemp ? `${catalogue.bedTemp} °C` : null
+                  )}
+                  {!catalogue ? (
+                    <p className="py-2 text-sm text-gray-500">
+                      This line isn't in the catalogue.
+                    </p>
+                  ) : null}
+                </div>
+              </Card>
+              <Card className="my-0">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Your figures
+                </h3>
+                <div className="mt-2">
+                  {fact(
+                    "Left",
+                    `${(grams / 1000).toFixed(2)} kg on ${onHand.length} spool${
+                      onHand.length === 1 ? "" : "s"
+                    }`
+                  )}
+                  {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
+                  {fact("Spent", anyPrice ? money(spent) : "—")}
+                  {fact("Spools ever", String(spools.length))}
+                </div>
+              </Card>
+            </div>
           </div>
+
+          <Specs
+            key={`${filament.type}|${filament.colourName}`}
+            filament={filament}
+            storeCode={
+              filament.filamentCode ? null : image?.filamentCode ?? null
+            }
+            spoolCount={spools.length}
+          />
         </div>
       </div>
     </>

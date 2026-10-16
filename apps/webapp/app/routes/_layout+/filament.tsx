@@ -1,11 +1,12 @@
 /**
- * Filament (fork): Bambu Lab spools. The AMS's four slots, an inbox of spools
- * waiting for approval, spools that have run out (waiting for you to confirm),
- * every filament on hand as tiles or a list (each opening its own page), and
- * the retired history. The bottom bar is Shelf's own: pages, per page, back
- * to the top, and Tile or List.
+ * Filament (fork): Bambu Lab spools, laid out like the assets list. Add
+ * spools in the header; a compact strip with the figures and the AMS; the
+ * inbox and spools that have run out; a filter bar (state, search, sort,
+ * line); the filaments as tiles or a list, each opening its own page; and
+ * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { useEffect, useState } from "react";
+import { useEffect, type ReactNode } from "react";
+import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -17,7 +18,6 @@ import { ErrorContent } from "~/components/errors";
 import {
   FilamentPicture,
   inputClass,
-  RemainingBar,
   ResultLine,
   SpoolFields,
   Swatch,
@@ -34,6 +34,7 @@ import { Button } from "~/components/shared/button";
 import { ButtonGroup } from "~/components/shared/button-group";
 import { Card } from "~/components/shared/card";
 import { DateS } from "~/components/shared/date";
+import { useSearchParams } from "~/hooks/search-params";
 import { useViewportHeight } from "~/hooks/use-viewport-height";
 import {
   AMS_SLOTS,
@@ -41,6 +42,7 @@ import {
   filamentKey,
   filamentSlug,
   groupSpools,
+  groupState,
   summarise,
 } from "~/modules/filament/catalogue";
 import {
@@ -70,6 +72,22 @@ import { tw } from "~/utils/tw";
 
 export const handle = { breadcrumb: () => "Filament" };
 
+const STATES = {
+  all: "All",
+  ams: "In the AMS",
+  shelf: "On the shelf",
+  out: "Run out",
+} as const;
+const SORTS = {
+  recent: "Recently added",
+  line: "Line",
+  colour: "Colour",
+  most: "Most left",
+  least: "Least left",
+} as const;
+type State = keyof typeof STATES;
+type Sort = keyof typeof SORTS;
+
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const { userId } = context.getSession();
   try {
@@ -81,6 +99,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     });
     const url = new URL(request.url);
     const search = (url.searchParams.get("s") ?? "").trim();
+    const stateParam = url.searchParams.get("state") ?? "all";
+    const state: State = stateParam in STATES ? (stateParam as State) : "all";
+    const sortParam = url.searchParams.get("sort") ?? "recent";
+    const sort: Sort = sortParam in SORTS ? (sortParam as Sort) : "recent";
+    const line = (url.searchParams.get("line") ?? "").trim();
     const pageParam = Math.max(1, Number(url.searchParams.get("page")) || 1);
     const perPageParam = Number(url.searchParams.get("per_page")) || 0;
     const prefs = await updateCookieWithPerPage(request, perPageParam);
@@ -93,20 +116,42 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         resolveFilamentView(request),
       ]);
 
-    // the filaments on hand (search applied), a page of them at a time
+    // spools on hand (active, or run out and waiting), then the filters
     const q = search.toLowerCase();
-    const onHand = spools.filter((s) => s.status === "active");
-    const matched = q
-      ? onHand.filter((s) =>
+    const onHand = spools.filter((s) => s.status !== "retired");
+    const matched = onHand.filter(
+      (s) =>
+        (state === "all" ||
+          (state === "ams" && s.amsSlot !== null && s.status === "active") ||
+          (state === "shelf" && s.amsSlot === null && s.status === "active") ||
+          (state === "out" && s.status === "empty")) &&
+        (!line || s.type === line) &&
+        (!q ||
           `${s.type} ${s.material} ${s.colourName} ${s.filamentCode ?? ""}`
             .toLowerCase()
-            .includes(q)
-        )
-      : onHand;
-    const groups = groupSpools(matched).map((g) => ({
-      ...g,
-      slug: filamentSlug(g.type, g.colourName),
-    }));
+            .includes(q))
+    );
+    const newest = (g: { spools: { createdAt: Date | string }[] }) =>
+      Math.max(...g.spools.map((s) => new Date(s.createdAt).getTime()));
+    const groups = groupSpools(matched)
+      .map((g) => ({ ...g, slug: filamentSlug(g.type, g.colourName) }))
+      .sort((a, b) => {
+        switch (sort) {
+          case "line":
+            return (
+              a.type.localeCompare(b.type) ||
+              a.colourName.localeCompare(b.colourName)
+            );
+          case "colour":
+            return a.colourName.localeCompare(b.colourName);
+          case "most":
+            return b.gramsLeft - a.gramsLeft;
+          case "least":
+            return a.gramsLeft - b.gramsLeft;
+          default:
+            return newest(b) - newest(a);
+        }
+      });
     const totalItems = groups.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
     const page = Math.min(pageParam, totalPages);
@@ -117,19 +162,15 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     return data(
       payload({
-        header: {
-          title: "Filament",
-          subHeading:
-            "Your Bambu Lab spools: what's loaded, what's left, what it cost.",
-        },
+        header: { title: "Filament" },
         view,
         spools,
         candidates,
         images,
-        summary: summarise(spools),
-        filamentsOnHand: groupSpools(onHand).length,
+        anyPrice: spools.some((s) => s.pricePaid !== null),
+        lines: [...new Set(onHand.map((s) => s.type))].sort(),
+        filters: { search, state, sort, line },
         items: groups.slice((page - 1) * perPage, page * perPage),
-        search,
         page,
         perPage,
         totalItems,
@@ -240,36 +281,29 @@ type SpoolRow = PageData["spools"][number];
 type CandidateRow = PageData["candidates"][number];
 type Group = PageData["items"][number];
 
-function AddSpool() {
+/** Add spools, opened by the header's button (?add=1), closed when done. */
+function AddSpoolPanel() {
   const fetcher = useFetcher<Result>();
-  const [open, setOpen] = useState(false);
-  const [key, setKey] = useState(0);
+  const [, setParams] = useSearchParams();
+  const close = () =>
+    setParams((prev) => {
+      prev.delete("add");
+      return prev;
+    });
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data && !fetcher.data.error) {
-      setOpen(false);
-      setKey((k) => k + 1);
-    }
+    if (fetcher.state === "idle" && fetcher.data && !fetcher.data.error)
+      close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
-  if (!open) {
-    return (
-      <Button type="button" onClick={() => setOpen(true)}>
-        Add spools
-      </Button>
-    );
-  }
   return (
-    <Card className="my-0 w-full">
-      <fetcher.Form method="post" className="flex flex-col gap-4" key={key}>
+    <Card className="my-0">
+      <fetcher.Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="intent" value="create" />
         <h3 className="text-text-md font-semibold text-gray-900">Add spools</h3>
         <SpoolFields withQuantity />
         <div className="flex items-center justify-end gap-3">
           <ResultLine fetcher={fetcher} />
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setOpen(false)}
-          >
+          <Button type="button" variant="secondary" onClick={close}>
             Cancel
           </Button>
           <Button type="submit" disabled={isFormProcessing(fetcher.state)}>
@@ -278,6 +312,280 @@ function AddSpool() {
         </div>
       </fetcher.Form>
     </Card>
+  );
+}
+
+/** The figures and the AMS, in one compact strip. "—" for money nobody has recorded. */
+function Overview({
+  spools,
+  images,
+  anyPrice,
+}: {
+  spools: SpoolRow[];
+  images: Images;
+  anyPrice: boolean;
+}) {
+  const money = useMoney();
+  const summary = summarise(spools);
+  const figures: [string, string][] = [
+    ["Spools", String(summary.spools)],
+    ["Filament left", `${(summary.gramsLeft / 1000).toFixed(1)} kg`],
+    ["Worth", anyPrice ? money(summary.valueLeft) : "—"],
+    ["Spent", anyPrice ? money(summary.spent) : "—"],
+  ];
+  return (
+    <Card className="my-0 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-4 gap-3">
+        {figures.map(([k, v]) => (
+          <div key={k}>
+            <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              {k}
+            </div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums text-gray-900">
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {AMS_SLOTS.map((n) => {
+          const s = spools.find(
+            (x) => x.amsSlot === n && x.status !== "retired"
+          );
+          return (
+            <div
+              key={n}
+              className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5"
+            >
+              {s ? (
+                <FilamentPicture {...s} images={images} size="size-8" />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                  AMS {n}
+                </div>
+                {s ? (
+                  <div className="truncate text-xs text-gray-900">
+                    {s.colourName}{" "}
+                    <span className="tabular-nums text-gray-500">
+                      {s.remainingPercent}%
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400">Empty</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+/** The filter bar, like the assets list's: state, search, sort, and line. */
+function FilterBar({
+  filters,
+  lines,
+}: {
+  filters: PageData["filters"];
+  lines: string[];
+}) {
+  const submit = (e: { currentTarget: HTMLSelectElement }) =>
+    e.currentTarget.form?.requestSubmit();
+  const select =
+    "rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700";
+  return (
+    <Card className="my-0">
+      <Form method="get" className="flex flex-wrap items-center gap-2">
+        <select
+          name="state"
+          defaultValue={filters.state}
+          onChange={submit}
+          className={select}
+          aria-label="Show"
+        >
+          {Object.entries(STATES).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <label className="relative flex min-w-64 flex-1 items-center md:max-w-md">
+          <SearchIcon
+            className="pointer-events-none absolute left-3 size-4 text-gray-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            name="s"
+            defaultValue={filters.search}
+            placeholder="Search filament: a line, colour or code"
+            className={tw(inputClass, "py-2 pl-9")}
+            aria-label="Search filament"
+          />
+        </label>
+        <select
+          name="sort"
+          defaultValue={filters.sort}
+          onChange={submit}
+          className={select}
+          aria-label="Sort"
+        >
+          {Object.entries(SORTS).map(([k, v]) => (
+            <option key={k} value={k}>
+              Sorted by: {v}
+            </option>
+          ))}
+        </select>
+        <select
+          name="line"
+          defaultValue={filters.line}
+          onChange={submit}
+          className={tw(select, "ml-auto border-transparent text-gray-600")}
+          aria-label="Line"
+        >
+          <option value="">All lines</option>
+          {lines.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+      </Form>
+    </Card>
+  );
+}
+
+/** One labelled fact, as on an asset tile. */
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+        {label}
+      </div>
+      <div className="truncate text-[13px] text-gray-800">{children}</div>
+    </div>
+  );
+}
+
+/** A filament as a tile, like an asset tile: the picture with chips, the facts, the actions. */
+function FilamentTile({ group, images }: { group: Group; images: Images }) {
+  const money = useMoney();
+  const image = images[group.key];
+  const href = `/filament/${group.slug}`;
+  const state = groupState(group.spools);
+  const priced = group.spools
+    .map((s) => costPerKg(s))
+    .filter((n): n is number => n !== null);
+  const perKg = priced.length
+    ? priced.reduce((a, b) => a + b, 0) / priced.length
+    : null;
+  const code =
+    group.spools.find((s) => s.filamentCode)?.filamentCode ??
+    image?.filamentCode ??
+    null;
+  const full = group.spools.reduce((n, s) => n + s.weightGrams, 0);
+  const leftPercent = full > 0 ? Math.round((group.gramsLeft / full) * 100) : 0;
+  const chip =
+    "rounded-full bg-white px-2 py-0.5 text-xs font-medium shadow-sm ring-1 ring-black/5";
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
+      <div className="relative aspect-[4/3] bg-gray-50">
+        <Link to={href} className="block size-full">
+          {image?.status === "found" ? (
+            <img
+              src={`/api/filament/image/${encodeURIComponent(group.key)}`}
+              alt={`${group.colourName} ${group.type}`}
+              className="size-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="flex size-full items-center justify-center">
+              <Swatch hex={group.colourHex} size="size-24" />
+            </span>
+          )}
+        </Link>
+        <div className="pointer-events-none absolute right-2 top-2 flex flex-wrap justify-end gap-1">
+          <span className={chip}>
+            <span className={tw("-mx-1 rounded-full px-1", state.tone)}>
+              {state.label}
+            </span>
+          </span>
+          <span className={tw(chip, "flex items-center gap-1.5 text-gray-800")}>
+            <span
+              aria-hidden="true"
+              className="size-2.5 rounded-full ring-1 ring-black/10"
+              style={{ background: group.colourHex }}
+            />
+            {group.spools.length} spool{group.spools.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-3 p-3">
+        <Link to={href} className="hover:underline">
+          <span className="block text-[15px] font-semibold leading-snug text-gray-900">
+            {group.colourName}
+          </span>
+          <span className="block text-xs text-gray-500">{group.type}</span>
+        </Link>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3">
+          <Fact label="Left">
+            {(group.gramsLeft / 1000).toFixed(2)} kg
+            <span className="mt-1 block h-1 rounded-full bg-gray-100">
+              <span
+                className={tw("block h-1 rounded-full", barColour(leftPercent))}
+                style={{ width: `${leftPercent}%` }}
+              />
+            </span>
+          </Fact>
+          <Fact label="Spools">{group.spools.length}</Fact>
+          <Fact label="Cost/kg">{perKg !== null ? money(perKg) : "—"}</Fact>
+          <Fact label="Code">
+            {code ? <span className="font-mono">{code}</span> : "—"}
+          </Fact>
+        </div>
+      </div>
+
+      <div className="flex gap-2 border-t border-gray-100 bg-gray-50 px-3 py-2">
+        <Button
+          to={href}
+          variant="secondary"
+          size="sm"
+          className="p-2"
+          aria-label="Open"
+          tooltip="Open"
+        >
+          <PencilIcon className="size-4" />
+        </Button>
+        <Button
+          to={`${href}?add=1`}
+          variant="secondary"
+          size="sm"
+          className="p-2"
+          aria-label="Add spools of this"
+          tooltip="Add spools of this"
+        >
+          <PlusIcon className="size-4" />
+        </Button>
+        {image?.productUrl ? (
+          <Button
+            to={image.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            hideNewTabIcon
+            variant="secondary"
+            size="sm"
+            className="p-2"
+            aria-label="See it on the Bambu store"
+            tooltip="See it on the Bambu store"
+          >
+            <GlobeIcon className="size-4" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -316,51 +624,6 @@ function GetPictures({
         <span className="text-xs text-gray-500">Last time: {problem}</span>
       ) : null}
     </fetcher.Form>
-  );
-}
-
-function AmsPanel({ spools, images }: { spools: SpoolRow[]; images: Images }) {
-  return (
-    <Card className="my-0">
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-text-md font-semibold text-gray-900">AMS</h3>
-        <span className="text-xs text-gray-500">
-          set by hand for now; live from the printer in a later update
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {AMS_SLOTS.map((n) => {
-          const s = spools.find(
-            (x) => x.amsSlot === n && x.status !== "retired"
-          );
-          return (
-            <div key={n} className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                Slot {n}
-              </div>
-              {s ? (
-                <div className="mt-2 flex items-start gap-3">
-                  <FilamentPicture {...s} images={images} size="size-14" />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-gray-900">
-                      {s.colourName}
-                    </div>
-                    <div className="truncate text-xs text-gray-500">
-                      {s.type}
-                    </div>
-                    <div className="mt-1.5">
-                      <RemainingBar percent={s.remainingPercent} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2 text-sm text-gray-400">Empty</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Card>
   );
 }
 
@@ -426,8 +689,6 @@ function CandidateCard({
   );
 }
 
-/** A spool that has reached 0%: confirm it's done, or say how much is left. */
-
 function EmptyCard({ spool, images }: { spool: SpoolRow; images: Images }) {
   const fetcher = useFetcher<Result>();
   const busy = isFormProcessing(fetcher.state);
@@ -481,8 +742,6 @@ function EmptyCard({ spool, images }: { spool: SpoolRow; images: Images }) {
     </fetcher.Form>
   );
 }
-
-/** One spool inside its filament group: remaining, cost, weigh and edit. */
 
 function RetiredRow({ spool }: { spool: SpoolRow }) {
   const money = useMoney();
@@ -586,100 +845,6 @@ function FilamentListRow({ group, images }: { group: Group; images: Images }) {
   );
 }
 
-/** A filament as a tile, opening its page. */
-function FilamentTile({ group, images }: { group: Group; images: Images }) {
-  const money = useMoney();
-  const image = images[group.key];
-  const slots = group.spools
-    .map((s) => s.amsSlot)
-    .filter((n): n is number => n !== null);
-  const priced = group.spools
-    .map((s) => costPerKg(s))
-    .filter((n): n is number => n !== null);
-  const perKg = priced.length
-    ? priced.reduce((a, b) => a + b, 0) / priced.length
-    : null;
-  const shown = group.spools.slice(0, 5);
-  return (
-    <Link
-      to={`/filament/${group.slug}`}
-      className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
-    >
-      <span className="relative block aspect-square w-full bg-white">
-        {image?.status === "found" ? (
-          <img
-            src={`/api/filament/image/${encodeURIComponent(group.key)}`}
-            alt=""
-            className="size-full object-contain p-3"
-            loading="lazy"
-          />
-        ) : (
-          <span className="flex size-full items-center justify-center bg-gray-50">
-            <Swatch hex={group.colourHex} size="size-24" />
-          </span>
-        )}
-        <span className="absolute left-2 top-2 flex gap-1">
-          {slots.map((n) => (
-            <span
-              key={n}
-              className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-800 shadow-sm ring-1 ring-black/5"
-            >
-              AMS {n}
-            </span>
-          ))}
-        </span>
-        <span className="absolute right-2 top-2 flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-800 shadow-sm ring-1 ring-black/5">
-          <span
-            aria-hidden="true"
-            className="size-2.5 rounded-full ring-1 ring-black/10"
-            style={{ background: group.colourHex }}
-          />
-          {group.spools.length} spool{group.spools.length === 1 ? "" : "s"}
-        </span>
-      </span>
-      <span className="flex flex-1 flex-col gap-2 border-t border-gray-100 p-3">
-        <span>
-          <span className="block font-semibold text-gray-900">
-            {group.colourName}
-          </span>
-          <span className="block text-xs text-gray-500">{group.type}</span>
-        </span>
-        <span className="flex flex-col gap-1">
-          {shown.map((s) => (
-            <span key={s.id} className="flex items-center gap-2">
-              <span className="h-1.5 flex-1 rounded-full bg-gray-100">
-                <span
-                  className={tw(
-                    "block h-1.5 rounded-full",
-                    barColour(s.remainingPercent)
-                  )}
-                  style={{ width: `${s.remainingPercent}%` }}
-                />
-              </span>
-              <span className="w-9 text-right text-xs tabular-nums text-gray-600">
-                {s.remainingPercent}%
-              </span>
-            </span>
-          ))}
-          {group.spools.length > shown.length ? (
-            <span className="text-xs text-gray-500">
-              and {group.spools.length - shown.length} more
-            </span>
-          ) : null}
-        </span>
-        <span className="mt-auto flex items-baseline justify-between border-t border-gray-100 pt-2 text-sm">
-          <span className="tabular-nums text-gray-900">
-            {(group.gramsLeft / 1000).toFixed(2)} kg left
-          </span>
-          <span className="text-xs tabular-nums text-gray-500">
-            {perKg !== null ? `${money(perKg)}/kg` : ""}
-          </span>
-        </span>
-      </span>
-    </Link>
-  );
-}
-
 /** The bottom bar, as on the assets list: pages, per page, back to the top, Tile or List. */
 function FilamentBottomBar({ view }: { view: "tile" | "list" }) {
   const { isMd } = useViewportHeight();
@@ -737,44 +902,36 @@ export default function FilamentPage() {
   const {
     spools,
     candidates,
-    summary,
     images,
     view,
     items,
-    search,
     totalItems,
-    filamentsOnHand,
+    anyPrice,
+    filters,
+    lines,
   } = useLoaderData<typeof loader>();
-  const money = useMoney();
-  const active = spools.filter((s) => s.status === "active");
+  const [params] = useSearchParams();
+  const adding = params.get("add") === "1";
   const empty = spools.filter((s) => s.status === "empty");
   const retired = spools.filter((s) => s.status === "retired");
+  const onHand = spools.filter((s) => s.status !== "retired");
+  const filtered = Boolean(
+    filters.search || filters.line || filters.state !== "all"
+  );
   return (
     <>
-      <Header />
-      <div className="mt-4 flex flex-col gap-4 pb-20">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            ["Spools", String(summary.spools)],
-            ["Filament left", `${(summary.gramsLeft / 1000).toFixed(1)} kg`],
-            ["Worth", money(summary.valueLeft)],
-            ["Spent", money(summary.spent)],
-          ].map(([k, v]) => (
-            <div
-              key={k}
-              className="rounded-lg border border-gray-200 bg-white p-4"
-            >
-              <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                {k}
-              </div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
-                {v}
-              </div>
-            </div>
-          ))}
+      <Header hidePageDescription>
+        <div className="flex items-center gap-2">
+          <GetPictures images={images} spools={spools} />
+          <Button to="?add=1" disabled={adding}>
+            Add spools
+          </Button>
         </div>
+      </Header>
+      <div className="mt-4 flex flex-col gap-4 pb-20">
+        {adding ? <AddSpoolPanel /> : null}
 
-        <AmsPanel spools={spools} images={images} />
+        <Overview spools={spools} images={images} anyPrice={anyPrice} />
 
         {candidates.length > 0 ? (
           <div className="flex flex-col gap-3">
@@ -798,50 +955,38 @@ export default function FilamentPage() {
           </div>
         ) : null}
 
-        <Card className="my-0">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-text-md font-semibold text-gray-900">
-              Spools ({active.length}) · {filamentsOnHand} filament
-              {filamentsOnHand === 1 ? "" : "s"}
-            </h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <Form method="get" className="flex items-center gap-1">
-                <input type="hidden" name="view" value={view} />
-                <input
-                  type="search"
-                  name="s"
-                  defaultValue={search}
-                  placeholder='Search, e.g. "matte" or "black"'
-                  className={tw(inputClass, "w-56")}
-                  aria-label="Search filament"
-                />
-              </Form>
-              <GetPictures images={images} spools={spools} />
-              <AddSpool />
-            </div>
+        <FilterBar filters={filters} lines={lines} />
+
+        {onHand.length === 0 ? (
+          <Card className="my-0">
+            <p className="text-sm text-gray-600">
+              No spools yet. Add your first with Add spools, at the top.
+            </p>
+          </Card>
+        ) : totalItems === 0 ? (
+          <Card className="my-0">
+            <p className="text-sm text-gray-600">
+              Nothing matches{filtered ? " these filters" : ""}.{" "}
+              <Link to="/filament" className="text-primary-600 hover:underline">
+                Show everything
+              </Link>
+            </p>
+          </Card>
+        ) : view === "tile" ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {items.map((g) => (
+              <FilamentTile key={g.key} group={g} images={images} />
+            ))}
           </div>
-          {active.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-600">
-              No spools yet. Add your first with Add spools.
-            </p>
-          ) : totalItems === 0 ? (
-            <p className="mt-3 text-sm text-gray-600">
-              Nothing matches "{search}".
-            </p>
-          ) : view === "tile" ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {items.map((g) => (
-                <FilamentTile key={g.key} group={g} images={images} />
-              ))}
-            </div>
-          ) : (
-            <ul className="mt-2 divide-y divide-gray-100">
+        ) : (
+          <Card className="my-0 py-0">
+            <ul className="divide-y divide-gray-100">
               {items.map((g) => (
                 <FilamentListRow key={g.key} group={g} images={images} />
               ))}
             </ul>
-          )}
-        </Card>
+          </Card>
+        )}
 
         {retired.length > 0 ? (
           <details className="rounded-lg border border-gray-200 bg-white p-4">

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   filamentImage: { findUnique: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
-  spool: { findMany: vi.fn() },
+  spool: { findMany: vi.fn(), updateMany: vi.fn() },
 }));
 vi.mock("~/database/db.server", () => ({ db }));
 vi.mock("~/utils/logger", () => ({ Logger: { error: vi.fn() } }));
@@ -19,6 +19,8 @@ const store = () => ({ findFilament: vi.fn(), downloadImage: vi.fn() });
 
 beforeEach(() => {
   Object.values(db.filamentImage).forEach((f) => f.mockReset());
+  Object.values(db.spool).forEach((f) => f.mockReset());
+  db.spool.findMany.mockResolvedValue([]);
   db.filamentImage.findUnique.mockResolvedValue(null);
   db.filamentImage.upsert.mockResolvedValue({});
 });
@@ -109,5 +111,29 @@ describe("getting a filament's picture", () => {
       contentType: "image/png",
     });
     expect((await getFilamentImage("o1", "k"))?.contentType).toBe("image/png");
+  });
+});
+
+describe("the code on the box", () => {
+  it("is filled in from the store on this filament's spools that haven't one", async () => {
+    db.spool.findMany.mockResolvedValue([
+      { id: "a", type: "PLA Matte", colourName: "Charcoal" },
+      { id: "b", type: "PLA Basic", colourName: "Black" },
+    ]);
+    const s = store();
+    s.findFilament.mockResolvedValue({
+      imageUrl: "https://cdn/x.jpg",
+      productUrl: "u",
+      filamentCode: "11101",
+    });
+    s.downloadImage.mockResolvedValue({
+      bytes: new Uint8Array([1]),
+      contentType: "image/jpeg",
+    });
+    await ensureFilamentImage("o1", wanted, s);
+    expect(db.spool.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "o1", id: { in: ["a"] } },
+      data: { filamentCode: "11101" },
+    });
   });
 });

@@ -170,3 +170,22 @@ export function groupSpools<
   }
   return [...groups.values()];
 }
+
+/** A filament's state, for its chip: in the AMS, run out, low, or on the shelf. */
+export function groupState(
+  spools: { amsSlot: number | null; status: string; remainingPercent: number }[]
+) {
+  const slots = spools
+    .filter((s) => s.amsSlot !== null && s.status === "active")
+    .map((s) => s.amsSlot);
+  if (slots.length)
+    return {
+      label: `In AMS ${slots.join(", ")}`,
+      tone: "bg-blue-50 text-blue-700",
+    };
+  if (spools.some((s) => s.status === "empty"))
+    return { label: "Run out?", tone: "bg-warning-50 text-warning-700" };
+  if (spools.every((s) => s.remainingPercent <= 15))
+    return { label: "Low", tone: "bg-error-50 text-error-700" };
+  return { label: "On the shelf", tone: "bg-success-50 text-success-700" };
+}

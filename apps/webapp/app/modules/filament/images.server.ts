@@ -67,6 +67,22 @@ export async function ensureFilamentImage(
       filamentCode: variant.filamentCode,
       message: null,
     });
+    // the store knows the code on the box: fill it in where it's missing
+    if (variant.filamentCode) {
+      const missing = await db.spool.findMany({
+        where: { organizationId, filamentCode: null },
+        select: { id: true, type: true, colourName: true },
+      });
+      const ids = missing
+        .filter((s) => filamentKey(s.type, s.colourName) === key)
+        .map((s) => s.id);
+      if (ids.length) {
+        await db.spool.updateMany({
+          where: { organizationId, id: { in: ids } },
+          data: { filamentCode: variant.filamentCode },
+        });
+      }
+    }
     return "found";
   } catch (cause) {
     const message =
