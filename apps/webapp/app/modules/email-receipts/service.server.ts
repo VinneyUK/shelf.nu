@@ -285,11 +285,57 @@ async function handleMessage(
       raw,
       mail,
     });
+    // filament feature: a forwarded Bambu Lab order puts its filament in the
+    // Filament inbox instead of becoming asset drafts
+    try {
+      const { looksLikeBambuOrder, spoolsFromBambuOrder } = await import(
+        "~/modules/filament/bambu-orders.server"
+      );
+      if (
+        looksLikeBambuOrder({
+          subject: mail.subject ?? "",
+          text: mail.text ?? null,
+        }) &&
+        ((
+          await db.workspaceCustomisation.findUnique({
+            where: { organizationId },
+            select: { filamentEnabled: true },
+          })
+        )?.filamentEnabled ??
+          true)
+      ) {
+        const made = await spoolsFromBambuOrder({
+          organizationId,
+          subject: mail.subject ?? "",
+          text: mail.text ?? null,
+          files: receiptParts(mail.attachments).map((part) => ({
+            name: part.filename || "receipt",
+            type: part.contentType,
+            bytes: new Uint8Array(part.content),
+          })),
+        });
+        if (made > 0) {
+          await db.emailReceipt.update({
+            where: { id: receipt.id, organizationId },
+            data: {
+              reason: `Bambu Lab order: ${made} filament line${
+                made === 1 ? "" : "s"
+              } waiting on the Filament page.`,
+            },
+          });
+          return;
+        }
+      }
+    } catch {
+      // never let this stop the email being handled; it goes on to drafts
+    }
     // AI feature: Claude reads it into drafts. If that can't happen, it simply
     // stays in the Unmatched list as before.
     try {
       // loaded here, not at the top: drafts also imports this module
-      const { draftsFromEmailedReceipt } = await import("~/modules/ai/drafts.server");
+      const { draftsFromEmailedReceipt } = await import(
+        "~/modules/ai/drafts.server"
+      );
       await draftsFromEmailedReceipt({
         organizationId,
         emailReceiptId: receipt.id,

@@ -279,6 +279,9 @@ export type Candidate = {
   purchasedOn?: Date | null;
   tagUid?: string | null;
   amsSlot?: number | null;
+  /** How many spools of it (from a receipt) */
+  quantity?: number;
+  filamentCode?: string | null;
 };
 
 /**
@@ -302,6 +305,8 @@ export async function proposeSpool(
   }
   const colourHex = cleanHex(found.colourHex) ?? "#888888";
   const data = {
+    quantity: Math.max(1, Math.min(20, Math.round(found.quantity ?? 1) || 1)),
+    filamentCode: found.filamentCode?.trim() || null,
     source: found.source,
     type: found.type.trim().slice(0, 60) || "Unknown",
     material: materialOf(found.type),
@@ -343,15 +348,22 @@ export async function proposeSpool(
 export async function approveCandidate(
   organizationId: string,
   id: string,
-  input: SpoolInput
+  input: SpoolInput,
+  /** How many spools to add; the entry's own quantity when not given */
+  quantity?: number
 ) {
   const candidate = await db.spoolCandidate.findFirst({
     where: { id, organizationId, status: "pending" },
   });
   if (!candidate) throw bad("That one has already been dealt with.", 404);
   const data = clean(input);
+  const count = Math.max(
+    1,
+    Math.min(20, Math.round(quantity ?? candidate.quantity ?? 1) || 1)
+  );
   return db.$transaction(async (tx) => {
     await freeSlot(tx, organizationId, data.amsSlot);
+    // the first spool takes the tag and the AMS slot; any others are on the shelf
     const spool = await tx.spool.create({
       data: {
         ...data,
@@ -361,6 +373,17 @@ export async function approveCandidate(
         status: data.remainingPercent === 0 ? "empty" : "active",
       },
     });
+    for (let i = 1; i < count; i++) {
+      await tx.spool.create({
+        data: {
+          ...data,
+          amsSlot: null,
+          organizationId,
+          source: candidate.source,
+          status: data.remainingPercent === 0 ? "empty" : "active",
+        },
+      });
+    }
     await tx.spoolCandidate.update({
       where: { id, organizationId },
       data: { status: "approved" },

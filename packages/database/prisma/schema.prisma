@@ -2966,6 +2966,8 @@ model SpoolCandidate {
   tagUid           String?
   filamentCode     String?
   amsSlot          Int?
+  /// How many spools (a receipt can list several of one filament)
+  quantity         Int       @default(1)
   /// pending | approved | dismissed
   status           String    @default("pending")
   createdAt        DateTime  @default(now())

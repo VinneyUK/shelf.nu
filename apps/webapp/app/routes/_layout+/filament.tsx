@@ -280,7 +280,12 @@ export async function action({ context, request }: ActionFunctionArgs) {
             : "Already getting pictures; refresh in a minute.",
         });
       case "approve":
-        await approveCandidate(organizationId, id, parseData(form, SpoolForm));
+        await approveCandidate(
+          organizationId,
+          id,
+          parseData(form, SpoolForm),
+          Number(form.get("quantity") ?? 1)
+        );
         fetchMissingImages(organizationId);
         return payload({ message: "Added." });
       case "dismiss":
@@ -728,7 +733,7 @@ function CandidateCard({
             </div>
           </div>
         </div>
-        <SpoolFields initial={candidate} />
+        <SpoolFields initial={candidate} withQuantity />
         <div className="flex items-center justify-end gap-2">
           <ResultLine fetcher={fetcher} />
           <Button

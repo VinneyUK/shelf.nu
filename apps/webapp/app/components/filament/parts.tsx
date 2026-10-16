@@ -170,6 +170,7 @@ export function ResultLine({
 }
 
 export type Initial = Partial<{
+  quantity: number;
   type: string;
   colourName: string;
   colourHex: string;
@@ -327,7 +328,7 @@ export function SpoolFields({
             type="number"
             min={1}
             max={20}
-            defaultValue={1}
+            defaultValue={initial?.quantity ?? 1}
             className={inputClass}
           />
         </label>

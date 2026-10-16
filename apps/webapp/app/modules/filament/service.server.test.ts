@@ -364,3 +364,47 @@ describe("a filament's own page", () => {
     ).toMatchObject({ status: "retired", amsSlot: null });
   });
 });
+
+describe("an inbox entry for several spools", () => {
+  it("approving adds that many, the first taking the tag and AMS slot", async () => {
+    m.spoolCandidate.findFirst.mockResolvedValue({
+      id: "c1",
+      source: "receipt",
+      tagUid: "T",
+      quantity: 3,
+    });
+    await approveCandidate("o1", "c1", { ...input, amsSlot: 2 });
+    const made = m.spool.create.mock.calls.map((c) => c[0].data);
+    expect(made).toHaveLength(3);
+    expect(made.map((d) => [d.amsSlot, d.tagUid ?? null])).toEqual([
+      [2, "T"],
+      [null, null],
+      [null, null],
+    ]);
+  });
+  it("adds the number you choose when approving", async () => {
+    m.spoolCandidate.findFirst.mockResolvedValue({
+      id: "c1",
+      source: "receipt",
+      tagUid: null,
+      quantity: 3,
+    });
+    await approveCandidate("o1", "c1", input, 1);
+    expect(m.spool.create).toHaveBeenCalledTimes(1);
+  });
+  it("keeps a receipt's quantity on the entry it proposes", async () => {
+    m.spool.findFirst.mockResolvedValue(null);
+    m.spoolCandidate.findFirst.mockResolvedValue(null);
+    await proposeSpool("o1", {
+      source: "receipt",
+      type: "PLA Basic",
+      colourName: "Jade White",
+      colourHex: "#ffffff",
+      quantity: 4,
+    });
+    expect(m.spoolCandidate.create.mock.calls[0][0].data).toMatchObject({
+      quantity: 4,
+      source: "receipt",
+    });
+  });
+});
