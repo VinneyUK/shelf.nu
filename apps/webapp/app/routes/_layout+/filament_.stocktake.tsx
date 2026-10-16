@@ -24,6 +24,7 @@ import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import { catalogueEntry, stocktakeOrder } from "~/modules/filament/catalogue";
 import { imageStatuses } from "~/modules/filament/images.server";
+import { done, failed } from "~/modules/filament/notify.server";
 import { getFilament, weighSpool } from "~/modules/filament/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
@@ -89,14 +90,23 @@ export async function action({ context, request }: ActionFunctionArgs) {
     });
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
+    const label = String(form.get("label") ?? "Spool");
     const percent = await weighSpool(
       organizationId,
       id,
       Number(form.get("grossGrams") ?? 0)
     );
-    return payload({ id, percent, message: `${percent}% left` });
+    return done(
+      userId,
+      "Spool weighed",
+      percent === 0
+        ? `${label}: empty. Confirm it on the Filament page.`
+        : `${label}: ${percent}% left.`,
+      { id, percent }
+    );
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(userId, "weigh", reason.message);
     return data(error(reason), { status: reason.status });
   }
 }
@@ -156,6 +166,11 @@ function StocktakeRow({
       </div>
       <fetcher.Form method="post" className="flex items-center gap-2">
         <input type="hidden" name="id" value={spool.id} />
+        <input
+          type="hidden"
+          name="label"
+          value={`${spool.colourName} · ${spool.type}`}
+        />
         <label className="flex items-center gap-1 text-sm text-gray-700">
           <span className="sr-only">
             Weight on the scale for {spool.colourName} {spool.type}
@@ -185,10 +200,6 @@ function StocktakeRow({
         {!spool.tare ? (
           <span className="text-xs text-gray-500">
             Set the empty spool's weight on its filament page first.
-          </span>
-        ) : fetcher.data?.error ? (
-          <span role="alert" className="text-xs text-error-600">
-            {fetcher.data.error.message}
           </span>
         ) : percent !== null ? (
           <div className="flex items-center gap-2" role="status">

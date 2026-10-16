@@ -18,7 +18,6 @@ import { ErrorContent } from "~/components/errors";
 import {
   FilamentPicture,
   inputClass,
-  ResultLine,
   SpoolFields,
   Swatch,
   barColour,
@@ -48,6 +47,7 @@ import {
   fetchMissingImages,
   imageStatuses,
 } from "~/modules/filament/images.server";
+import { done, failed } from "~/modules/filament/notify.server";
 import { priceSummary, type PriceSummary } from "~/modules/filament/prices";
 import {
   priceStatuses,
@@ -242,6 +242,7 @@ const SpoolForm = z.object({
 
 export async function action({ context, request }: ActionFunctionArgs) {
   const { userId } = context.getSession();
+  let intent = "";
   try {
     const { organizationId } = await requirePermission({
       userId,
@@ -250,62 +251,72 @@ export async function action({ context, request }: ActionFunctionArgs) {
       action: PermissionAction.update,
     });
     const form = await request.formData();
-    const intent = String(form.get("intent") ?? "");
+    intent = String(form.get("intent") ?? "");
     const id = String(form.get("id") ?? "");
 
     switch (intent) {
       case "create": {
-        const quantity = Number(form.get("quantity") ?? 1);
+        const input = parseData(form, SpoolForm);
         const made = await createSpools(
           organizationId,
-          parseData(form, SpoolForm),
-          quantity
-        );
-        fetchMissingImages(organizationId); // the picture, in the background
-        return payload({
-          message:
-            made.length === 1 ? "Spool added." : `${made.length} spools added.`,
-        });
-      }
-      case "check-prices":
-        return payload({
-          message: refreshStalePrices(organizationId, { force: true })
-            ? "Checking prices on the Bambu store in the background; refresh in a minute."
-            : "Already checking prices; refresh in a minute.",
-        });
-      case "fetch-images":
-        return payload({
-          message: fetchMissingImages(organizationId)
-            ? "Getting pictures from the Bambu store in the background. They appear as they arrive; refresh in a minute."
-            : "Already getting pictures; refresh in a minute.",
-        });
-      case "approve":
-        await approveCandidate(
-          organizationId,
-          id,
-          parseData(form, SpoolForm),
+          input,
           Number(form.get("quantity") ?? 1)
         );
+        fetchMissingImages(organizationId); // the picture, in the background
+        return done(
+          userId,
+          made.length === 1 ? "Spool added" : `${made.length} spools added`,
+          `${input.colourName} · ${input.type}`
+        );
+      }
+      case "check-prices":
+        return done(
+          userId,
+          "Checking prices",
+          refreshStalePrices(organizationId, { force: true })
+            ? "Prices are being checked on the Bambu store. Refresh in a minute or two."
+            : "Prices are already being checked. Refresh in a minute or two."
+        );
+      case "fetch-images":
+        return done(
+          userId,
+          "Getting pictures",
+          fetchMissingImages(organizationId)
+            ? "Pictures are coming from the Bambu store. Refresh in a minute or two."
+            : "Pictures are already on their way. Refresh in a minute or two."
+        );
+      case "approve": {
+        const input = parseData(form, SpoolForm);
+        const quantity = Math.max(1, Number(form.get("quantity") ?? 1) || 1);
+        await approveCandidate(organizationId, id, input, quantity);
         fetchMissingImages(organizationId);
-        return payload({ message: "Added." });
+        return done(
+          userId,
+          quantity === 1 ? "Spool added" : `${quantity} spools added`,
+          `${input.colourName} · ${input.type}, from the inbox`
+        );
+      }
       case "dismiss":
         await dismissCandidate(organizationId, id);
-        return payload({ message: "Dismissed." });
+        return done(userId, "Dismissed", "Removed from Waiting for you.");
       case "retire":
         await retireSpool(organizationId, id);
-        return payload({ message: "Retired." });
-      case "keep":
-        await keepSpool(
-          organizationId,
-          id,
-          Number(form.get("remainingPercent") ?? 0)
+        return done(
+          userId,
+          "Spool retired",
+          "It's in Finished spools, and can be brought back from there."
         );
-        return payload({ message: "Back in use." });
+      case "keep": {
+        const percent = Number(form.get("remainingPercent") ?? 0);
+        await keepSpool(organizationId, id, percent);
+        return done(userId, "Spool back in use", `${percent}% left.`);
+      }
       default:
-        return payload({ message: "Unknown action." });
+        return payload({ ok: false });
     }
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(userId, intent, reason.message);
     return data(error(reason), { status: reason.status });
   }
 }
@@ -336,7 +347,6 @@ function AddSpoolPanel() {
         <h3 className="text-text-md font-semibold text-gray-900">Add spools</h3>
         <SpoolFields withQuantity />
         <div className="flex items-center justify-end gap-3">
-          <ResultLine fetcher={fetcher} />
           <Button type="button" variant="secondary" onClick={close}>
             Cancel
           </Button>
@@ -497,7 +507,6 @@ function CheckPrices() {
   return (
     <fetcher.Form method="post" className="flex items-center gap-2">
       <input type="hidden" name="intent" value="check-prices" />
-      <ResultLine fetcher={fetcher} />
       <Button
         type="submit"
         variant="secondary"
@@ -692,7 +701,6 @@ function GetPictures({
           Get pictures ({missing})
         </Button>
       ) : null}
-      <ResultLine fetcher={fetcher} />
       {!fetcher.data && problem ? (
         <span className="text-xs text-gray-500">Last time: {problem}</span>
       ) : null}
@@ -735,7 +743,6 @@ function CandidateCard({
         </div>
         <SpoolFields initial={candidate} withQuantity />
         <div className="flex items-center justify-end gap-2">
-          <ResultLine fetcher={fetcher} />
           <Button
             type="submit"
             name="intent"
@@ -780,7 +787,6 @@ function EmptyCard({ spool, images }: { spool: SpoolRow; images: Images }) {
           Shows 0% left. Is it finished?
         </div>
       </div>
-      <ResultLine fetcher={fetcher} />
       <label className="flex items-center gap-1 text-sm text-gray-700">
         Not yet, it has
         <input

@@ -152,23 +152,6 @@ export function RemainingBar({ percent }: { percent: number }) {
   );
 }
 
-export function ResultLine({
-  fetcher,
-}: {
-  fetcher: { state: string; data?: Result };
-}) {
-  if (fetcher.state !== "idle" || !fetcher.data) return null;
-  const bad = Boolean(fetcher.data.error);
-  return (
-    <p
-      role={bad ? "alert" : "status"}
-      className={tw("text-sm", bad ? "text-error-600" : "text-gray-600")}
-    >
-      {fetcher.data.error?.message ?? fetcher.data.message}
-    </p>
-  );
-}
-
 export type Initial = Partial<{
   quantity: number;
   type: string;

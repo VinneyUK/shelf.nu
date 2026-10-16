@@ -17,18 +17,27 @@ import {
   FilamentPicture,
   inputClass,
   OTHER,
-  ResultLine,
   Swatch,
   useMoney,
   type Images,
   type Result,
   selectClass,
 } from "~/components/filament/parts";
-import { ChevronRight } from "~/components/icons/library";
+import { ChevronRight, TrashIcon } from "~/components/icons/library";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import { DateS } from "~/components/shared/date";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/shared/modal";
 import { useSearchParams } from "~/hooks/search-params";
 import {
   AMS_SLOTS,
@@ -44,6 +53,7 @@ import {
   fetchMissingImages,
   imageStatuses,
 } from "~/modules/filament/images.server";
+import { done, failed, notify } from "~/modules/filament/notify.server";
 import { priceSummary } from "~/modules/filament/prices";
 import {
   priceStatuses,
@@ -187,6 +197,7 @@ const AddForm = z.object({
 
 export async function action({ context, request, params }: ActionFunctionArgs) {
   const { userId } = context.getSession();
+  let intent = "";
   try {
     const { organizationId } = await requirePermission({
       userId,
@@ -196,7 +207,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     });
     const slug = String(params.slug ?? "");
     const form = await request.formData();
-    const intent = String(form.get("intent") ?? "");
+    intent = String(form.get("intent") ?? "");
     const id = String(form.get("id") ?? "");
 
     switch (intent) {
@@ -207,15 +218,25 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           parseData(form, FilamentForm)
         );
         fetchMissingImages(organizationId);
+        notify(
+          userId,
+          "Filament saved",
+          "The changes apply to every spool of this filament."
+        );
         return next === slug
-          ? payload({ message: "Saved for every spool." })
+          ? payload({ ok: true })
           : redirect(`/filament/${next}`);
       }
       case "add": {
         const spools = await getFilamentBySlug(organizationId, slug);
         const first = spools[0];
         if (!first)
-          return payload({ message: "That filament isn't in your spools." });
+          throw new ShelfError({
+            cause: null,
+            message: "That filament isn't in your spools.",
+            status: 404,
+            label: "Assets",
+          });
         const extra = parseData(form, AddForm);
         const made = await createSpools(
           organizationId,
@@ -235,10 +256,11 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           },
           extra.quantity
         );
-        return payload({
-          message:
-            made.length === 1 ? "Spool added." : `${made.length} spools added.`,
-        });
+        return done(
+          userId,
+          made.length === 1 ? "Spool added" : `${made.length} spools added`,
+          `${first.colourName} · ${first.type}`
+        );
       }
       case "spool":
         await updateSpoolDetails(
@@ -246,62 +268,94 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           id,
           parseData(form, SpoolDetailsForm)
         );
-        return payload({ message: "Saved." });
+        return done(userId, "Spool saved", null);
       case "weigh": {
         const percent = await weighSpool(
           organizationId,
           id,
           Number(form.get("grossGrams") ?? 0)
         );
-        return payload({ message: `${percent}% left.` });
+        return done(
+          userId,
+          "Spool weighed",
+          percent === 0
+            ? "It's empty: confirm it on the Filament page."
+            : `${percent}% left.`
+        );
       }
       case "retire":
         await retireSpool(organizationId, id);
-        return payload({ message: "Retired." });
+        return done(
+          userId,
+          "Spool retired",
+          "Tick Show finished to see it, or bring it back."
+        );
       case "keep":
         await keepSpool(
           organizationId,
           id,
           Number(form.get("remainingPercent") ?? 0)
         );
-        return payload({ message: "Back in use." });
+        return done(userId, "Spool back in use", null);
       case "delete": {
         await deleteSpool(organizationId, id);
+        notify(userId, "Spool deleted", null);
         const left = await getFilamentBySlug(organizationId, slug);
         return left.length === 0
           ? redirect("/filament")
-          : payload({ message: "Deleted." });
+          : payload({ ok: true });
       }
+      case "fetch-image":
+        fetchMissingImages(organizationId);
+        return done(
+          userId,
+          "Getting the picture",
+          "It's coming from the Bambu store. Refresh in a moment."
+        );
       case "check-prices": {
         const spools = await getFilamentBySlug(organizationId, slug);
         const first = spools[0];
         if (!first)
-          return payload({ message: "That filament isn't in your spools." });
+          throw new ShelfError({
+            cause: null,
+            message: "That filament isn't in your spools.",
+            status: 404,
+            label: "Assets",
+          });
         const result = await refreshPrice(organizationId, {
           type: first.type,
           colourName: first.colourName,
           filamentCode:
             spools.find((s) => s.filamentCode)?.filamentCode ?? null,
         });
-        return payload({
-          message:
-            result === "found"
-              ? "Prices updated."
-              : result === "missing"
-              ? "The Bambu store doesn't list this line and colour."
-              : "Couldn't check the price; see the note below.",
-        });
+        if (result === "found")
+          return done(
+            userId,
+            "Prices updated",
+            "From the Bambu store, just now."
+          );
+        if (result === "missing") {
+          notify(
+            userId,
+            "Not on the Bambu store",
+            "The store doesn't list this line and colour.",
+            "gray"
+          );
+          return payload({ ok: true });
+        }
+        failed(
+          userId,
+          intent,
+          "The Bambu store didn't answer. The card says why."
+        );
+        return payload({ ok: false });
       }
-      case "fetch-image":
-        fetchMissingImages(organizationId);
-        return payload({
-          message: "Getting the picture; refresh in a moment.",
-        });
       default:
-        return payload({ message: "Unknown action." });
+        return payload({ ok: false });
     }
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(userId, intent, reason.message);
     return data(error(reason), { status: reason.status });
   }
 }
@@ -310,6 +364,57 @@ type PageData = ReturnType<typeof useLoaderData<typeof loader>>;
 type Spool = PageData["spools"][number];
 
 const label = "text-sm text-gray-500";
+
+/** Delete a spool, after Shelf's own confirmation dialog (as for deleting an asset). */
+function DeleteSpool({
+  label,
+  disabled,
+  onDelete,
+}: {
+  label: string;
+  disabled: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button type="button" variant="secondary" size="sm" disabled={disabled}>
+          Delete
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <div className="mx-auto md:m-0">
+            <span className="flex size-12 items-center justify-center rounded-full bg-error-50 p-2 text-error-600">
+              <TrashIcon />
+            </span>
+          </div>
+          <AlertDialogTitle>Delete {label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes the spool completely. To keep it in the history, retire
+            it instead.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <div className="flex justify-center gap-2">
+            <AlertDialogCancel asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              className="border-error-600 bg-error-600 hover:border-error-800 hover:!bg-error-800"
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 /** The column headings above the spools. */
 function SpoolHeadings() {
@@ -533,27 +638,16 @@ function SpoolLine({
             />
           </label>
           <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-3 lg:col-span-5">
-            <ResultLine fetcher={edit} />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
+            <DeleteSpool
+              label={`spool #${index + 1} of ${spool.colourName}`}
               disabled={busy}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    "Delete this spool? To keep it in the history, retire it instead."
-                  )
-                )
-                  return;
+              onDelete={() =>
                 void act.submit(
                   { intent: "delete", id: spool.id },
                   { method: "post" }
-                );
-              }}
-            >
-              Delete
-            </Button>
+                )
+              }
+            />
             <Button
               type="button"
               variant="secondary"
@@ -574,9 +668,7 @@ function SpoolLine({
           </div>
         </edit.Form>
       ) : null}
-      <div className="mt-1 flex justify-end">
-        <ResultLine fetcher={act} />
-      </div>
+      <div className="mt-1 flex justify-end"></div>
     </li>
   );
 }
@@ -650,7 +742,6 @@ function AddMore() {
           </select>
         </label>
         <div className="ml-auto flex items-center gap-2">
-          <ResultLine fetcher={fetcher} />
           <Button type="button" variant="secondary" onClick={close}>
             Cancel
           </Button>
@@ -815,7 +906,6 @@ function Specs({
           />
         </label>
         <div className="mt-3 flex items-center justify-end gap-2">
-          <ResultLine fetcher={fetcher} />
           <Button
             type="submit"
             size="sm"
@@ -908,7 +998,6 @@ function StoreCard({
           {price ? `Checked ${ago(price.checkedAt)}` : ""}
         </span>
         <div className="flex items-center gap-2">
-          <ResultLine fetcher={fetcher} />
           <fetcher.Form method="post">
             <input type="hidden" name="intent" value="check-prices" />
             <Button
@@ -1009,7 +1098,6 @@ export default function FilamentDetail() {
           ) : (
             <picture.Form method="post" className="flex items-center gap-2">
               <input type="hidden" name="intent" value="fetch-image" />
-              <ResultLine fetcher={picture} />
               <Button
                 type="submit"
                 variant="secondary"
