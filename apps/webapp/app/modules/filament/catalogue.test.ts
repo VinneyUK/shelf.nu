@@ -12,6 +12,7 @@ import {
   groupSpools,
   materialOf,
   remainingTone,
+  stocktakeOrder,
   summarise,
   valueLeft,
   weighedPercent,
@@ -184,5 +185,23 @@ describe("a filament's address", () => {
     expect(filamentSlug("PLA Silk", "Gold")).not.toBe(
       filamentSlug("PLA Silk+", "Gold")
     );
+  });
+});
+
+describe("the stocktake order", () => {
+  it("goes by line, then colour, then oldest spool first", () => {
+    const s = (
+      id: string,
+      type: string,
+      colourName: string,
+      createdAt: string
+    ) => ({ id, type, colourName, createdAt });
+    const order = stocktakeOrder([
+      s("c", "PLA Matte", "Charcoal", "2026-01-01"),
+      s("b2", "PLA Basic", "Jade White", "2026-03-01"),
+      s("a", "PLA Basic", "Hot Pink", "2026-02-01"),
+      s("b1", "PLA Basic", "Jade White", "2026-01-15"),
+    ]).map((x) => x.id);
+    expect(order).toEqual(["a", "b1", "b2", "c"]);
   });
 });

@@ -170,3 +170,15 @@ export function groupSpools<
   }
   return [...groups.values()];
 }
+
+/** The order for a stocktake: by line, then colour, then oldest spool first. */
+export function stocktakeOrder<
+  S extends { type: string; colourName: string; createdAt: Date | string },
+>(spools: S[]) {
+  return [...spools].sort(
+    (a, b) =>
+      a.type.localeCompare(b.type) ||
+      a.colourName.localeCompare(b.colourName) ||
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+}

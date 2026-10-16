@@ -916,6 +916,11 @@ export default function FilamentPage() {
       <Header hidePageDescription>
         <div className="flex items-center gap-2">
           <GetPictures images={images} spools={spools} />
+          {onHand.length > 0 ? (
+            <Button to="/filament/stocktake" variant="secondary">
+              Stocktake
+            </Button>
+          ) : null}
           <Button to="?add=1" disabled={adding}>
             Add spools
           </Button>
