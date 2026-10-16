@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findFilament,
+  matchingVariants,
   pickProduct,
   pickVariant,
   resetStoreState,
@@ -171,5 +172,30 @@ describe("matching", () => {
   });
   it("finds no variant for a colour the store doesn't sell", () => {
     expect(pickVariant([], "Charcoal")).toBeNull();
+  });
+});
+
+describe("all of a colour's variants", () => {
+  const variants = [
+    { colourName: "Charcoal", filamentCode: "11101", kind: "Refill" },
+    {
+      colourName: "Charcoal",
+      filamentCode: "11101",
+      kind: "Filament with spool",
+    },
+    { colourName: "Ivory White", filamentCode: "11100", kind: "Refill" },
+  ] as unknown as Parameters<typeof matchingVariants>[0];
+  it("by name, both refill and spool", () => {
+    expect(matchingVariants(variants, "charcoal").map((v) => v.kind)).toEqual([
+      "Refill",
+      "Filament with spool",
+    ]);
+  });
+  it("by the code on the box, even if the name differs", () => {
+    expect(
+      matchingVariants(variants, "something else", "11100").map(
+        (v) => v.colourName
+      )
+    ).toEqual(["Ivory White"]);
   });
 });

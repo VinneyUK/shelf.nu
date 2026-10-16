@@ -44,6 +44,12 @@ import {
   fetchMissingImages,
   imageStatuses,
 } from "~/modules/filament/images.server";
+import { priceSummary } from "~/modules/filament/prices";
+import {
+  priceStatuses,
+  refreshPrice,
+  refreshStalePrices,
+} from "~/modules/filament/prices.server";
 import {
   createSpools,
   deleteSpool,
@@ -85,7 +91,11 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       });
     }
     const first = spools[0];
-    const images = await imageStatuses(organizationId);
+    const [images, prices] = await Promise.all([
+      imageStatuses(organizationId),
+      priceStatuses(organizationId),
+    ]);
+    refreshStalePrices(organizationId); // anything over a day old, in the background
     const entry = catalogueEntry(first.type);
     return payload({
       header: { title: first.colourName },
@@ -110,6 +120,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         : null,
       spools,
       images,
+      price: prices[filamentKey(first.type, first.colourName)] ?? null,
     });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
@@ -260,6 +271,26 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         return left.length === 0
           ? redirect("/filament")
           : payload({ message: "Deleted." });
+      }
+      case "check-prices": {
+        const spools = await getFilamentBySlug(organizationId, slug);
+        const first = spools[0];
+        if (!first)
+          return payload({ message: "That filament isn't in your spools." });
+        const result = await refreshPrice(organizationId, {
+          type: first.type,
+          colourName: first.colourName,
+          filamentCode:
+            spools.find((s) => s.filamentCode)?.filamentCode ?? null,
+        });
+        return payload({
+          message:
+            result === "found"
+              ? "Prices updated."
+              : result === "missing"
+              ? "The Bambu store doesn't list this line and colour."
+              : "Couldn't check the price; see the note below.",
+        });
       }
       case "fetch-image":
         fetchMissingImages(organizationId);
@@ -798,8 +829,115 @@ function Specs({
   );
 }
 
+/** "3 hours ago", for when a price was checked. */
+function ago(iso: string) {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 2) return "just now";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 36) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}
+
+/** The filament on the Bambu store: spool and refill prices, any offer, and what you've paid. */
+function StoreCard({
+  price,
+  paidPerKg,
+  productUrl,
+}: {
+  price: PageData["price"];
+  paidPerKg: number | null;
+  productUrl: string | null;
+}) {
+  const money = useMoney();
+  const fetcher = useFetcher<Result>();
+  const summary = priceSummary(price?.variants);
+  const row = (label: string, p: { now: number; was: number | null } | null) =>
+    p ? (
+      <div className="grid grid-cols-[7rem_1fr] border-b border-gray-100 py-2 text-sm">
+        <span className="text-gray-500">{label}</span>
+        <span className="tabular-nums text-gray-900">
+          {money(p.now)}
+          {p.was ? (
+            <span className="ml-2 text-xs text-gray-400 line-through">
+              {money(p.was)}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    ) : null;
+  return (
+    <Card className="my-0">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-text-md font-semibold text-gray-900">
+          Bambu store
+        </h3>
+        {summary.onOffer ? (
+          <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
+            On offer
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2">
+        {price?.status === "found" ? (
+          <>
+            {row("Spool, 1 kg", summary.spool)}
+            {row("Refill, 1 kg", summary.refill)}
+            {!summary.spool && !summary.refill ? (
+              <p className="py-2 text-sm text-gray-500">
+                The store has no 1 kg price for this colour.
+              </p>
+            ) : null}
+          </>
+        ) : price ? (
+          <p className="py-2 text-sm text-gray-500">{price.message}</p>
+        ) : (
+          <p className="py-2 text-sm text-gray-500">Not checked yet.</p>
+        )}
+        {paidPerKg !== null ? (
+          <div className="grid grid-cols-[7rem_1fr] py-2 text-sm">
+            <span className="text-gray-500">You've paid</span>
+            <span className="tabular-nums text-gray-900">
+              {money(paidPerKg)}/kg on average
+            </span>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-gray-500">
+          {price ? `Checked ${ago(price.checkedAt)}` : ""}
+        </span>
+        <div className="flex items-center gap-2">
+          <ResultLine fetcher={fetcher} />
+          <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="check-prices" />
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={isFormProcessing(fetcher.state)}
+            >
+              Check now
+            </Button>
+          </fetcher.Form>
+          {productUrl ? (
+            <Button
+              to={productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+            >
+              Buy again
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function FilamentDetail() {
-  const { filament, catalogue, spools, images } =
+  const { filament, catalogue, spools, images, price } =
     useLoaderData<typeof loader>();
   const money = useMoney();
   const picture = useFetcher<Result>();
@@ -981,14 +1119,22 @@ export default function FilamentDetail() {
             </div>
           </div>
 
-          <Specs
-            key={`${filament.type}|${filament.colourName}`}
-            filament={filament}
-            storeCode={
-              filament.filamentCode ? null : image?.filamentCode ?? null
-            }
-            spoolCount={spools.length}
-          />
+          <div className="flex flex-col gap-4">
+            <StoreCard
+              price={price}
+              paidPerKg={perKg}
+              productUrl={price?.productUrl ?? image?.productUrl ?? null}
+            />
+
+            <Specs
+              key={`${filament.type}|${filament.colourName}`}
+              filament={filament}
+              storeCode={
+                filament.filamentCode ? null : image?.filamentCode ?? null
+              }
+              spoolCount={spools.length}
+            />
+          </div>
         </div>
       </div>
     </>

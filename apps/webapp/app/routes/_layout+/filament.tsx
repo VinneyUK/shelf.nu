@@ -48,6 +48,11 @@ import {
   fetchMissingImages,
   imageStatuses,
 } from "~/modules/filament/images.server";
+import { priceSummary, type PriceSummary } from "~/modules/filament/prices";
+import {
+  priceStatuses,
+  refreshStalePrices,
+} from "~/modules/filament/prices.server";
 import {
   approveCandidate,
   createSpools,
@@ -76,6 +81,7 @@ const STATES = {
   ams: "In the AMS",
   shelf: "On the shelf",
   out: "Run out",
+  offer: "On offer",
 } as const;
 const SORTS = {
   recent: "Recently added",
@@ -83,6 +89,7 @@ const SORTS = {
   colour: "Colour",
   most: "Most left",
   least: "Least left",
+  cheapest: "Store price",
 } as const;
 type State = keyof typeof STATES;
 type Sort = keyof typeof SORTS;
@@ -114,6 +121,15 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         imageStatuses(organizationId),
         resolveFilamentView(request),
       ]);
+    // store prices: what's kept, and a background check of anything over a day old
+    const storePrices = await priceStatuses(organizationId);
+    refreshStalePrices(organizationId);
+    const prices: Record<string, PriceSummary> = Object.fromEntries(
+      Object.entries(storePrices).map(([key, p]) => [
+        key,
+        priceSummary(p.variants),
+      ])
+    );
 
     // spools on hand (active, or run out and waiting), then the filters
     const q = search.toLowerCase();
@@ -123,7 +139,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         (state === "all" ||
           (state === "ams" && s.amsSlot !== null && s.status === "active") ||
           (state === "shelf" && s.amsSlot === null && s.status === "active") ||
-          (state === "out" && s.status === "empty")) &&
+          (state === "out" && s.status === "empty") ||
+          (state === "offer" &&
+            Boolean(prices[filamentKey(s.type, s.colourName)]?.onOffer))) &&
         (!line || s.type === line) &&
         (!q ||
           `${s.type} ${s.material} ${s.colourName} ${s.filamentCode ?? ""}`
@@ -147,6 +165,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
             return b.gramsLeft - a.gramsLeft;
           case "least":
             return a.gramsLeft - b.gramsLeft;
+          case "cheapest": {
+            const pa = prices[a.key]?.best ?? Infinity;
+            const pb = prices[b.key]?.best ?? Infinity;
+            return pa - pb;
+          }
           default:
             return newest(b) - newest(a);
         }
@@ -166,6 +189,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         spools,
         candidates,
         images,
+        prices,
         anyPrice: spools.some((s) => s.pricePaid !== null),
         lines: [...new Set(onHand.map((s) => s.type))].sort(),
         filters: { search, state, sort, line },
@@ -243,6 +267,12 @@ export async function action({ context, request }: ActionFunctionArgs) {
             made.length === 1 ? "Spool added." : `${made.length} spools added.`,
         });
       }
+      case "check-prices":
+        return payload({
+          message: refreshStalePrices(organizationId, { force: true })
+            ? "Checking prices on the Bambu store in the background; refresh in a minute."
+            : "Already checking prices; refresh in a minute.",
+        });
       case "fetch-images":
         return payload({
           message: fetchMissingImages(organizationId)
@@ -456,6 +486,24 @@ function FilterBar({
   );
 }
 
+/** Check every filament's store price now, in the background. */
+function CheckPrices() {
+  const fetcher = useFetcher<Result>();
+  return (
+    <fetcher.Form method="post" className="flex items-center gap-2">
+      <input type="hidden" name="intent" value="check-prices" />
+      <ResultLine fetcher={fetcher} />
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={isFormProcessing(fetcher.state)}
+      >
+        Check prices
+      </Button>
+    </fetcher.Form>
+  );
+}
+
 /** One labelled fact, as on an asset tile. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -469,7 +517,15 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A filament as a tile, like an asset tile: the picture with chips, the facts, the actions. */
-function FilamentTile({ group, images }: { group: Group; images: Images }) {
+function FilamentTile({
+  group,
+  images,
+  price,
+}: {
+  group: Group;
+  images: Images;
+  price?: PriceSummary;
+}) {
   const money = useMoney();
   const image = images[group.key];
   const href = `/filament/${group.slug}`;
@@ -479,10 +535,6 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
   const perKg = priced.length
     ? priced.reduce((a, b) => a + b, 0) / priced.length
     : null;
-  const code =
-    group.spools.find((s) => s.filamentCode)?.filamentCode ??
-    image?.filamentCode ??
-    null;
   const full = group.spools.reduce((n, s) => n + s.weightGrams, 0);
   const leftPercent = full > 0 ? Math.round((group.gramsLeft / full) * 100) : 0;
   const chip =
@@ -504,6 +556,16 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
             </span>
           )}
         </Link>
+        {price?.onOffer ? (
+          <span
+            className={tw(
+              chip,
+              "pointer-events-none absolute left-2 top-2 text-primary-700"
+            )}
+          >
+            On offer
+          </span>
+        ) : null}
         <div className="pointer-events-none absolute right-2 top-2 flex flex-wrap justify-end gap-1">
           <span className={tw(chip, "flex items-center gap-1.5 text-gray-800")}>
             <span
@@ -534,9 +596,22 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
             </span>
           </Fact>
           <Fact label="Spools">{group.spools.length}</Fact>
-          <Fact label="Cost/kg">{perKg !== null ? money(perKg) : "—"}</Fact>
-          <Fact label="Code">
-            {code ? <span className="font-mono">{code}</span> : "—"}
+          <Fact label="Paid/kg">{perKg !== null ? money(perKg) : "—"}</Fact>
+          <Fact label="Store">
+            {price?.best != null ? (
+              <>
+                {money(price.best)}
+                {price.onOffer ? (
+                  <span className="ml-1 text-xs text-gray-400 line-through">
+                    {money(
+                      Math.max(price.spool?.was ?? 0, price.refill?.was ?? 0)
+                    )}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              "—"
+            )}
           </Fact>
         </div>
       </div>
@@ -773,7 +848,15 @@ function RetiredRow({ spool }: { spool: SpoolRow }) {
 }
 
 /** A filament in the list: one row, opening its page. */
-function FilamentListRow({ group, images }: { group: Group; images: Images }) {
+function FilamentListRow({
+  group,
+  images,
+  price,
+}: {
+  group: Group;
+  images: Images;
+  price?: PriceSummary;
+}) {
   const money = useMoney();
   const priced = group.spools
     .map((s) => costPerKg(s))
@@ -831,6 +914,25 @@ function FilamentListRow({ group, images }: { group: Group; images: Images }) {
         </div>
         <div className="hidden w-20 text-right text-xs tabular-nums text-gray-500 sm:block">
           {perKg !== null ? `${money(perKg)}/kg` : ""}
+        </div>
+        <div className="w-24 text-right text-sm">
+          {price?.best != null ? (
+            <>
+              <div className="tabular-nums text-gray-900">
+                {money(price.best)}
+              </div>
+              <div
+                className={tw(
+                  "text-xs",
+                  price.onOffer
+                    ? "font-medium text-primary-700"
+                    : "text-gray-500"
+                )}
+              >
+                {price.onOffer ? "On offer" : "store"}
+              </div>
+            </>
+          ) : null}
         </div>
         <ChevronRight className="text-gray-400" aria-hidden="true" />
       </Link>
@@ -896,6 +998,7 @@ export default function FilamentPage() {
     spools,
     candidates,
     images,
+    prices,
     view,
     items,
     totalItems,
@@ -916,6 +1019,7 @@ export default function FilamentPage() {
       <Header hidePageDescription>
         <div className="flex items-center gap-2">
           <GetPictures images={images} spools={spools} />
+          {onHand.length > 0 ? <CheckPrices /> : null}
           {onHand.length > 0 ? (
             <Button to="/filament/stocktake" variant="secondary">
               Stocktake
@@ -973,14 +1077,24 @@ export default function FilamentPage() {
         ) : view === "tile" ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {items.map((g) => (
-              <FilamentTile key={g.key} group={g} images={images} />
+              <FilamentTile
+                key={g.key}
+                group={g}
+                images={images}
+                price={prices[g.key]}
+              />
             ))}
           </div>
         ) : (
           <Card className="my-0 py-0">
             <ul className="divide-y divide-gray-100">
               {items.map((g) => (
-                <FilamentListRow key={g.key} group={g} images={images} />
+                <FilamentListRow
+                  key={g.key}
+                  group={g}
+                  images={images}
+                  price={prices[g.key]}
+                />
               ))}
             </ul>
           </Card>

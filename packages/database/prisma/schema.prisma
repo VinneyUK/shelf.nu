@@ -2992,3 +2992,20 @@ model FilamentImage {
 
   @@unique([organizationId, key])
 }
+
+/// A filament's prices on the Bambu store (UK), checked at most daily
+model FilamentPrice {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// "pla matte|charcoal": the line and colour, lower case
+  key            String
+  /// found | missing (the store doesn't sell it) | error (try again later)
+  status         String
+  /// [{ kind, size, price, discountPrice }] as the store gives them, in pounds
+  variants       Json?
+  productUrl     String?
+  message        String?
+  checkedAt      DateTime @default(now())
+
+  @@unique([organizationId, key])
+}

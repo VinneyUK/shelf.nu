@@ -54,6 +54,8 @@ export type Variant = {
   discountPrice: number | null;
   /** "Refill", "Filament with spool", … as the store words it */
   kind: string | null;
+  /** "1 kg", … as the store words it */
+  size: string | null;
 };
 
 // ---- politeness, shared by everything in this process
@@ -201,6 +203,9 @@ function variantOf(product: Product, sku: Sku): Variant {
     discountPrice:
       typeof sku.discountPrice === "number" ? sku.discountPrice : null,
     kind: kindProp?.propertyValue ?? null,
+    size:
+      props.find((p) => /size|weight/i.test(p.propertyKey ?? ""))
+        ?.propertyValue ?? null,
   };
 }
 
@@ -224,6 +229,23 @@ export function pickProduct(
  * colour name. The picture with the spool is preferred to the refill's, and
  * the 1 kg one to others.
  */
+/** Every variant of one colour: by the code on the box when we have it, else by colour name. */
+export function matchingVariants(
+  variants: Variant[],
+  colourName: string,
+  code?: string | null
+): Variant[] {
+  const byCode = code
+    ? variants.filter((v) => v.filamentCode === code.trim())
+    : [];
+  if (byCode.length) {
+    // the code picks the colour; its other variants (refill, spool) share the name
+    const name = byCode[0].colourName;
+    return variants.filter((v) => norm(v.colourName) === norm(name));
+  }
+  return variants.filter((v) => norm(v.colourName) === norm(colourName));
+}
+
 export function pickVariant(
   variants: Variant[],
   colourName: string,
@@ -278,4 +300,22 @@ export async function downloadImage(
     bytes: new Uint8Array(buffer),
     contentType: contentType.split(";")[0],
   };
+}
+
+/** Every variant of a filament's colour on the UK store, for its prices. Empty if the store doesn't sell it. */
+export async function findFilamentVariants(
+  {
+    type,
+    colourName,
+    code,
+  }: { type: string; colourName: string; code?: string | null },
+  deps: Deps = {}
+): Promise<Variant[]> {
+  const record = pickProduct(await searchProducts(type, deps), type);
+  if (!record?.seoCode) return [];
+  const product = await getProduct(record.seoCode, deps);
+  const variants = (product.productSkuList ?? []).map((sku) =>
+    variantOf(product, sku)
+  );
+  return matchingVariants(variants, colourName, code);
 }
