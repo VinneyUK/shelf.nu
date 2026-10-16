@@ -50,6 +50,9 @@ export type SpoolRow = {
 export const inputClass =
   "w-full rounded border border-gray-300 px-2.5 py-1.5 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
 
+/** A dropdown: the same, with room on the right for its arrow. */
+export const selectClass = `${inputClass} pr-8`;
+
 export function useMoney() {
   const organization = useCurrentOrganization();
   const currency = organization?.currency ?? "GBP";
@@ -106,7 +109,7 @@ export function FilamentPicture({
   return (
     <span
       className={tw(
-        "relative shrink-0 overflow-hidden rounded-md bg-white ring-1 ring-gray-200",
+        "relative inline-block shrink-0 overflow-hidden rounded-md bg-white ring-1 ring-gray-200",
         size
       )}
     >
@@ -235,7 +238,7 @@ export function SpoolFields({
         <select
           value={type}
           onChange={(e) => changeType(e.target.value)}
-          className={inputClass}
+          className={selectClass}
         >
           {BAMBU_TYPES.map(([t]) => (
             <option key={t} value={t}>
@@ -261,7 +264,7 @@ export function SpoolFields({
           <select
             value={colour}
             onChange={(e) => setColour(e.target.value)}
-            className={inputClass}
+            className={selectClass}
           >
             {colours.map(([n]) => (
               <option key={n} value={n}>
@@ -296,7 +299,7 @@ export function SpoolFields({
         <select
           name="weightGrams"
           defaultValue={String(initial?.weightGrams ?? 1000)}
-          className={inputClass}
+          className={selectClass}
         >
           {SPOOL_WEIGHTS.map((g) => (
             <option key={g} value={g}>
@@ -354,7 +357,7 @@ export function SpoolFields({
         <select
           name="amsSlot"
           defaultValue={initial?.amsSlot ? String(initial.amsSlot) : ""}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">Not loaded</option>
           {AMS_SLOTS.map((n) => (

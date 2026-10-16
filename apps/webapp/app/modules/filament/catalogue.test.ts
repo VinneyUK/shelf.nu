@@ -10,7 +10,6 @@ import {
   filamentSlug,
   gramsLeft,
   groupSpools,
-  groupState,
   materialOf,
   remainingTone,
   summarise,
@@ -185,31 +184,5 @@ describe("a filament's address", () => {
     expect(filamentSlug("PLA Silk", "Gold")).not.toBe(
       filamentSlug("PLA Silk+", "Gold")
     );
-  });
-});
-
-describe("a filament's state chip", () => {
-  const s = (
-    amsSlot: number | null,
-    status: string,
-    remainingPercent: number
-  ) => ({ amsSlot, status, remainingPercent });
-  it("says which AMS slots it's in first", () => {
-    expect(groupState([s(2, "active", 50), s(null, "empty", 0)]).label).toBe(
-      "In AMS 2"
-    );
-  });
-  it("then whether a spool has run out", () => {
-    expect(groupState([s(null, "active", 80), s(null, "empty", 0)]).label).toBe(
-      "Run out?"
-    );
-  });
-  it("then low, when every spool is nearly done", () => {
-    expect(
-      groupState([s(null, "active", 10), s(null, "active", 5)]).label
-    ).toBe("Low");
-    expect(
-      groupState([s(null, "active", 10), s(null, "active", 90)]).label
-    ).toBe("On the shelf");
   });
 });

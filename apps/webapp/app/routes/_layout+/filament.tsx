@@ -42,7 +42,6 @@ import {
   filamentKey,
   filamentSlug,
   groupSpools,
-  groupState,
   summarise,
 } from "~/modules/filament/catalogue";
 import {
@@ -394,7 +393,7 @@ function FilterBar({
   const submit = (e: { currentTarget: HTMLSelectElement }) =>
     e.currentTarget.form?.requestSubmit();
   const select =
-    "rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700";
+    "rounded border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700";
   return (
     <Card className="my-0">
       <Form method="get" className="flex flex-wrap items-center gap-2">
@@ -474,7 +473,6 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
   const money = useMoney();
   const image = images[group.key];
   const href = `/filament/${group.slug}`;
-  const state = groupState(group.spools);
   const priced = group.spools
     .map((s) => costPerKg(s))
     .filter((n): n is number => n !== null);
@@ -491,13 +489,13 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
     "rounded-full bg-white px-2 py-0.5 text-xs font-medium shadow-sm ring-1 ring-black/5";
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
-      <div className="relative aspect-[4/3] bg-gray-50">
+      <div className="relative aspect-square bg-gray-50">
         <Link to={href} className="block size-full">
           {image?.status === "found" ? (
             <img
               src={`/api/filament/image/${encodeURIComponent(group.key)}`}
               alt={`${group.colourName} ${group.type}`}
-              className="size-full object-cover"
+              className="size-full object-contain"
               loading="lazy"
             />
           ) : (
@@ -507,11 +505,6 @@ function FilamentTile({ group, images }: { group: Group; images: Images }) {
           )}
         </Link>
         <div className="pointer-events-none absolute right-2 top-2 flex flex-wrap justify-end gap-1">
-          <span className={chip}>
-            <span className={tw("-mx-1 rounded-full px-1", state.tone)}>
-              {state.label}
-            </span>
-          </span>
           <span className={tw(chip, "flex items-center gap-1.5 text-gray-800")}>
             <span
               aria-hidden="true"

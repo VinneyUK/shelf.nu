@@ -22,6 +22,7 @@ import {
   useMoney,
   type Images,
   type Result,
+  selectClass,
 } from "~/components/filament/parts";
 import { ChevronRight } from "~/components/icons/library";
 import Header from "~/components/layout/header";
@@ -482,7 +483,7 @@ function SpoolLine({
             <select
               name="amsSlot"
               defaultValue={spool.amsSlot ? String(spool.amsSlot) : ""}
-              className={inputClass}
+              className={selectClass}
             >
               <option value="">Not loaded</option>
               {AMS_SLOTS.map((n) => (
@@ -608,7 +609,7 @@ function AddMore() {
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           In the AMS
-          <select name="amsSlot" defaultValue="" className={inputClass}>
+          <select name="amsSlot" defaultValue="" className={selectClass}>
             <option value="">Not loaded</option>
             {AMS_SLOTS.map((n) => (
               <option key={n} value={n}>
@@ -684,7 +685,7 @@ function Specs({
                 )[0];
                 setColour(first ? first[0] : OTHER);
               }}
-              className={inputClass}
+              className={selectClass}
             >
               {BAMBU_TYPES.map(([t]) => (
                 <option key={t} value={t}>
@@ -711,7 +712,7 @@ function Specs({
               <select
                 value={colour}
                 onChange={(e) => setColour(e.target.value)}
-                className={inputClass}
+                className={selectClass}
               >
                 {colours.map(([n]) => (
                   <option key={n} value={n}>
@@ -762,7 +763,7 @@ function Specs({
           <select
             name="weightGrams"
             defaultValue={String(filament.weightGrams)}
-            className={inputClass}
+            className={selectClass}
           >
             {SPOOL_WEIGHTS.map((g) => (
               <option key={g} value={g}>
