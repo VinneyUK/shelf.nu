@@ -3019,3 +3019,16 @@ model FilamentPrice {
 
   @@unique([organizationId, key])
 }
+
+/// A Bambu filament code and the line and colour it belongs to, from the Bambu store (refreshed weekly)
+model FilamentCode {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// The code on the box, e.g. "10100"
+  code           String
+  type           String
+  colourName     String
+  checkedAt      DateTime @default(now())
+
+  @@unique([organizationId, code])
+}

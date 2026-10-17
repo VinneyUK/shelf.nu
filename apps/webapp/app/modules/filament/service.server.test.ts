@@ -20,6 +20,9 @@ const m = vi.hoisted(() => {
   };
   return { spool, spoolCandidate };
 });
+vi.mock("./codes.server", () => ({
+  storeCodes: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("~/database/db.server", () => ({
   db: {
     filamentImage: { findMany: imageRows },

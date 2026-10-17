@@ -11,6 +11,7 @@ import { db } from "~/database/db.server";
 /** The client inside db.$transaction (Shelf's client is an extended one). */
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 import { ShelfError } from "~/utils/error";
+import { storeCodes } from "./codes.server";
 import {
   catalogueEntry,
   clampPercent,
@@ -688,6 +689,12 @@ export async function knownCodes(organizationId: string): Promise<KnownCode[]> {
         colourName: spool.colourName,
       });
     }
+  }
+  // then every code the store lists, for filament you've never had
+  for (const c of await storeCodes(organizationId)) {
+    const key = filamentKey(c.type, c.colourName);
+    if (!byKey.has(key) && ![...byKey.values()].some((k) => k.code === c.code))
+      byKey.set(key, c);
   }
   return [...byKey.values()];
 }

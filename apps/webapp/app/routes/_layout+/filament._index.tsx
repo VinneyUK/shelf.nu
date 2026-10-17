@@ -47,6 +47,7 @@ import {
   summarise,
   typeCounts,
 } from "~/modules/filament/catalogue";
+import { refreshCodesIfStale } from "~/modules/filament/codes.server";
 import {
   fetchMissingImages,
   imageStatuses,
@@ -128,6 +129,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       ]);
     // store prices: what's kept, and a background check of anything over a day old
     const codes = await knownCodes(organizationId); // for finding a filament by its code
+    void refreshCodesIfStale(organizationId); // Bambu's box codes, weekly, in the background
     const storePrices = await priceStatuses(organizationId);
     refreshStalePrices(organizationId);
     // filament with no price paid, where the store's price is already known

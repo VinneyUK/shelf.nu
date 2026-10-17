@@ -319,3 +319,25 @@ export async function findFilamentVariants(
   );
   return matchingVariants(variants, colourName, code);
 }
+
+/** Every variant of a product (colour, refill or spool, size). */
+export function productVariants(product: Product): Variant[] {
+  return (product.productSkuList ?? []).map((sku) => variantOf(product, sku));
+}
+
+/**
+ * The product for a line, only when its name is the line's (exactly, or the
+ * line followed by more words). Unlike pickProduct, never a best guess: a code
+ * filed under the wrong line would mislead.
+ */
+export function exactProduct(
+  records: SearchRecord[],
+  type: string
+): SearchRecord | null {
+  const t = norm(type);
+  return (
+    records.find((r) => norm(r.name ?? "") === t) ??
+    records.find((r) => norm(r.name ?? "").startsWith(`${t} `)) ??
+    null
+  );
+}
