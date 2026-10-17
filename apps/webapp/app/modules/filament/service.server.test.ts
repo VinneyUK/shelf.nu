@@ -42,6 +42,7 @@ import {
   getFilamentBySlug,
   keepSpool,
   knownCodes,
+  linkUntaggedToTray,
   openedFor,
   openSpool,
   proposeSpool,
@@ -867,5 +868,124 @@ describe("the line and colour of a filament", () => {
         colourHex: "#FFFFFF",
       },
     });
+  });
+});
+
+describe("a tag the AMS reports, matched to filament you added by hand", () => {
+  const tray = (over: Record<string, unknown> = {}) => ({
+    slot: 4,
+    tagUid: "TAG4",
+    type: "PLA Basic",
+    colourHex: "#FFFFFF",
+    colourName: "Jade White",
+    remainingPercent: 72,
+    weightGrams: 1000,
+    ...over,
+  });
+  const row = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    openedOn: null as Date | null,
+    amsSlot: null as number | null,
+    remainingPercent: 100,
+    purchasedOn: null as Date | null,
+    createdAt: new Date("2026-09-01"),
+    ...over,
+  });
+  const linkedTo = () => m.spool.update.mock.calls.at(-1)?.[0];
+  beforeEach(() => {
+    m.spool.update.mockReset().mockResolvedValue({});
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    m.spoolCandidate.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it("links the opened one: it takes the tag, the slot and the AMS's % left, and its inbox entry goes", async () => {
+    m.spool.findMany.mockResolvedValueOnce([
+      row("new1"),
+      row("open1", { openedOn: new Date("2026-10-01"), remainingPercent: 70 }),
+    ]);
+    expect(await linkUntaggedToTray("o1", tray())).toEqual({
+      spoolId: "open1",
+      wasNew: false,
+    });
+    expect(linkedTo()).toMatchObject({
+      where: { id: "open1" },
+      data: {
+        tagUid: "TAG4",
+        amsSlot: 4,
+        remainingPercent: 72,
+        status: "active",
+      },
+    });
+    expect(m.spoolCandidate.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "o1", tagUid: "TAG4", status: "pending" },
+      data: { status: "dismissed" },
+    });
+  });
+  it("among opened ones, prefers the one in that slot, else the closest % left", async () => {
+    const open = (id: string, over: Record<string, unknown>) =>
+      row(id, { openedOn: new Date("2026-10-01"), ...over });
+    m.spool.findMany.mockResolvedValueOnce([
+      open("far", { remainingPercent: 10 }),
+      open("inslot", { amsSlot: 4, remainingPercent: 20 }),
+    ]);
+    expect((await linkUntaggedToTray("o1", tray()))?.spoolId).toBe("inslot");
+    m.spool.findMany.mockResolvedValueOnce([
+      open("far", { remainingPercent: 10 }),
+      open("close", { remainingPercent: 75 }),
+    ]);
+    expect((await linkUntaggedToTray("o1", tray()))?.spoolId).toBe("close");
+  });
+  it("with only new ones, takes the oldest bought and opens it", async () => {
+    m.spool.findMany.mockResolvedValueOnce([
+      row("later", { purchasedOn: new Date("2026-10-01") }),
+      row("first", { purchasedOn: new Date("2026-06-01") }),
+    ]);
+    expect(await linkUntaggedToTray("o1", tray())).toEqual({
+      spoolId: "first",
+      wasNew: true,
+    });
+    expect(linkedTo().data.openedOn).toBeInstanceOf(Date);
+  });
+  it("looks only at the same line and colour, untagged and not retired; by shade when Bambu's name isn't known", async () => {
+    m.spool.findMany.mockResolvedValueOnce([]);
+    expect(
+      await linkUntaggedToTray("o1", tray({ colourName: null }))
+    ).toBeNull();
+    const where = m.spool.findMany.mock.calls.at(-1)?.[0].where;
+    expect(where).toMatchObject({
+      tagUid: null,
+      status: { not: "retired" },
+      type: { equals: "PLA Basic", mode: "insensitive" },
+    });
+    expect(where.OR).toEqual([
+      { colourHex: { equals: "#FFFFFF", mode: "insensitive" } },
+    ]);
+  });
+  it("in the sync: a match is followed, not offered again", async () => {
+    m.spool.findFirst.mockResolvedValue(null); // the tag isn't known
+    m.spool.findMany
+      .mockResolvedValueOnce([
+        row("open1", { openedOn: new Date("2026-10-01") }),
+      ]) // the match
+      .mockResolvedValueOnce([]); // nothing leaving
+    const result = await syncAmsTrays("o1", [tray()]);
+    expect(result.proposed).toBe(0);
+    expect(result.events[0]).toMatch(
+      /AMS slot 4: matched to the one you added/
+    );
+  });
+  it("in the sync: filament you've never had goes to the inbox, told only the first time", async () => {
+    m.spool.findFirst.mockResolvedValue(null);
+    m.spool.findMany.mockResolvedValue([]); // no match, nothing leaving
+    m.spoolCandidate.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null); // first time: none waiting
+    expect((await syncAmsTrays("o1", [tray()])).events).toEqual([
+      "New filament in AMS slot 4: Jade White PLA Basic, waiting for you.",
+    ]);
+    m.spoolCandidate.findFirst.mockResolvedValue({ id: "c1" }); // already waiting
+    expect(
+      (await syncAmsTrays("o1", [tray({ remainingPercent: 70 })])).events
+    ).toEqual([]);
   });
 });

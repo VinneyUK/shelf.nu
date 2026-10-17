@@ -287,3 +287,11 @@ async function note(
     .update({ where: { organizationId }, data })
     .catch(() => undefined);
 }
+
+/**
+ * What the AMS holds by the printer's latest report, whether or not it's in
+ * Shelf yet (null until the first report since Shelf started).
+ */
+export function currentTrays(organizationId: string): Tray[] | null {
+  return watchers.get(organizationId)?.last ?? null;
+}

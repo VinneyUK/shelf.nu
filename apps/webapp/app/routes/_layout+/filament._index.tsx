@@ -79,6 +79,7 @@ import {
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
 import {
+  currentTrays,
   ensureAmsWatcher,
   getPrinterSettingsForPage,
 } from "~/modules/filament/printer.server";
@@ -275,6 +276,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         candidates,
         images,
         codes,
+        amsTrays: currentTrays(organizationId),
         printer: {
           enabled: printer.enabled,
           lastSeenAt: printer.lastSeenAt,
@@ -482,7 +484,9 @@ function Overview({
   images,
   anyPrice,
   printer,
+  amsTrays,
 }: {
+  amsTrays: PageData["amsTrays"];
   spools: SpoolRow[];
   images: Images;
   anyPrice: boolean;
@@ -526,6 +530,7 @@ function Overview({
             const s = spools.find(
               (x) => x.amsSlot === n && x.status !== "retired"
             );
+            const tray = s ? null : amsTrays?.find((t) => t.slot === n) ?? null;
             return (
               <div
                 key={n}
@@ -533,6 +538,8 @@ function Overview({
               >
                 {s ? (
                   <FilamentPicture {...s} images={images} size="size-8" />
+                ) : tray ? (
+                  <Swatch hex={tray.colourHex} size="size-8" />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
@@ -543,6 +550,19 @@ function Overview({
                       {s.colourName}{" "}
                       <span className="tabular-nums text-gray-500">
                         {s.remainingPercent}%
+                      </span>
+                    </div>
+                  ) : tray ? (
+                    <div
+                      className="truncate text-xs text-gray-900"
+                      title="In the AMS, not added to Shelf yet"
+                    >
+                      {tray.colourName ?? tray.colourHex}{" "}
+                      <span className="tabular-nums text-gray-500">
+                        {tray.remainingPercent}%
+                      </span>
+                      <span className="block text-[11px] text-primary-600">
+                        Not added yet
                       </span>
                     </div>
                   ) : (
@@ -1349,6 +1369,7 @@ export default function FilamentPage() {
   useAmsLiveUpdates(); // the page follows the AMS
   const location = useLocation();
   const {
+    amsTrays,
     activeFilters,
     choices,
     cols,
@@ -1400,6 +1421,7 @@ export default function FilamentPage() {
           images={images}
           anyPrice={anyPrice}
           printer={printer}
+          amsTrays={amsTrays}
         />
 
         {candidates.length > 0 ? (

@@ -736,6 +736,21 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
         events.push(`${name(t)} is in AMS slot ${t.slot}.`);
       continue;
     }
+    // Not a tag Shelf knows: is it filament you added by hand (no tag yet)?
+    const linked = await linkUntaggedToTray(organizationId, t);
+    if (linked) {
+      events.push(
+        `${name(t)} in AMS slot ${t.slot}: matched to the one you added${
+          linked.wasNew ? " (now opened)" : ""
+        }; its use is followed from now on.`
+      );
+      continue;
+    }
+    // Truly new: the inbox, told once (not again on every reading)
+    const waiting = await db.spoolCandidate.findFirst({
+      where: { organizationId, tagUid: t.tagUid, status: "pending" },
+      select: { id: true },
+    });
     const result = await proposeSpool(organizationId, {
       source: "ams",
       type: t.type,
@@ -746,7 +761,7 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
       tagUid: t.tagUid,
       amsSlot: t.slot,
     });
-    if (result.kind === "pending") {
+    if (result.kind === "pending" && !waiting) {
       proposed += 1;
       events.push(
         `New filament in AMS slot ${t.slot}: ${name(t)}, waiting for you.`
@@ -953,4 +968,80 @@ export async function renameFilament(
     data: { type, material: materialOf(type), colourName, colourHex },
   });
   return filamentSlug(type, colourName);
+}
+
+/**
+ * A tag the AMS reports that Shelf doesn't know, matched to filament you added
+ * by hand: same line, same colour (by name, or by shade when Bambu's name for
+ * it isn't known), with no tag yet and not retired. An opened one first (one
+ * you put in that slot, else the closest to the AMS's % left); else the
+ * oldest-bought new one, which is now opened. The tag is recorded on it, so it
+ * is known from then on; it takes the slot and the AMS's % left, and any inbox
+ * entry for the tag goes. Null when nothing matches: it's filament you've
+ * never had.
+ */
+export async function linkUntaggedToTray(organizationId: string, t: Tray) {
+  const matches = await db.spool.findMany({
+    where: {
+      organizationId,
+      tagUid: null,
+      status: { not: "retired" },
+      type: { equals: t.type, mode: "insensitive" },
+      OR: [
+        ...(t.colourName
+          ? [
+              {
+                colourName: {
+                  equals: t.colourName,
+                  mode: "insensitive" as const,
+                },
+              },
+            ]
+          : []),
+        { colourHex: { equals: t.colourHex, mode: "insensitive" as const } },
+      ],
+    },
+    select: {
+      id: true,
+      openedOn: true,
+      amsSlot: true,
+      remainingPercent: true,
+      purchasedOn: true,
+      createdAt: true,
+    },
+  });
+  if (matches.length === 0) return null;
+  const opened = matches.filter((m) => m.openedOn);
+  const time = (d: Date | null) => (d ? d.getTime() : Infinity);
+  const pick =
+    opened.length > 0
+      ? opened.find((m) => m.amsSlot === t.slot) ??
+        [...opened].sort(
+          (a, b) =>
+            Math.abs(a.remainingPercent - t.remainingPercent) -
+            Math.abs(b.remainingPercent - t.remainingPercent)
+        )[0]
+      : [...matches].sort(
+          (a, b) =>
+            time(a.purchasedOn) - time(b.purchasedOn) ||
+            a.createdAt.getTime() - b.createdAt.getTime()
+        )[0];
+  await db.$transaction(async (tx) => {
+    await freeSlot(tx, organizationId, t.slot, pick.id);
+    await tx.spool.update({
+      where: { id: pick.id, organizationId },
+      data: {
+        tagUid: t.tagUid,
+        amsSlot: t.slot,
+        remainingPercent: t.remainingPercent,
+        openedOn: pick.openedOn ?? today(),
+        status: t.remainingPercent === 0 ? "empty" : "active",
+      },
+    });
+    await tx.spoolCandidate.updateMany({
+      where: { organizationId, tagUid: t.tagUid, status: "pending" },
+      data: { status: "dismissed" },
+    });
+  });
+  return { spoolId: pick.id, wasNew: !pick.openedOn };
 }
