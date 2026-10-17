@@ -14,6 +14,7 @@ import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import {
   barColour,
+  DateField,
   FilamentPicture,
   FilamentSearch,
   type Images,
@@ -458,6 +459,7 @@ function SpoolHeadings() {
     <div className="hidden items-center gap-x-4 border-b border-gray-200 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-400 md:flex">
       <span className="w-8">#</span>
       <span className="w-32">Status</span>
+      <span className="w-14">Type</span>
       <span className="min-w-32 flex-1">Left</span>
       <span className="w-20 text-right">Weight</span>
       <span className="w-20 text-right">Paid</span>
@@ -488,7 +490,7 @@ function StatusPicker({ spool, label }: { spool: Spool; label: string }) {
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
         aria-label={`Status of ${label}`}
         className={tw(
-          "cursor-pointer appearance-none rounded border-0 py-0.5 pl-1.5 pr-5 text-xs font-medium focus:ring-2 focus:ring-primary-100",
+          "cursor-pointer rounded border-0 py-0.5 pl-1.5 pr-7 text-xs font-medium focus:ring-2 focus:ring-primary-100",
           SPOOL_STATES[state].tone
         )}
       >
@@ -506,12 +508,6 @@ function StatusPicker({ spool, label }: { spool: Spool; label: string }) {
         <option value="opened">Opened</option>
         <option value="retired">Retired</option>
       </select>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
-      >
-        ▾
-      </span>
     </fetcher.Form>
   );
 }
@@ -561,9 +557,9 @@ function SpoolLine({
         </span>
         <span className="w-32 text-xs">
           <StatusPicker spool={spool} label={label} />
-          {spool.packaging === "refill" ? (
-            <span className="ml-1.5 text-[11px] text-gray-500">Refill</span>
-          ) : null}
+        </span>
+        <span className="w-14 text-sm text-gray-700">
+          {spool.packaging === "refill" ? "Refill" : "Spool"}
         </span>
         <div className="flex min-w-32 flex-1 items-center gap-2">
           <div className="h-2 flex-1 rounded-full bg-gray-100">
@@ -703,7 +699,7 @@ function SpoolLine({
       {mode === "edit" ? (
         <edit.Form
           method="post"
-          className="mt-3 grid gap-3 rounded-lg bg-gray-25 p-3 sm:grid-cols-3 lg:grid-cols-6"
+          className="mt-3 grid gap-3 rounded-lg bg-gray-25 p-3 sm:grid-cols-2 lg:grid-cols-4"
         >
           <input type="hidden" name="intent" value="spool" />
           <input type="hidden" name="id" value={spool.id} />
@@ -729,29 +725,17 @@ function SpoolLine({
               className={inputClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            Bought on
-            <input
-              name="purchasedOn"
-              type="date"
-              defaultValue={
-                spool.purchasedOn ? String(spool.purchasedOn).slice(0, 10) : ""
-              }
-              className={inputClass}
-              autoFocus={!spool.purchasedOn}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            Opened on
-            <input
-              name="openedOn"
-              type="date"
-              defaultValue={
-                spool.openedOn ? String(spool.openedOn).slice(0, 10) : ""
-              }
-              className={inputClass}
-            />
-          </label>
+          <DateField
+            name="purchasedOn"
+            label="Bought on"
+            initial={spool.purchasedOn}
+            autoFocus={!spool.purchasedOn}
+          />
+          <DateField
+            name="openedOn"
+            label="Opened on"
+            initial={spool.openedOn}
+          />
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
             In the AMS
             <select
@@ -768,7 +752,7 @@ function SpoolLine({
             </select>
           </label>
           <PackagingToggle initial={spool.packaging} />
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900 sm:col-span-2">
             Notes
             <input
               name="notes"
@@ -776,11 +760,11 @@ function SpoolLine({
               className={inputClass}
             />
           </label>
-          <p className="text-xs text-gray-500 sm:col-span-3 lg:col-span-6">
+          <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-4">
             Leave a date empty if you don't know it. Loading a spool into the
             AMS, or using some of it, opens it today.
           </p>
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-3 lg:col-span-6">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-2 lg:col-span-4">
             <DeleteSpool
               label={`spool #${index + 1} of ${spool.colourName}`}
               disabled={busy}
@@ -858,10 +842,7 @@ function AddMore() {
             className={tw(inputClass, "w-28")}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-          Bought on
-          <input name="purchasedOn" type="date" className={inputClass} />
-        </label>
+        <DateField name="purchasedOn" label="Bought on" />
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           Left (%)
           <input

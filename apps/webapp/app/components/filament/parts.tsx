@@ -283,6 +283,50 @@ export function FilamentSearch({
   );
 }
 
+/**
+ * A date that may not be known. Empty, it says "Not known" (browsers would
+ * otherwise show a faint today's date, which looks like a real one).
+ */
+export function DateField({
+  name,
+  label,
+  initial,
+  autoFocus = false,
+}: {
+  name: string;
+  label: string;
+  initial?: string | Date | null;
+  autoFocus?: boolean;
+}) {
+  const [value, setValue] = useState(
+    initial ? String(initial).slice(0, 10) : ""
+  );
+  const [focused, setFocused] = useState(autoFocus);
+  const blank = !value && !focused;
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+      {label}
+      <span className="relative">
+        <input
+          type="date"
+          name={name}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          autoFocus={autoFocus}
+          className={tw(inputClass, blank ? "text-transparent" : "")}
+        />
+        {blank ? (
+          <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm font-normal text-gray-400">
+            Not known
+          </span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
 /** With its spool, or a refill (filament only, for a reusable spool). */
 export function PackagingToggle({
   initial = "spool",
@@ -296,11 +340,11 @@ export function PackagingToggle({
   );
   return (
     <div className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-      <span>Comes as</span>
+      <span>Type</span>
       <div
         className="inline-flex w-fit rounded-md border border-gray-300 p-0.5"
         role="radiogroup"
-        aria-label="Comes as"
+        aria-label="Type: spool or refill"
       >
         {(["spool", "refill"] as const).map((p) => (
           <button
@@ -361,9 +405,6 @@ export function SpoolFields({
   const colourName = picked ? picked[0] : otherName;
   const colourHex = picked ? picked[1] : otherHex;
   const tare = catalogueEntry(line)?.spoolWeight ?? null;
-  const purchased = initial?.purchasedOn
-    ? String(initial.purchasedOn).slice(0, 10)
-    : "";
 
   const changeType = (next: string) => {
     setType(next);
@@ -394,7 +435,7 @@ export function SpoolFields({
       </div>
       <PackagingToggle initial={initial?.packaging} />
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        Type
+        Line
         <select
           value={type}
           onChange={(e) => changeType(e.target.value)}
@@ -503,15 +544,11 @@ export function SpoolFields({
           className={inputClass}
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        Bought on
-        <input
-          name="purchasedOn"
-          type="date"
-          defaultValue={purchased}
-          className={inputClass}
-        />
-      </label>
+      <DateField
+        name="purchasedOn"
+        label="Bought on"
+        initial={initial?.purchasedOn}
+      />
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
         In the AMS
         <select

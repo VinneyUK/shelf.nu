@@ -143,6 +143,7 @@ html.dark .text-rose-700 { color: #fda4af; }
 html.dark .text-success-600 { color: #32D583; }
 html.dark .text-success-700 { color: #6CE9A6; }
 html.dark .text-success-900 { color: #D1FADF; }
+html.dark .text-transparent { color: transparent; }
 html.dark .text-violet-700 { color: #c4b5fd; }
 html.dark .text-violet-800 { color: #ddd6fe; }
 html.dark .text-warning-600 { color: #FDB022; }

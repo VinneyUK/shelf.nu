@@ -265,7 +265,7 @@ export function stateCounts(spools: Lifecycle[]) {
 
 export type Packaging = "spool" | "refill";
 export const PACKAGING: Record<Packaging, string> = {
-  spool: "With spool",
+  spool: "Spool",
   refill: "Refill",
 };
 export const cleanPackaging = (value: unknown): Packaging =>
