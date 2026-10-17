@@ -3,7 +3,9 @@
  * share: the picture, swatch and remaining bar, the spool form, a spool's row.
  */
 import { useEffect, useId, useState } from "react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { useFetcher } from "react-router";
+import { copyText } from "~/components/labels/asset-id-chip";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import {
   BAMBU_TYPES,
@@ -638,3 +640,119 @@ export const barColour = (percent: number) => {
     ? "bg-success-500"
     : "bg-primary-500";
 };
+
+/** A spool or a refill, as a mark: a filled disc for a spool, a dashed ring for a refill. */
+export function TypeMark({
+  kind,
+  className = "size-3.5",
+}: {
+  kind: "spool" | "refill";
+  className?: string;
+}) {
+  return kind === "spool" ? (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <circle cx="8" cy="8" r="7" fill="currentColor" />
+      <circle cx="8" cy="8" r="2.5" fill="white" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeDasharray="3 2"
+      />
+    </svg>
+  );
+}
+
+type Stocked = {
+  packaging?: string | null;
+  remainingPercent: number;
+  weightGrams: number;
+};
+
+/**
+ * A filament's stock, a row per type: how many spools (or refills), the kg
+ * left on them, and one bar for what's left across all of them. A type you
+ * don't have isn't shown.
+ */
+export function TypeRows({ items }: { items: Stocked[] }) {
+  const rows = (["spool", "refill"] as const)
+    .map((kind) => {
+      const of = items.filter(
+        (i) => (i.packaging === "refill" ? "refill" : "spool") === kind
+      );
+      const left = of.reduce(
+        (n, i) => n + (i.weightGrams * i.remainingPercent) / 100,
+        0
+      );
+      const full = of.reduce((n, i) => n + i.weightGrams, 0);
+      return {
+        kind,
+        count: of.length,
+        kg: left / 1000,
+        pct: full ? Math.round((left / full) * 100) : 0,
+      };
+    })
+    .filter((r) => r.count);
+  return (
+    <div className="flex flex-col gap-2.5">
+      {rows.map((r) => (
+        <div key={r.kind}>
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-gray-600">
+              <TypeMark kind={r.kind} />
+              {r.count} {r.kind}
+              {r.count === 1 ? "" : "s"}
+            </span>
+            <span className="tabular-nums text-gray-900">
+              {r.kg.toFixed(2)} kg left
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-gray-100">
+            <div
+              className={tw("h-1.5 rounded-full", barColour(r.pct))}
+              style={{ width: `${r.pct}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The code on the box, as a chip: click to copy it, as with the asset ID. */
+export function CodeChip({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copy the code on the box"
+      aria-label={`Box code ${code}: copy`}
+      onClick={() => {
+        void copyText(code).then((ok) => {
+          if (!ok) return;
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      className="ml-auto flex h-7 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 font-mono text-xs tabular-nums text-gray-700 hover:bg-gray-50"
+    >
+      {copied ? (
+        <>
+          <CheckIcon className="size-3.5 text-success-600" aria-hidden="true" />
+          <span className="font-sans">Copied</span>
+        </>
+      ) : (
+        <>
+          {code}
+          <CopyIcon className="size-3.5 text-gray-400" aria-hidden="true" />
+        </>
+      )}
+    </button>
+  );
+}

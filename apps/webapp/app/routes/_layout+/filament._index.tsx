@@ -5,7 +5,7 @@
  * line); the filaments as tiles or a list, each opening its own page; and
  * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
@@ -16,14 +16,16 @@ import { data, Form, Link, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import {
+  barColour,
+  CodeChip,
   FilamentPicture,
+  type Images,
   inputClass,
+  type Result,
   SpoolFields,
   Swatch,
-  barColour,
+  TypeRows,
   useMoney,
-  type Images,
-  type Result,
 } from "~/components/filament/parts";
 import { ChevronRight } from "~/components/icons/library";
 import Header from "~/components/layout/header";
@@ -603,18 +605,6 @@ function spoolCountWords(spools: Parameters<typeof stateCounts>[0]) {
     : `${spools.length} spool${spools.length === 1 ? "" : "s"}`;
 }
 
-/** One labelled fact, as on an asset tile. */
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-        {label}
-      </div>
-      <div className="truncate text-[13px] text-gray-800">{children}</div>
-    </div>
-  );
-}
-
 /** A filament as a tile, like an asset tile: the picture with chips, the facts, the actions. */
 function FilamentTile({
   group,
@@ -634,10 +624,15 @@ function FilamentTile({
   const perKg = priced.length
     ? priced.reduce((a, b) => a + b, 0) / priced.length
     : null;
-  const full = group.spools.reduce((n, s) => n + s.weightGrams, 0);
-  const leftPercent = full > 0 ? Math.round((group.gramsLeft / full) * 100) : 0;
   const chip =
     "rounded-full bg-white px-2 py-0.5 text-xs font-medium shadow-sm ring-1 ring-black/5";
+  // a touch smaller than the chip above, so both prices fit side by side
+  const priceChip =
+    "pointer-events-none rounded-full bg-white px-1.5 py-0.5 font-medium leading-4 text-gray-800 shadow-sm ring-1 ring-black/5 tabular-nums";
+  const code =
+    group.spools.find((s) => s.filamentCode)?.filamentCode ??
+    image?.filamentCode ??
+    null;
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
       <div className="relative aspect-square bg-gray-50">
@@ -655,16 +650,6 @@ function FilamentTile({
             </span>
           )}
         </Link>
-        {price?.onOffer ? (
-          <span
-            className={tw(
-              chip,
-              "pointer-events-none absolute left-2 top-2 text-primary-700"
-            )}
-          >
-            On offer
-          </span>
-        ) : null}
         <div className="pointer-events-none absolute right-2 top-2 flex flex-wrap justify-end gap-1">
           <span className={tw(chip, "flex items-center gap-1.5 text-gray-800")}>
             <span
@@ -675,6 +660,29 @@ function FilamentTile({
             {spoolCountWords(group.spools)}
           </span>
         </div>
+        {perKg !== null ? (
+          <span
+            className={tw(priceChip, "absolute bottom-2 left-2")}
+            style={{ fontSize: "10.5px" }}
+            title="What you paid, per kg"
+          >
+            {money(perKg)}/kg
+          </span>
+        ) : null}
+        {price?.best != null ? (
+          <span
+            className={tw(priceChip, "absolute bottom-2 right-2")}
+            style={{ fontSize: "10.5px" }}
+            title="Today's Bambu store price"
+          >
+            {money(price.best)}
+            {price.onOffer ? (
+              <span className="ml-1 font-normal text-gray-400 line-through">
+                {money(Math.max(price.spool?.was ?? 0, price.refill?.was ?? 0))}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-3">
@@ -684,58 +692,29 @@ function FilamentTile({
           </span>
           <span className="block text-xs text-gray-500">{group.type}</span>
         </Link>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3">
-          <Fact label="Left">
-            {(group.gramsLeft / 1000).toFixed(2)} kg
-            <span className="mt-1 block h-1 rounded-full bg-gray-100">
-              <span
-                className={tw("block h-1 rounded-full", barColour(leftPercent))}
-                style={{ width: `${leftPercent}%` }}
-              />
-            </span>
-          </Fact>
-          <Fact label="Spools">{typeCounts(group.spools).spools}</Fact>
-          <Fact label="Refills">{typeCounts(group.spools).refills}</Fact>
-          <Fact label="Paid/kg">{perKg !== null ? money(perKg) : "—"}</Fact>
-          <Fact label="Store">
-            {price?.best != null ? (
-              <>
-                {money(price.best)}
-                {price.onOffer ? (
-                  <span className="ml-1 text-xs text-gray-400 line-through">
-                    {money(
-                      Math.max(price.spool?.was ?? 0, price.refill?.was ?? 0)
-                    )}
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              "—"
-            )}
-          </Fact>
-        </div>
+        <TypeRows items={group.spools} />
       </div>
 
-      <div className="flex gap-2 border-t border-gray-100 bg-gray-50 px-3 py-2">
+      <div className="flex items-center gap-1 border-t border-gray-100 bg-gray-50 px-3 py-1.5">
         <Button
           to={href}
           variant="secondary"
           size="sm"
-          className="p-2"
+          className="p-1.5"
           aria-label="Open"
           tooltip="Open"
         >
-          <PencilIcon className="size-4" />
+          <PencilIcon className="size-3.5" />
         </Button>
         <Button
           to={`${href}?add=1`}
           variant="secondary"
           size="sm"
-          className="p-2"
+          className="p-1.5"
           aria-label="Add more of this"
           tooltip="Add more of this"
         >
-          <PlusIcon className="size-4" />
+          <PlusIcon className="size-3.5" />
         </Button>
         {image?.productUrl ? (
           <Button
@@ -745,13 +724,14 @@ function FilamentTile({
             hideNewTabIcon
             variant="secondary"
             size="sm"
-            className="p-2"
+            className="p-1.5"
             aria-label="See it on the Bambu store"
             tooltip="See it on the Bambu store"
           >
-            <GlobeIcon className="size-4" />
+            <GlobeIcon className="size-3.5" />
           </Button>
         ) : null}
+        {code ? <CodeChip code={code} /> : null}
       </div>
     </div>
   );
