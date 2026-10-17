@@ -22,7 +22,7 @@ import { ErrorContent } from "~/components/errors";
 import { FilamentCell } from "~/components/filament/filament-cell";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
-  barColour,
+  barFill,
   CodeChip,
   DateField,
   FilamentPicture,
@@ -71,6 +71,7 @@ import {
 import {
   fetchMissingImages,
   imageStatuses,
+  linkStorePage,
   setFilamentImageFromUrl,
 } from "~/modules/filament/images.server";
 import { done, failed, notify } from "~/modules/filament/notify.server";
@@ -84,6 +85,7 @@ import {
   changeSpoolState,
   createSpools,
   deleteSpool,
+  fillFilamentCode,
   getFilamentBySlug,
   keepSpool,
   knownCodes,
@@ -324,6 +326,53 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         return next === slug
           ? payload({ ok: true })
           : redirect(`/filament/${next}`);
+      }
+      case "store-page": {
+        const spools = await getFilamentBySlug(organizationId, slug);
+        const first = spools[0];
+        if (!first) {
+          throw new ShelfError({
+            cause: null,
+            message: "That filament isn't in your stock.",
+            status: 404,
+            label: "Assets",
+          });
+        }
+        const code = spools.find((s) => s.filamentCode)?.filamentCode ?? null;
+        const linked = await linkStorePage(
+          organizationId,
+          {
+            type: first.type,
+            colourName: first.colourName,
+            filamentCode: code,
+          },
+          String(form.get("url") ?? "")
+        );
+        const filled = await fillFilamentCode(
+          organizationId,
+          slug,
+          linked.filamentCode
+        );
+        const priced = await refreshPrice(organizationId, {
+          type: first.type,
+          colourName: first.colourName,
+          filamentCode: linked.filamentCode ?? code,
+        });
+        return done(
+          userId,
+          "Linked to the Bambu store",
+          [
+            linked.picture ? "Picture" : "No picture on that page",
+            linked.filamentCode
+              ? `code ${linked.filamentCode}${
+                  filled ? ` (filled in on ${filled})` : ""
+                }`
+              : "no code",
+            priced === "found"
+              ? "prices checked there"
+              : "no price on that page",
+          ].join(", ") + "."
+        );
       }
       case "image-url": {
         const spools = await getFilamentBySlug(organizationId, slug);
@@ -936,11 +985,8 @@ function StockRow({
           <span className="flex w-48 items-center gap-2">
             <span className="h-1.5 flex-1 rounded-full bg-gray-100">
               <span
-                className={tw(
-                  "block h-1.5 rounded-full",
-                  barColour(spool.remainingPercent)
-                )}
-                style={{ width: `${spool.remainingPercent}%` }}
+                className={"block h-1.5 rounded-full"}
+                style={barFill(spool.remainingPercent)}
               />
             </span>
             <span className="w-16 text-right tabular-nums text-gray-900">
@@ -1227,18 +1273,36 @@ function PicturePopover({
               image?.message ?? "No picture yet."
             )}
           </p>
+          <p className="mt-2 text-xs text-gray-600">
+            {image?.productUrl ? (
+              <>
+                Linked to{" "}
+                <a
+                  href={image.productUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline"
+                >
+                  its Bambu store page
+                </a>
+                : its picture, box code and prices come from there.
+              </>
+            ) : (
+              "Not linked to the Bambu store yet. Link its page for the picture, box code and prices."
+            )}
+          </p>
           <picture.Form
             method="post"
             className="mt-2 flex gap-2"
             onSubmit={() => setUrl("")}
           >
-            <input type="hidden" name="intent" value="image-url" />
+            <input type="hidden" name="intent" value="store-page" />
             <input
               name="url"
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste a picture's address (https://…)"
+              placeholder="Its Bambu store page (https://uk.store.bambulab.com/products/…)"
               className={tw(inputClass, "min-w-0 flex-1")}
             />
             <Button
@@ -1247,7 +1311,7 @@ function PicturePopover({
               variant="secondary"
               disabled={!url || isFormProcessing(picture.state)}
             >
-              Use
+              Link
             </Button>
           </picture.Form>
 

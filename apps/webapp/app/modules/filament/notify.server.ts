@@ -45,6 +45,7 @@ const FAILED: Record<string, string> = {
   field: "Couldn't save that",
   rename: "Couldn't save the filament",
   "image-url": "Couldn't use that picture",
+  "store-page": "Couldn't link that store page",
   filament: "Couldn't save the filament",
   spool: "Couldn't save the filament",
   weigh: "Couldn't weigh the filament",

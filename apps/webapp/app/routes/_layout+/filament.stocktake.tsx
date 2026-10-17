@@ -13,7 +13,7 @@ import type {
 import { data, useFetcher, useLoaderData } from "react-router";
 import { ErrorContent } from "~/components/errors";
 import {
-  barColour,
+  barFill,
   FilamentPicture,
   type Images,
   type Result,
@@ -212,10 +212,7 @@ function StocktakeRow({
         ) : percent !== null ? (
           <div className="flex items-center gap-2" role="status">
             <div className="h-2 flex-1 rounded-full bg-gray-100">
-              <div
-                className={tw("h-2 rounded-full", barColour(percent))}
-                style={{ width: `${percent}%` }}
-              />
+              <div className={"h-2 rounded-full"} style={barFill(percent)} />
             </div>
             <span className="w-10 text-right text-sm tabular-nums text-gray-800">
               {percent}%

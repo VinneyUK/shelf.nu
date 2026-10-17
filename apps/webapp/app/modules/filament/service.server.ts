@@ -1075,3 +1075,22 @@ export async function linkUntaggedToTray(
   });
   return { spoolId: pick.id, wasNew: !pick.openedOn };
 }
+
+/** Fills in the box code on a filament's stock where it's missing. Returns how many. */
+export async function fillFilamentCode(
+  organizationId: string,
+  slug: string,
+  code: string | null
+) {
+  if (!code) return 0;
+  const spools = await getFilamentBySlug(organizationId, slug);
+  const result = await db.spool.updateMany({
+    where: {
+      organizationId,
+      id: { in: spools.map((s) => s.id) },
+      filamentCode: null,
+    },
+    data: { filamentCode: code },
+  });
+  return result.count;
+}

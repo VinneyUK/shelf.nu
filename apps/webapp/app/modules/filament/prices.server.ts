@@ -6,14 +6,23 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "~/database/db.server";
 import { Logger } from "~/utils/logger";
-import { findFilamentVariants, StoreError } from "./bambu-store.server";
+import {
+  findFilamentVariants,
+  productFromStoreUrl,
+  StoreError,
+  variantsOnProduct,
+} from "./bambu-store.server";
 import { filamentKey } from "./catalogue";
 import { priceSummary, type StoreVariant } from "./prices";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
 type Wanted = { type: string; colourName: string; filamentCode: string | null };
-type Store = { findFilamentVariants: typeof findFilamentVariants };
+type Store = {
+  findFilamentVariants: typeof findFilamentVariants;
+  /** for a linked store page (tests pass their own) */
+  variantsOnProduct?: typeof variantsOnProduct;
+};
 
 /** Checks one filament's prices and keeps them. */
 export async function refreshPrice(
@@ -34,11 +43,26 @@ export async function refreshPrice(
       update: { ...data, checkedAt: new Date() },
     });
   try {
-    const variants = await store.findFilamentVariants({
-      type: wanted.type,
-      colourName: wanted.colourName,
-      code: wanted.filamentCode,
+    // the store page you linked for this filament, when there is one; else a search
+    const linked = await db.filamentImage.findUnique({
+      where: { organizationId_key: { organizationId, key } },
+      select: { productUrl: true },
     });
+    const seo = linked?.productUrl
+      ? productFromStoreUrl(linked.productUrl)
+      : null;
+    const variants = seo
+      ? (
+          await (store.variantsOnProduct ?? variantsOnProduct)(seo, {
+            colourName: wanted.colourName,
+            code: wanted.filamentCode,
+          })
+        ).matching
+      : await store.findFilamentVariants({
+          type: wanted.type,
+          colourName: wanted.colourName,
+          code: wanted.filamentCode,
+        });
     if (variants.length === 0) {
       await save({
         status: "missing",

@@ -26,7 +26,7 @@ import { ErrorContent } from "~/components/errors";
 import { FilterBuilder } from "~/components/filament/filter-builder";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
-  barColour,
+  barFill,
   CodeChip,
   FilamentPicture,
   type Images,
@@ -1197,11 +1197,8 @@ function FilamentListRow({
           {group.spools.slice(0, 3).map((s) => (
             <span key={s.id} className="block h-1.5 rounded-full bg-gray-100">
               <span
-                className={tw(
-                  "block h-1.5 rounded-full",
-                  barColour(s.remainingPercent)
-                )}
-                style={{ width: `${s.remainingPercent}%` }}
+                className={"block h-1.5 rounded-full"}
+                style={barFill(s.remainingPercent)}
               />
             </span>
           ))}

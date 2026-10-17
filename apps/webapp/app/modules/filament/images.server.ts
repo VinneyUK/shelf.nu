@@ -7,7 +7,15 @@
 import { db } from "~/database/db.server";
 import { ShelfError } from "~/utils/error";
 import { Logger } from "~/utils/logger";
-import { downloadImage, findFilament, StoreError } from "./bambu-store.server";
+import {
+  downloadImage,
+  findFilament,
+  pickVariant,
+  productFromStoreUrl,
+  StoreError,
+  variantsOnProduct,
+  type Deps,
+} from "./bambu-store.server";
 import { filamentKey } from "./catalogue";
 
 /** A "not in the store" answer is trusted for a week before asking again. */
@@ -246,4 +254,92 @@ export async function setFilamentImageFromUrl(
     create: { organizationId, key, ...data },
     update: data,
   });
+}
+
+/**
+ * Links a filament to its page on the Bambu store, when Shelf found none or
+ * the wrong one: the page's colour for this filament (by its box code, else
+ * its name) gives the picture, the box code and the page itself, kept so the
+ * prices are checked there from now on. Returns what it found.
+ */
+export async function linkStorePage(
+  organizationId: string,
+  filament: { type: string; colourName: string; filamentCode: string | null },
+  address: string,
+  deps: Deps = {}
+) {
+  const seo = productFromStoreUrl(address);
+  if (!seo) {
+    throw new ShelfError({
+      cause: null,
+      message:
+        "That isn't a Bambu store product page (https://uk.store.bambulab.com/products/…).",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  let found: Awaited<ReturnType<typeof variantsOnProduct>>;
+  try {
+    found = await variantsOnProduct(
+      seo,
+      { colourName: filament.colourName, code: filament.filamentCode },
+      deps
+    );
+  } catch (cause) {
+    throw new ShelfError({
+      cause,
+      message:
+        cause instanceof StoreError
+          ? cause.message
+          : "Couldn't read that store page.",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  const variant = pickVariant(
+    found.matching,
+    filament.colourName,
+    filament.filamentCode
+  );
+  if (!variant) {
+    const colours = [...new Set(found.all.map((v) => v.colourName))]
+      .slice(0, 12)
+      .join(", ");
+    throw new ShelfError({
+      cause: null,
+      message: `That page doesn't sell ${filament.colourName}${
+        colours ? `. Its colours: ${colours}` : ""
+      }.`,
+      status: 400,
+      label: "Assets",
+    });
+  }
+  const key = filamentKey(filament.type, filament.colourName);
+  const picture = variant.imageUrl
+    ? await downloadImage(variant.imageUrl, deps)
+    : null;
+  const data = {
+    status: picture ? "found" : "missing",
+    ...(picture
+      ? {
+          bytes: picture.bytes,
+          contentType: picture.contentType,
+          sourceUrl: variant.imageUrl,
+        }
+      : {}),
+    productUrl: variant.productUrl,
+    filamentCode: variant.filamentCode,
+    message: picture ? null : "The store page has no picture for this colour.",
+    fetchedAt: new Date(),
+  };
+  await db.filamentImage.upsert({
+    where: { organizationId_key: { organizationId, key } },
+    create: { organizationId, key, ...data },
+    update: data,
+  });
+  return {
+    productUrl: variant.productUrl,
+    filamentCode: variant.filamentCode,
+    picture: Boolean(picture),
+  };
 }

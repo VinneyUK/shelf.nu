@@ -70,7 +70,7 @@ export function resetStoreState() {
   productCache.clear();
 }
 
-type Deps = {
+export type Deps = {
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
@@ -340,4 +340,37 @@ export function exactProduct(
     records.find((r) => norm(r.name ?? "").startsWith(`${t} `)) ??
     null
   );
+}
+
+/**
+ * The product a Bambu store page is for, from its address
+ * ("https://uk.store.bambulab.com/products/pla-basic-filament", any region or
+ * language path). Null when it isn't a Bambu store product page.
+ */
+export function productFromStoreUrl(address: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(address.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || !/(^|\.)bambulab\.com$/i.test(url.hostname))
+    return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  const at = parts.indexOf("products");
+  const seo = at >= 0 ? parts[at + 1] : undefined;
+  return seo && /^[a-z0-9-]+$/i.test(seo) ? decodeURIComponent(seo) : null;
+}
+
+/** Every variant of one colour on a given store product (by box code, else colour name). */
+export async function variantsOnProduct(
+  seoCode: string,
+  wanted: { colourName: string; code?: string | null },
+  deps: Deps = {}
+): Promise<{ all: Variant[]; matching: Variant[] }> {
+  const all = productVariants(await getProduct(seoCode, deps));
+  return {
+    all,
+    matching: matchingVariants(all, wanted.colourName, wanted.code),
+  };
 }

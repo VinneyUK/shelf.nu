@@ -2,7 +2,7 @@
  * Filament (fork): the pieces the Filament page and a filament's own page
  * share: the picture, swatch and remaining bar, the spool form, a spool's row.
  */
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useFetcher } from "react-router";
 import { copyText } from "~/components/labels/asset-id-chip";
@@ -149,7 +149,7 @@ export function RemainingBar({ percent }: { percent: number }) {
               ? "bg-success-500"
               : "bg-primary-500"
           )}
-          style={{ width: `${percent}%` }}
+          style={barFill(percent)}
         />
       </div>
       <span className="w-10 text-right text-sm tabular-nums text-gray-700">
@@ -632,14 +632,17 @@ export function SpoolFields({
   );
 }
 
-export const barColour = (percent: number) => {
-  const tone = remainingTone(percent);
-  return tone === "low" || tone === "empty"
-    ? "bg-error-500"
-    : tone === "full"
-    ? "bg-success-500"
-    : "bg-primary-500";
-};
+/**
+ * A bar's fill for what's left: its width, and a colour that moves smoothly
+ * from green (full) through yellow and amber to red (nearly empty), so every
+ * level looks different, not just full, low and in between.
+ */
+export function barFill(percent: number): CSSProperties {
+  const p = Math.max(0, Math.min(100, percent));
+  // hue 0 (red) at empty to 130 (green) at full, eased so the middle reads amber
+  const hue = Math.round(130 * Math.pow(p / 100, 1.15));
+  return { width: `${p}%`, backgroundColor: `hsl(${hue} 72% 44%)` };
+}
 
 /** A spool or a refill, as a mark: a filled disc for a spool, a dashed ring for a refill. */
 export function TypeMark({
@@ -714,10 +717,7 @@ export function TypeRows({ items }: { items: Stocked[] }) {
             </span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-gray-100">
-            <div
-              className={tw("h-1.5 rounded-full", barColour(r.pct))}
-              style={{ width: `${r.pct}%` }}
-            />
+            <div className={"h-1.5 rounded-full"} style={barFill(r.pct)} />
           </div>
         </div>
       ))}

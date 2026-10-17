@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
+  filamentImage: { findUnique: vi.fn().mockResolvedValue(null) }, // nothing linked: a search
   filamentPrice: { upsert: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
   spool: { findMany: vi.fn(), update: vi.fn() },
 }));
@@ -193,5 +194,43 @@ describe("default prices", () => {
       where: { id: "a", organizationId: "o1" },
       data: { pricePaid: 11.99 },
     });
+  });
+});
+
+describe("a linked store page", () => {
+  it("is used for the prices instead of a search", async () => {
+    db.filamentImage.findUnique.mockResolvedValueOnce({
+      productUrl: "https://uk.store.bambulab.com/products/pla-basic-filament",
+    });
+    db.filamentPrice.upsert.mockResolvedValue({});
+    const variant = {
+      productName: "PLA Basic",
+      productUrl: "https://uk.store.bambulab.com/products/pla-basic-filament",
+      colourName: "Pink",
+      filamentCode: "10203",
+      imageUrl: null,
+      price: 16.99,
+      discountPrice: null,
+      kind: "Filament with spool",
+      size: "1 kg",
+    };
+    const store = {
+      findFilamentVariants: vi.fn(),
+      variantsOnProduct: vi
+        .fn()
+        .mockResolvedValue({ all: [variant], matching: [variant] }),
+    };
+    expect(
+      await refreshPrice(
+        "o1",
+        { type: "PLA Basic", colourName: "Pink", filamentCode: null },
+        store
+      )
+    ).toBe("found");
+    expect(store.variantsOnProduct).toHaveBeenCalledWith("pla-basic-filament", {
+      colourName: "Pink",
+      code: null,
+    });
+    expect(store.findFilamentVariants).not.toHaveBeenCalled();
   });
 });
