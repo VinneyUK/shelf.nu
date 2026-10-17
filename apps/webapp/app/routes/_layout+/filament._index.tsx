@@ -23,6 +23,7 @@ import {
 } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import { FilterBuilder } from "~/components/filament/filter-builder";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barColour,
@@ -60,6 +61,12 @@ import {
   typeCounts,
 } from "~/modules/filament/catalogue";
 import { refreshCodesIfStale } from "~/modules/filament/codes.server";
+import {
+  filterParam,
+  matchesGroup,
+  matchesItem,
+  parseFilters,
+} from "~/modules/filament/filters";
 import {
   fetchMissingImages,
   imageStatuses,
@@ -131,8 +138,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const state: State = stateParam in STATES ? (stateParam as State) : "all";
     const sortParam = url.searchParams.get("sort") ?? "recent";
     const sort: Sort = sortParam in SORTS ? (sortParam as Sort) : "recent";
-    const line = (url.searchParams.get("line") ?? "").trim();
-    const colour = (url.searchParams.get("colour") ?? "").trim();
+    // the filters, in Assets' form ("material=is:PLA"); a bare "line=PLA Basic" means is
+    const active = parseFilters(url.searchParams);
+    const line =
+      active.find((f) => f.name === "line" && f.op === "is")?.value ?? "";
+    const colour =
+      active.find((f) => f.name === "colour" && f.op === "is")?.value ?? "";
     // tiles per row: auto, or 3 to 8; remembered in a cookie
     const colsParam = url.searchParams.get("cols");
     const colsCookie = /(?:^|;\s*)filament_cols=(auto|[3-8])/.exec(
@@ -191,8 +202,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
           (state === "out" && spoolState(s) === "run-out") ||
           (state === "offer" &&
             Boolean(prices[filamentKey(s.type, s.colourName)]?.onOffer))) &&
-        (!line || s.type === line) &&
-        (!colour || s.colourName.toLowerCase() === colour.toLowerCase()) &&
+        matchesItem(s, active) &&
         (!q ||
           `${s.type} ${s.material} ${s.colourName} ${s.filamentCode ?? ""}`
             .toLowerCase()
@@ -202,6 +212,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       Math.max(...g.spools.map((s) => new Date(s.createdAt).getTime()));
     const groups = groupSpools(matched)
       .map((g) => ({ ...g, slug: filamentSlug(g.type, g.colourName) }))
+      .filter((g) => matchesGroup(g, prices[g.key], active))
       .sort((a, b) => {
         switch (sort) {
           case "line":
@@ -274,6 +285,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         anyPrice: spools.some((s) => s.pricePaid !== null),
         lines: [...new Set(onHand.map((s) => s.type))].sort(),
         filters: { search, state, sort, line, colour },
+        activeFilters: active,
+        choices: {
+          materials: [...new Set(onHand.map((s) => s.material))].sort(),
+          lines: [...new Set(onHand.map((s) => s.type))].sort(),
+          colours: [...new Set(onHand.map((s) => s.colourName))].sort(),
+        },
         cols,
         totals,
         items: groups.slice((page - 1) * perPage, page * perPage),
@@ -545,7 +562,11 @@ function Overview({
 function FilterBar({
   filters,
   lines,
+  activeFilters,
+  choices,
 }: {
+  activeFilters: PageData["activeFilters"];
+  choices: PageData["choices"];
   filters: PageData["filters"];
   lines: string[];
 }) {
@@ -557,6 +578,18 @@ function FilterBar({
   return (
     <Card className="my-0">
       <Form method="get" className="flex flex-wrap items-center gap-2">
+        <FilterBuilder active={activeFilters} choices={choices} />
+        {/* the builder's filters, kept when you search or sort (line has its own control) */}
+        {activeFilters
+          .filter((f) => f.name !== "line")
+          .map((f) => (
+            <input
+              key={f.name}
+              type="hidden"
+              name={f.name}
+              value={filterParam(f)}
+            />
+          ))}
         <select
           name="state"
           defaultValue={filters.state}
@@ -1316,6 +1349,8 @@ export default function FilamentPage() {
   useAmsLiveUpdates(); // the page follows the AMS
   const location = useLocation();
   const {
+    activeFilters,
+    choices,
     cols,
     totals,
     spools,
@@ -1394,7 +1429,12 @@ export default function FilamentPage() {
           </div>
         ) : null}
 
-        <FilterBar filters={filters} lines={lines} />
+        <FilterBar
+          filters={filters}
+          lines={lines}
+          activeFilters={activeFilters}
+          choices={choices}
+        />
         {filters.colour ? (
           <div className="flex">
             <Link
