@@ -41,6 +41,7 @@ import {
 } from "~/modules/labels/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
+import { done, failed } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import { error, parseData, payload } from "~/utils/http.server";
 import {
@@ -159,6 +160,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
 export async function action({ context, request }: ActionFunctionArgs) {
   const authSession = context.getSession();
   const { userId } = authSession;
+  let intent = "";
   try {
     const { organizationId } = await requirePermission({
       userId,
@@ -167,6 +169,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
       action: PermissionAction.update,
     });
     const input = parseData(await request.formData(), ActionSchema);
+    intent = input.intent;
     if (input.intent === "print") {
       const assets = await queueLabels({
         organizationId,
@@ -180,21 +183,44 @@ export async function action({ context, request }: ActionFunctionArgs) {
         source: "labels-page",
         userId,
       });
-      return payload({
-        success: true,
-        queued: assets.queued + boxes.queued,
-        alreadyQueued: assets.alreadyQueued + boxes.alreadyQueued,
-        noQrCode: assets.noQrCode + boxes.noQrCode,
-      });
+      const queued = assets.queued + boxes.queued;
+      const already = assets.alreadyQueued + boxes.alreadyQueued;
+      const noQr = assets.noQrCode + boxes.noQrCode;
+      const notes = [
+        already ? `${already} already in the queue.` : "",
+        noQr ? `${noQr} skipped: no QR code.` : "",
+      ].filter(Boolean);
+      return done(
+        userId,
+        queued
+          ? `${queued} label${queued === 1 ? "" : "s"} queued`
+          : "Nothing new to print",
+        notes.length ? notes.join(" ") : "They'll print in a moment.",
+        { success: true, queued, alreadyQueued: already, noQrCode: noQr }
+      );
     }
     if (input.intent === "cancel") {
       await cancelLabelJob(organizationId, input.jobId);
-      return payload({ success: true });
+      return done(userId, "Label cancelled", null, { success: true });
     }
     await retryLabelJobsNow(organizationId);
-    return payload({ success: true });
+    return done(
+      userId,
+      "Trying again",
+      "Waiting labels are being sent to the printer again.",
+      { success: true }
+    );
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(
+      userId,
+      intent === "print"
+        ? "Couldn't queue the labels"
+        : intent === "cancel"
+        ? "Couldn't cancel the label"
+        : "Couldn't retry the labels",
+      reason.message
+    );
     return data(error(reason), { status: reason.status });
   }
 }
@@ -513,14 +539,6 @@ function SearchAndPrint({
     queued?: number;
     alreadyQueued?: number;
   }>();
-  const done =
-    fetcher.state === "idle" && fetcher.data && !fetcher.data.error
-      ? fetcher.data.queued
-        ? `Queued ${fetcher.data.queued} label${
-            fetcher.data.queued === 1 ? "" : "s"
-          }.`
-        : "Already in the queue."
-      : null;
 
   return (
     <Card className="my-0">
@@ -540,15 +558,6 @@ function SearchAndPrint({
           Search
         </Button>
       </Form>
-      {fetcher.data?.error ? (
-        <p role="alert" className="mt-2 text-sm text-error-600">
-          {fetcher.data.error.message}
-        </p>
-      ) : done ? (
-        <p role="status" className="mt-2 text-sm text-gray-600">
-          {done}
-        </p>
-      ) : null}
       {q && results.length === 0 && boxes.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">Nothing matches "{q}".</p>
       ) : null}

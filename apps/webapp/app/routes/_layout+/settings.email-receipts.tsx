@@ -29,6 +29,7 @@ import {
 } from "~/modules/email-receipts/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
+import { withPopups } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import { formatBytes } from "~/utils/format-bytes";
 import { error, parseData, payload } from "~/utils/http.server";
@@ -76,7 +77,7 @@ const SaveSchema = z.object({
   processedFolder: z.string().trim().max(100).default("Shelf"),
 });
 
-export async function action({ context, request }: ActionFunctionArgs) {
+async function runAction({ context, request }: ActionFunctionArgs) {
   const authSession = context.getSession();
   const { userId } = authSession;
   try {
@@ -150,25 +151,6 @@ export async function action({ context, request }: ActionFunctionArgs) {
 }
 
 type Result = { error?: { message: string } | null; message?: string };
-
-function ResultLine({
-  fetcher,
-}: {
-  fetcher: { state: string; data?: Result };
-}) {
-  if (isFormProcessing(fetcher.state as never))
-    return <p className="text-sm text-gray-600">Working…</p>;
-  if (fetcher.state !== "idle" || !fetcher.data) return null;
-  return fetcher.data.error ? (
-    <p role="alert" className="text-sm text-error-600">
-      {fetcher.data.error.message}
-    </p>
-  ) : (
-    <p role="status" className="text-sm text-gray-600">
-      {fetcher.data.message}
-    </p>
-  );
-}
 
 const inputClass =
   "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
@@ -325,7 +307,6 @@ export default function EmailReceiptsSettings() {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <ResultLine fetcher={save} />
             <Button type="submit" disabled={isFormProcessing(save.state)}>
               Save
             </Button>
@@ -355,7 +336,6 @@ export default function EmailReceiptsSettings() {
               Check now
             </Button>
           </tools.Form>
-          <ResultLine fetcher={tools} />
         </div>
         <p className="mt-2 text-xs text-gray-500">
           Both use the saved settings, so save changes first.
@@ -515,8 +495,19 @@ function UnmatchedRow({
             Discard
           </Button>
         </fetcher.Form>
-        <ResultLine fetcher={fetcher} />
       </div>
     </li>
   );
 }
+
+/** Every outcome as Shelf's pop-up (fork). */
+export const action = withPopups(runAction, {
+  save: {
+    ok: "Email receipts saved",
+    failed: "Couldn't save the email settings",
+  },
+  test: { ok: "Mailbox connected", failed: "Couldn't connect to the mailbox" },
+  check: { ok: "Mailbox checked", failed: "Couldn't check the mailbox" },
+  assign: { ok: "Receipt attached", failed: "Couldn't attach the receipt" },
+  discard: { ok: "Receipt discarded", failed: "Couldn't discard the receipt" },
+});

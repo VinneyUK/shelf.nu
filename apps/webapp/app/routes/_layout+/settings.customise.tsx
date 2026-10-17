@@ -2,7 +2,7 @@
  * Workspace settings → Customise: switch features off and hide menu items.
  * Part of the customise feature; not in upstream Shelf.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   data,
   useFetcher,
@@ -26,6 +26,7 @@ import {
 } from "~/modules/customisation/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
+import { withPopups } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import type { DataOrErrorResponse } from "~/utils/http.server";
 import { error, parseData, payload } from "~/utils/http.server";
@@ -85,7 +86,7 @@ const CustomiseSchema = z.object({
   qrDownloadsEnabled: flag,
 });
 
-export async function action({ context, request }: ActionFunctionArgs) {
+async function runAction({ context, request }: ActionFunctionArgs) {
   const authSession = context.getSession();
   const { userId } = authSession;
   try {
@@ -206,18 +207,6 @@ export default function CustomiseSettings() {
   const [searchEngine, setSearchEngine] = useState<string>(
     settings.searchEngine
   );
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      setSaved(!fetcher.data.error);
-    }
-  }, [fetcher.state, fetcher.data]);
-
-  const changed = () => setSaved(false);
-  const serverError = (
-    fetcher.data as { error?: { message: string } } | undefined
-  )?.error?.message;
 
   return (
     <fetcher.Form method="post" className="flex flex-col">
@@ -258,7 +247,6 @@ export default function CustomiseSettings() {
                 checked={features[f.name]}
                 onCheckedChange={(checked) => {
                   setFeatures((prev) => ({ ...prev, [f.name]: checked }));
-                  changed();
                 }}
                 aria-labelledby={`${f.name}-label`}
                 aria-describedby={`${f.name}-desc`}
@@ -290,7 +278,6 @@ export default function CustomiseSettings() {
             checked={imagePreview}
             onCheckedChange={(checked) => {
               setImagePreview(checked);
-              changed();
             }}
             aria-labelledby="imagePreviewOnHover-label"
             aria-describedby="imagePreviewOnHover-desc"
@@ -319,7 +306,6 @@ export default function CustomiseSettings() {
             checked={showTimes}
             onCheckedChange={(checked) => {
               setShowTimes(checked);
-              changed();
             }}
             aria-labelledby="showTimesInDates-label"
             aria-describedby="showTimesInDates-desc"
@@ -352,7 +338,6 @@ export default function CustomiseSettings() {
             checked={reuseNumber}
             onCheckedChange={(checked) => {
               setReuseNumber(checked);
-              changed();
             }}
             aria-labelledby="reuseLatestNumber-label"
             aria-describedby="reuseLatestNumber-desc"
@@ -385,7 +370,6 @@ export default function CustomiseSettings() {
             checked={soldBox}
             onCheckedChange={(checked) => {
               setSoldBox(checked);
-              changed();
             }}
             aria-labelledby="soldBoxEnabled-label"
             aria-describedby="soldBoxEnabled-desc"
@@ -422,7 +406,6 @@ export default function CustomiseSettings() {
             value={searchEngine}
             onChange={(e) => {
               setSearchEngine(e.target.value);
-              changed();
             }}
             className="w-full max-w-xs rounded border border-gray-300 px-3 py-2 text-sm"
           >
@@ -457,7 +440,6 @@ export default function CustomiseSettings() {
                         ? prev.filter((k) => k !== item.key)
                         : [...prev, item.key]
                     );
-                    changed();
                   }}
                 />
                 <label htmlFor={`menu-${item.key}`} className="text-gray-900">
@@ -470,15 +452,6 @@ export default function CustomiseSettings() {
       </Card>
 
       <div className="flex items-center justify-end gap-3">
-        {serverError ? (
-          <p role="alert" className="text-sm text-error-500">
-            {serverError}
-          </p>
-        ) : saved ? (
-          <p role="status" className="text-sm text-gray-600">
-            Saved.
-          </p>
-        ) : null}
         <Button type="submit" disabled={isSaving}>
           {isSaving ? "Saving…" : "Save"}
         </Button>
@@ -486,3 +459,15 @@ export default function CustomiseSettings() {
     </fetcher.Form>
   );
 }
+
+/** Every outcome as Shelf's pop-up (fork). */
+export const action = withPopups(runAction, {
+  "": {
+    ok: "Customisations saved",
+    failed: "Couldn't save the customisations",
+  },
+  save: {
+    ok: "Customisations saved",
+    failed: "Couldn't save the customisations",
+  },
+});

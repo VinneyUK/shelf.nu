@@ -3,7 +3,7 @@
  * person to check it. Create makes the asset; nothing is made before that.
  * Part of the AI feature; not in upstream Shelf.
  */
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -35,6 +35,7 @@ import {
 import { getAiSettings } from "~/modules/ai/settings.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError } from "~/utils/error";
+import { done, failed, notify } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import { error, parseData, payload } from "~/utils/http.server";
 import {
@@ -102,6 +103,7 @@ const Edit = z.object({
 
 export async function action({ context, request }: ActionFunctionArgs) {
   const { userId } = context.getSession();
+  let intent = "";
   try {
     const { organizationId } = await requirePermission({
       userId,
@@ -110,45 +112,55 @@ export async function action({ context, request }: ActionFunctionArgs) {
       action: PermissionAction.create,
     });
     const form = await request.formData();
-    const intent = String(form.get("intent") ?? "");
+    intent = String(form.get("intent") ?? "");
 
     if (intent === "save" || intent === "create" || intent === "create-label") {
       const { draftId, ...fields } = parseData(form, Edit);
       await updateDraft(organizationId, draftId, fields);
-      if (intent === "save") return payload({ message: "Saved." });
+      if (intent === "save") return done(userId, "Draft saved", null);
       const made = await createAssetFromDraft({
         organizationId,
         userId,
         draftId,
         printLabel: intent === "create-label",
       });
-      return payload({
-        created: made.sequentialId ?? "the asset",
-        assetId: made.assetId,
-        message: `Created ${made.sequentialId ?? "the asset"}.${
-          made.warnings.length ? " " + made.warnings.join(" ") : ""
-        }`,
-      });
+      const name = made.sequentialId ?? "The asset";
+      return done(
+        userId,
+        `${name} created`,
+        made.warnings.length ? made.warnings.join(" ") : "It's in Assets now.",
+        { created: name, assetId: made.assetId }
+      );
     }
     if (intent === "discard") {
       await discardDrafts(organizationId, [
         parseData(form, z.object({ draftId: z.string() })).draftId,
       ]);
-      return payload({ message: "Discarded." });
+      return done(userId, "Draft discarded", null);
     }
     if (intent === "retry") {
       await retryDraft(
         organizationId,
         parseData(form, z.object({ draftId: z.string() })).draftId
       );
-      return payload({ message: "Reading it again…" });
+      return done(
+        userId,
+        "Reading it again",
+        "Claude is reading the draft again."
+      );
     }
     if (intent === "discard-failed") {
-      const failed = (await listDrafts(organizationId))
+      const gone = (await listDrafts(organizationId))
         .filter((d) => d.status === "failed")
         .map((d) => d.id);
-      await discardDrafts(organizationId, failed);
-      return payload({ message: `Discarded ${failed.length}.` });
+      await discardDrafts(organizationId, gone);
+      return done(
+        userId,
+        gone.length === 1
+          ? "1 draft discarded"
+          : `${gone.length} drafts discarded`,
+        null
+      );
     }
     if (intent === "create-all") {
       const ready = (await listDrafts(organizationId)).filter(
@@ -171,18 +183,39 @@ export async function action({ context, request }: ActionFunctionArgs) {
           );
         }
       }
-      return payload({
-        message: `Created ${made}.${
-          problems.length ? " Not created: " + problems.join("; ") : ""
-        }`,
-      });
+      const title = made === 1 ? "1 asset created" : `${made} assets created`;
+      if (problems.length === 0)
+        return done(userId, title, "They're in Assets now.");
+      notify(
+        userId,
+        made ? title : "No assets created",
+        `Not created: ${problems.join("; ")}`,
+        made ? "success" : "error"
+      );
+      return payload({ ok: made > 0 });
     }
-    return payload({ message: "Unknown action." });
+    return payload({ ok: false });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(
+      userId,
+      DRAFT_FAILED[intent] ?? "Something went wrong",
+      reason.message
+    );
     return data(error(reason), { status: reason.status });
   }
 }
+
+/** What a failed Drafts action's pop-up says. */
+const DRAFT_FAILED: Record<string, string> = {
+  save: "Couldn't save the draft",
+  create: "Couldn't create the asset",
+  "create-label": "Couldn't create the asset",
+  discard: "Couldn't discard the draft",
+  retry: "Couldn't read it again",
+  "discard-failed": "Couldn't discard the drafts",
+  "create-all": "Couldn't create the assets",
+};
 
 type Result = {
   error?: { message: string } | null;
@@ -208,7 +241,7 @@ export default function DraftsPage() {
   // and reload the page only when it has. (Reloading the whole page every few
   // seconds would re-run Shelf's heavy app-wide loader each time.)
   const status = useFetcher<{ signature?: string }>();
-    // the timer reads the latest values from here, so it isn't restarted by every render
+  // the timer reads the latest values from here, so it isn't restarted by every render
   const latest = useRef({ revalidator, status });
   latest.current = { revalidator, status };
   useEffect(() => {
@@ -309,14 +342,6 @@ export default function DraftsPage() {
         ) : aiReady ? (
           <p className="text-sm text-gray-600">
             No drafts. Add some photos or receipts above.
-          </p>
-        ) : null}
-        {bulk.data?.message ? (
-          <p
-            role={bulk.data.error ? "alert" : "status"}
-            className="text-sm text-gray-600"
-          >
-            {bulk.data.error?.message ?? bulk.data.message}
           </p>
         ) : null}
 
@@ -497,22 +522,6 @@ function DraftCard({
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2 md:col-span-2">
-          {fetcher.data?.message || fetcher.data?.error ? (
-            <p
-              role={fetcher.data.error ? "alert" : "status"}
-              className="mr-auto text-sm text-gray-600"
-            >
-              {fetcher.data.error?.message ?? fetcher.data.message}{" "}
-              {fetcher.data.assetId ? (
-                <Link
-                  to={`/assets/${fetcher.data.assetId}`}
-                  className="text-primary-500 underline"
-                >
-                  Open it
-                </Link>
-              ) : null}
-            </p>
-          ) : null}
           <Button
             type="submit"
             name="intent"

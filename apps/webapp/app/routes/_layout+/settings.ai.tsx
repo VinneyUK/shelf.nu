@@ -18,6 +18,7 @@ import {
   testWebSearch,
 } from "~/modules/ai/settings.server";
 import { makeShelfError } from "~/utils/error";
+import { withPopups } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import { error, parseData, payload } from "~/utils/http.server";
 import {
@@ -74,7 +75,7 @@ const SaveSchema = z.object({
     .default(""),
 });
 
-export async function action({ context, request }: ActionFunctionArgs) {
+async function runAction({ context, request }: ActionFunctionArgs) {
   const { userId } = context.getSession();
   try {
     const { organizationId } = await requirePermission({
@@ -118,25 +119,6 @@ type Result = {
   message?: string;
   failed?: boolean;
 };
-
-function ResultLine({
-  fetcher,
-}: {
-  fetcher: { state: string; data?: Result };
-}) {
-  if (isFormProcessing(fetcher.state as never))
-    return <p className="text-sm text-gray-600">Working…</p>;
-  if (fetcher.state !== "idle" || !fetcher.data) return null;
-  const bad = Boolean(fetcher.data.error) || fetcher.data.failed;
-  return (
-    <p
-      role={bad ? "alert" : "status"}
-      className={bad ? "text-sm text-error-600" : "text-sm text-gray-600"}
-    >
-      {fetcher.data.error?.message ?? fetcher.data.message}
-    </p>
-  );
-}
 
 const inputClass =
   "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
@@ -326,7 +308,6 @@ export default function AiSettings() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-3">
-            <ResultLine fetcher={save} />
             <Button type="submit" disabled={isFormProcessing(save.state)}>
               Save
             </Button>
@@ -344,7 +325,6 @@ export default function AiSettings() {
           >
             Test connection
           </Button>
-          <ResultLine fetcher={test} />
         </test.Form>
         <testWeb.Form
           method="post"
@@ -358,7 +338,6 @@ export default function AiSettings() {
           >
             Test web search
           </Button>
-          <ResultLine fetcher={testWeb} />
         </testWeb.Form>
         <p className="mt-2 text-sm text-gray-600">
           Both tests use the saved settings, so save changes first. Testing web
@@ -368,3 +347,10 @@ export default function AiSettings() {
     </div>
   );
 }
+
+/** Every outcome as Shelf's pop-up (fork). */
+export const action = withPopups(runAction, {
+  save: { ok: "AI settings saved", failed: "Couldn't save the AI settings" },
+  test: { ok: "Claude connection works", failed: "Claude connection failed" },
+  "test-web": { ok: "Web search works", failed: "Web search isn't working" },
+});

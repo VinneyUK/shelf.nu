@@ -2,7 +2,7 @@
  * Labels → Settings: the Home Assistant connection, label size and the queue
  * tag, with a test print. Part of the labels feature; not in upstream Shelf.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   data,
   useFetcher,
@@ -23,6 +23,7 @@ import {
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { SERVER_URL } from "~/utils/env";
 import { makeShelfError } from "~/utils/error";
+import { done, failed } from "~/utils/fork-notify.server";
 import { isFormProcessing } from "~/utils/form";
 import { error, parseData, payload } from "~/utils/http.server";
 import {
@@ -94,22 +95,26 @@ export async function action({ context, request }: ActionFunctionArgs) {
     const intent = formData.get("intent");
     if (intent === "test" || intent === "preview") {
       await printTestLabel(organizationId, intent === "preview");
-      return payload({
-        success: true,
-        message:
-          intent === "preview"
-            ? "Sent. Look at the Niimbot's Last Label Made image in Home Assistant."
-            : "Test label sent to the printer.",
-      });
+      return intent === "preview"
+        ? done(
+            userId,
+            "Preview sent",
+            "Look at the Niimbot's Last Label Made image in Home Assistant.",
+            { success: true }
+          )
+        : done(userId, "Test label sent", "It's on its way to the printer.", {
+            success: true,
+          });
     }
     const { intent: _intent, ...settings } = parseData(
       formData,
       SettingsSchema
     );
     await saveLabelSettings(organizationId, settings);
-    return payload({ success: true, message: "Saved." });
+    return done(userId, "Label settings saved", null, { success: true });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
+    failed(userId, "Couldn't do that", reason.message);
     return data(error(reason), { status: reason.status });
   }
 }
@@ -153,23 +158,9 @@ export default function LabelSettingsPage() {
   );
   const [margin, setMargin] = useState(settings.leftMargin);
 
-  const [saveMessage, setSaveMessage] = useState<{
-    text: string;
-    error: boolean;
-  } | null>(null);
-  useEffect(() => {
-    if (save.state === "idle" && save.data) {
-      setSaveMessage(
-        save.data.error
-          ? { text: save.data.error.message, error: true }
-          : { text: save.data.message ?? "Saved.", error: false }
-      );
-    }
-  }, [save.state, save.data]);
-
   return (
     <div className="flex flex-col gap-4">
-      <save.Form method="post" onChange={() => setSaveMessage(null)}>
+      <save.Form method="post">
         <input type="hidden" name="intent" value="save" />
         <Card className="my-0">
           <h3 className="text-text-md font-semibold text-gray-900">
@@ -343,16 +334,6 @@ export default function LabelSettingsPage() {
         </Card>
 
         <div className="flex items-center justify-end gap-3">
-          {saveMessage ? (
-            <p
-              role={saveMessage.error ? "alert" : "status"}
-              className={`text-sm ${
-                saveMessage.error ? "text-error-600" : "text-gray-600"
-              }`}
-            >
-              {saveMessage.text}
-            </p>
-          ) : null}
           <Button type="submit" disabled={isFormProcessing(save.state)}>
             {isFormProcessing(save.state) ? "Saving…" : "Save"}
           </Button>
@@ -384,16 +365,7 @@ export default function LabelSettingsPage() {
               Preview in Home Assistant
             </Button>
           </test.Form>
-          {test.state === "idle" && test.data ? (
-            <p
-              role={test.data.error ? "alert" : "status"}
-              className={`text-sm ${
-                test.data.error ? "text-error-600" : "text-gray-600"
-              }`}
-            >
-              {test.data.error ? test.data.error.message : test.data.message}
-            </p>
-          ) : isFormProcessing(test.state) ? (
+          {isFormProcessing(test.state) ? (
             <p className="text-sm text-gray-600">Sending…</p>
           ) : null}
         </div>
