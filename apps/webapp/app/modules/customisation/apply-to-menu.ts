@@ -164,7 +164,28 @@ export function applyCustomisationsToMenu(
       ? withFilamentItem(withDrafts, filamentIcon)
       : withDrafts;
   return {
-    topMenuItems: tidy(withoutHidden(top, c)),
+    // as you dragged it (fork)
+    topMenuItems: orderMenu(tidy(withoutHidden(top, c)), c.menuOrder ?? []),
     bottomMenuItems: tidy(withoutHidden(menu.bottomMenuItems, c)),
   };
+}
+
+/** A menu item's key, for its order: its address, or its kind and title. */
+export function menuKey(item: NavItem): string {
+  if (item.type === "child") return item.to;
+  return `${item.type}:${item.title}`;
+}
+
+/**
+ * The menu in the order you dragged it. Items you placed take their places in
+ * that order; anything not in it (a new feature's item) keeps its own place.
+ */
+export function orderMenu(items: NavItem[], order: string[]): NavItem[] {
+  if (!order.length) return items;
+  const rank = new Map(order.map((key, i) => [key, i]));
+  const placed = items
+    .filter((item) => rank.has(menuKey(item)))
+    .sort((a, b) => (rank.get(menuKey(a)) ?? 0) - (rank.get(menuKey(b)) ?? 0));
+  let next = 0;
+  return items.map((item) => (rank.has(menuKey(item)) ? placed[next++] : item));
 }

@@ -2696,6 +2696,8 @@ model WorkspaceCustomisation {
   labelsEnabled    Boolean  @default(true)
   /// Filament feature: the Filament page and its menu item
   filamentEnabled  Boolean  @default(true)
+  /// The menu's order, as you dragged it: each item's key (its address, or "parent:Settings")
+  menuOrder        String[] @default([])
   /// Custody (assigning assets to people)
   custodyEnabled   Boolean  @default(true)
   /// Locations, kits and asset models; Shelf's own QR code downloads

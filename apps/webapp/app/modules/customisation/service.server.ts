@@ -45,6 +45,9 @@ export async function getWorkspaceCustomisations(
     labelsEnabled: row?.labelsEnabled ?? DEFAULT_CUSTOMISATIONS.labelsEnabled,
     filamentEnabled:
       row?.filamentEnabled ?? DEFAULT_CUSTOMISATIONS.filamentEnabled,
+    menuOrder: (row?.menuOrder ?? [])
+      .filter((k) => typeof k === "string" && k.length < 200)
+      .slice(0, 100),
     custodyEnabled:
       row?.custodyEnabled ?? DEFAULT_CUSTOMISATIONS.custodyEnabled,
     locationsEnabled:
@@ -93,8 +96,9 @@ export type CustomisePageSettings = Awaited<
 
 export async function saveCustomisePageSettings(
   organizationId: string,
-  // aiEnabled is set from Settings → AI, not on this page
-  settings: Omit<CustomisePageSettings, "aiEnabled">
+  // aiEnabled is set from Settings → AI, and the menu order by dragging the
+  // menu: neither comes from this page, so saving it never touches them
+  settings: Omit<CustomisePageSettings, "aiEnabled" | "menuOrder">
 ) {
   const current = await db.organization.findUniqueOrThrow({
     where: { id: organizationId },
@@ -193,4 +197,19 @@ export async function bookingsSwitchedOffForBooking(bookingId: string) {
   } catch {
     return false;
   }
+}
+
+/** Saves the menu's order, as dragged (an empty list puts it back as Shelf ships it). */
+export async function saveMenuOrder(organizationId: string, order: string[]) {
+  const menuOrder = [
+    ...new Set(
+      order.filter((k) => typeof k === "string" && k && k.length < 200)
+    ),
+  ].slice(0, 100);
+  await db.workspaceCustomisation.upsert({
+    where: { organizationId },
+    create: { organizationId, menuOrder },
+    update: { menuOrder },
+  });
+  return menuOrder;
 }

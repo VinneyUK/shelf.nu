@@ -44,6 +44,8 @@ export type Customisations = {
   labelsEnabled: boolean;
   /** Filament feature: Bambu Lab spools */
   filamentEnabled: boolean;
+  /** The menu's order, as dragged: item keys (see menuKey) */
+  menuOrder: string[];
   /** Custody: assigning assets to people */
   custodyEnabled: boolean;
   locationsEnabled: boolean;
@@ -72,6 +74,7 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   imagePreviewOnHover: true,
   labelsEnabled: true,
   filamentEnabled: true,
+  menuOrder: [],
   custodyEnabled: true,
   locationsEnabled: true,
   kitsEnabled: true,

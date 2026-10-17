@@ -4,6 +4,7 @@ import { ShelfSidebarLogo } from "~/components/marketing/logos";
 import { useSidebarNavItems } from "~/hooks/use-sidebar-nav-items";
 import type { loader } from "~/routes/_layout+/_layout"; // fork
 import OrganizationSelector from "./organization-selector";
+import { ReorderableNav } from "./reorderable-nav";
 import {
   Sidebar,
   SidebarContent,
@@ -34,7 +35,8 @@ export default function AppSidebar(props: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarNav items={topMenuItems} />
+        <ReorderableNav items={topMenuItems} />{" "}
+        {/* fork: press and hold to reorder */}
       </SidebarContent>
 
       <SidebarFooter>
