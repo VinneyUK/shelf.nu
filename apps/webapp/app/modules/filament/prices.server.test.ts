@@ -2,13 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   filamentPrice: { upsert: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
-  spool: { findMany: vi.fn() },
+  spool: { findMany: vi.fn(), update: vi.fn() },
 }));
 vi.mock("~/database/db.server", () => ({ db }));
 vi.mock("~/utils/logger", () => ({ Logger: { error: vi.fn() } }));
 
 import { StoreError } from "./bambu-store.server";
-import { refreshPrice, refreshStalePrices } from "./prices.server";
+import {
+  fillMissingPrices,
+  refreshPrice,
+  refreshStalePrices,
+  storePriceFor,
+} from "./prices.server";
 
 const wanted = {
   type: "PLA Basic",
@@ -136,5 +141,57 @@ describe("keeping prices fresh", () => {
     expect(refreshStalePrices("o1", { force: true }, store)).toBe(true);
     for (let i = 0; i < 10; i++) await flush();
     expect(store.findFilamentVariants).toHaveBeenCalledTimes(1); // stopped after the pause
+  });
+});
+
+describe("default prices", () => {
+  const variants = [
+    {
+      kind: "Filament with spool",
+      size: "1 kg",
+      price: 16.99,
+      discountPrice: null,
+    },
+    { kind: "Refill", size: "1 kg", price: 13.99, discountPrice: 11.99 },
+  ];
+  it("today's store price as a spool or a refill, from what's kept when fresh", async () => {
+    db.filamentPrice.findUnique.mockResolvedValue({
+      variants,
+      checkedAt: new Date(),
+      status: "found",
+    });
+    const store = { findFilamentVariants: vi.fn() };
+    const wanted = {
+      type: "PLA Basic",
+      colourName: "Jade White",
+      filamentCode: null,
+    };
+    expect(
+      await storePriceFor("o1", { ...wanted, packaging: "spool" }, store)
+    ).toBe(16.99);
+    expect(
+      await storePriceFor("o1", { ...wanted, packaging: "refill" }, store)
+    ).toBe(11.99); // on offer
+    expect(store.findFilamentVariants).not.toHaveBeenCalled();
+  });
+  it("fills in only missing prices, from prices already held", async () => {
+    db.spool.findMany.mockResolvedValue([
+      {
+        id: "a",
+        type: "PLA Basic",
+        colourName: "Jade White",
+        packaging: "refill",
+      },
+      { id: "b", type: "PLA Basic", colourName: "Unknown", packaging: "spool" },
+    ]);
+    db.filamentPrice.findMany.mockResolvedValue([
+      { key: "pla basic|jade white", variants },
+    ]);
+    db.spool.update = vi.fn().mockResolvedValue({});
+    expect(await fillMissingPrices("o1")).toEqual({ filled: 1, unpriced: 1 });
+    expect(db.spool.update).toHaveBeenCalledWith({
+      where: { id: "a", organizationId: "o1" },
+      data: { pricePaid: 11.99 },
+    });
   });
 });

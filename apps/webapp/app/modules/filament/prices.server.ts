@@ -8,7 +8,7 @@ import { db } from "~/database/db.server";
 import { Logger } from "~/utils/logger";
 import { findFilamentVariants, StoreError } from "./bambu-store.server";
 import { filamentKey } from "./catalogue";
-import type { StoreVariant } from "./prices";
+import { priceSummary, type StoreVariant } from "./prices";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -151,4 +151,73 @@ export async function priceStatuses(organizationId: string) {
       },
     ])
   );
+}
+
+/** A store price, in pounds, for one filament as a spool or a refill (the other if only that's sold). */
+function priceFor(
+  variants: StoreVariant[] | null | undefined,
+  packaging: string
+) {
+  const s = priceSummary(variants);
+  const line =
+    packaging === "refill" ? s.refill ?? s.spool : s.spool ?? s.refill;
+  return line?.now ?? null;
+}
+
+/**
+ * Today's store price for a filament, as a spool or a refill: from what's
+ * kept if it's under a day old, else checked now. Null if the store hasn't one.
+ */
+export async function storePriceFor(
+  organizationId: string,
+  wanted: Wanted & { packaging: string },
+  store?: Store
+): Promise<number | null> {
+  const key = filamentKey(wanted.type, wanted.colourName);
+  const read = () =>
+    db.filamentPrice.findUnique({
+      where: { organizationId_key: { organizationId, key } },
+      select: { variants: true, checkedAt: true, status: true },
+    });
+  let row = await read();
+  if (!row || Date.now() - row.checkedAt.getTime() > STALE_MS) {
+    await refreshPrice(organizationId, wanted, store);
+    row = await read();
+  }
+  return row?.status === "found"
+    ? priceFor(row.variants as StoreVariant[], wanted.packaging)
+    : null;
+}
+
+/**
+ * Fills in the price paid where it's missing, with the store's price that
+ * Shelf already holds for that filament and type. Nothing else is touched.
+ * Returns how many were filled, and how many had no store price to use.
+ */
+export async function fillMissingPrices(organizationId: string) {
+  const [items, kept] = await Promise.all([
+    db.spool.findMany({
+      where: { organizationId, pricePaid: null },
+      select: { id: true, type: true, colourName: true, packaging: true },
+    }),
+    db.filamentPrice.findMany({
+      where: { organizationId, status: "found" },
+      select: { key: true, variants: true },
+    }),
+  ]);
+  const byKey = new Map(kept.map((k) => [k.key, k.variants as StoreVariant[]]));
+  let filled = 0;
+  for (const item of items) {
+    const price = priceFor(
+      byKey.get(filamentKey(item.type, item.colourName)),
+      item.packaging
+    );
+    if (price === null) continue;
+    await db.spool.update({
+      where: { id: item.id, organizationId },
+      data: { pricePaid: price },
+    });
+    filled += 1;
+  }
+  return { filled, unpriced: items.length - filled };
 }

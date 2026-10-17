@@ -47,6 +47,7 @@ const FAILED: Record<string, string> = {
   weigh: "Couldn't weigh the filament",
   delete: "Couldn't delete the filament",
   "check-prices": "Couldn't check prices",
+  "fill-prices": "Couldn't fill in the prices",
   "fetch-images": "Couldn't get pictures",
   "fetch-image": "Couldn't get the picture",
 };

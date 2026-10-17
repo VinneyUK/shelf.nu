@@ -2,7 +2,8 @@
  * Filament (fork): the pieces the Filament page and a filament's own page
  * share: the picture, swatch and remaining bar, the spool form, a spool's row.
  */
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useFetcher } from "react-router";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import {
   BAMBU_TYPES,
@@ -282,6 +283,9 @@ export function FilamentSearch({
   );
 }
 
+/** Today, as a date box wants it: 2026-10-17. */
+export const todayIso = () => new Date().toISOString().slice(0, 10);
+
 /**
  * A date that may not be known. Empty, it says "Not known" (browsers would
  * otherwise show a faint today's date, which looks like a real one).
@@ -330,9 +334,11 @@ export function DateField({
 export function PackagingToggle({
   initial = "spool",
   name = "packaging",
+  onChange,
 }: {
   initial?: string | null;
   name?: string;
+  onChange?: (value: Packaging) => void;
 }) {
   const [value, setValue] = useState<Packaging>(
     initial === "refill" ? "refill" : "spool"
@@ -351,7 +357,10 @@ export function PackagingToggle({
             type="button"
             role="radio"
             aria-checked={value === p}
-            onClick={() => setValue(p)}
+            onClick={() => {
+              setValue(p);
+              onChange?.(p);
+            }}
             className={tw(
               "rounded px-3 py-1 text-sm",
               value === p
@@ -389,6 +398,16 @@ export function SpoolFields({
   const colours = coloursFor(line);
   const knownColour = colours.find(([n]) => n === initial?.colourName);
   const [code, setCode] = useState(initial?.filamentCode ?? "");
+  const [packaging, setPackaging] = useState<Packaging>(
+    initial?.packaging === "refill" ? "refill" : "spool"
+  );
+  const [price, setPrice] = useState(
+    initial?.pricePaid != null ? String(initial.pricePaid) : ""
+  );
+  // a price you typed, or one from an order email, is kept; otherwise the store's
+  const [priceTyped, setPriceTyped] = useState(initial?.pricePaid != null);
+  const [priceFromStore, setPriceFromStore] = useState(false);
+  const storePrice = useFetcher<{ price?: number | null }>();
   const [colour, setColour] = useState<string>(
     initial?.colourName
       ? knownColour
@@ -404,6 +423,24 @@ export function SpoolFields({
   const colourName = picked ? picked[0] : otherName;
   const colourHex = picked ? picked[1] : otherHex;
   const tare = catalogueEntry(line)?.spoolWeight ?? null;
+  useEffect(() => {
+    if (priceTyped || !line || !colourName) return;
+    const q = new URLSearchParams({
+      type: line,
+      colour: colourName,
+      packaging,
+      code,
+    });
+    void storePrice.load(`/api/filament/store-price?${q.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line, colourName, packaging, code, priceTyped]);
+  useEffect(() => {
+    const p = storePrice.data?.price;
+    if (!priceTyped && typeof p === "number") {
+      setPrice(String(p));
+      setPriceFromStore(true);
+    }
+  }, [storePrice.data, priceTyped]);
 
   const changeType = (next: string) => {
     setType(next);
@@ -432,7 +469,7 @@ export function SpoolFields({
           }}
         />
       </div>
-      <PackagingToggle initial={initial?.packaging} />
+      <PackagingToggle initial={initial?.packaging} onChange={setPackaging} />
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
         Line
         <select
@@ -539,14 +576,24 @@ export function SpoolFields({
           type="number"
           min={0}
           step={0.01}
-          defaultValue={initial?.pricePaid ?? ""}
+          value={price}
+          onChange={(e) => {
+            setPrice(e.target.value);
+            setPriceTyped(true);
+            setPriceFromStore(false);
+          }}
           className={inputClass}
         />
+        {priceFromStore ? (
+          <span className="text-xs font-normal text-gray-500">
+            From the Bambu store
+          </span>
+        ) : null}
       </label>
       <DateField
         name="purchasedOn"
         label="Bought on"
-        initial={initial?.purchasedOn}
+        initial={initial?.purchasedOn ?? todayIso()}
       />
       {/* the AMS slot is set by the printer, not here; an AMS-found entry keeps its own */}
       <input type="hidden" name="amsSlot" value={initial?.amsSlot ?? ""} />

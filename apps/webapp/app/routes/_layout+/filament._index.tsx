@@ -54,6 +54,7 @@ import {
 import { done, failed } from "~/modules/filament/notify.server";
 import { priceSummary, type PriceSummary } from "~/modules/filament/prices";
 import {
+  fillMissingPrices,
   priceStatuses,
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
@@ -129,6 +130,18 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const codes = await knownCodes(organizationId); // for finding a filament by its code
     const storePrices = await priceStatuses(organizationId);
     refreshStalePrices(organizationId);
+    // filament with no price paid, where the store's price is already known
+    const missingPrices = spools.filter((s) => {
+      if (s.pricePaid !== null) return false;
+      const p = priceSummary(
+        storePrices[filamentKey(s.type, s.colourName)]?.variants
+      );
+      return (
+        (s.packaging === "refill"
+          ? p.refill ?? p.spool
+          : p.spool ?? p.refill) !== null
+      );
+    }).length;
     const prices: Record<string, PriceSummary> = Object.fromEntries(
       Object.entries(storePrices).map(([key, p]) => [
         key,
@@ -196,6 +209,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         candidates,
         images,
         codes,
+        missingPrices,
         prices,
         anyPrice: spools.some((s) => s.pricePaid !== null),
         lines: [...new Set(onHand.map((s) => s.type))].sort(),
@@ -277,6 +291,18 @@ export async function action({ context, request }: ActionFunctionArgs) {
             ? "Filament added"
             : `${made.length} filaments added`,
           `${input.colourName} · ${input.type}`
+        );
+      }
+      case "fill-prices": {
+        const { filled, unpriced } = await fillMissingPrices(organizationId);
+        return done(
+          userId,
+          filled === 1 ? "1 price filled in" : `${filled} prices filled in`,
+          `From the Bambu store${
+            unpriced
+              ? `; ${unpriced} have no store price yet (try Check prices first)`
+              : ""
+          }.`
         );
       }
       case "check-prices":
@@ -526,6 +552,23 @@ function FilterBar({
         </select>
       </Form>
     </Card>
+  );
+}
+
+/** Fill in the price paid where it's missing, from the store prices Shelf holds. */
+function FillPrices({ count }: { count: number }) {
+  const fetcher = useFetcher<Result>();
+  return (
+    <fetcher.Form method="post">
+      <input type="hidden" name="intent" value="fill-prices" />
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={isFormProcessing(fetcher.state)}
+      >
+        Fill in missing prices ({count})
+      </Button>
+    </fetcher.Form>
   );
 }
 
@@ -1098,6 +1141,7 @@ export default function FilamentPage() {
     candidates,
     images,
     codes,
+    missingPrices,
     prices,
     view,
     items,
@@ -1120,6 +1164,7 @@ export default function FilamentPage() {
         <div className="flex items-center gap-2">
           <GetPictures images={images} spools={spools} />
           {onHand.length > 0 ? <CheckPrices /> : null}
+          {missingPrices > 0 ? <FillPrices count={missingPrices} /> : null}
           {onHand.length > 0 ? (
             <Button to="/filament/stocktake" variant="secondary">
               Stocktake

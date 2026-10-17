@@ -24,6 +24,7 @@ import {
   type Result,
   selectClass,
   Swatch,
+  todayIso,
   useMoney,
 } from "~/components/filament/parts";
 import { TrashIcon } from "~/components/icons/library";
@@ -811,7 +812,18 @@ function SpoolLine({
 }
 
 /** Add more spools of this filament (opened by the header's button, ?add=1). */
-function AddMore() {
+function AddMore({
+  storePrices,
+}: {
+  storePrices: { spool: number | null; refill: number | null };
+}) {
+  const [packaging, setPackaging] = useState<"spool" | "refill">("spool");
+  const [typed, setTyped] = useState<string | null>(null);
+  const fromStore =
+    packaging === "refill"
+      ? storePrices.refill ?? storePrices.spool
+      : storePrices.spool ?? storePrices.refill;
+  const price = typed ?? (fromStore != null ? String(fromStore) : "");
   const fetcher = useFetcher<Result>();
   const [, setParams] = useSearchParams();
   const close = () =>
@@ -842,7 +854,7 @@ function AddMore() {
             className={tw(inputClass, "w-20")}
           />
         </label>
-        <PackagingToggle />
+        <PackagingToggle onChange={setPackaging} />
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           Price paid (each)
           <input
@@ -850,10 +862,17 @@ function AddMore() {
             type="number"
             min={0}
             step={0.01}
+            value={price}
+            onChange={(e) => setTyped(e.target.value)}
             className={tw(inputClass, "w-28")}
           />
+          {typed === null && fromStore != null ? (
+            <span className="text-xs font-normal text-gray-500">
+              From the Bambu store
+            </span>
+          ) : null}
         </label>
-        <DateField name="purchasedOn" label="Bought on" />
+        <DateField name="purchasedOn" label="Bought on" initial={todayIso()} />
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           Left (%)
           <input
@@ -1264,7 +1283,14 @@ export default function FilamentDetail() {
       </Header>
 
       <div className="mt-4 flex flex-col gap-4">
-        {params.get("add") === "1" ? <AddMore /> : null}
+        {params.get("add") === "1" ? (
+          <AddMore
+            storePrices={{
+              spool: priceSummary(price?.variants).spool?.now ?? null,
+              refill: priceSummary(price?.variants).refill?.now ?? null,
+            }}
+          />
+        ) : null}
         {!image?.productUrl && image?.message ? (
           <p className="text-xs text-gray-500">Picture: {image.message}</p>
         ) : null}
