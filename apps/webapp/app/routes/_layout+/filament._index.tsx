@@ -23,6 +23,7 @@ import {
 } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barColour,
   CodeChip,
@@ -1312,6 +1313,7 @@ function FilamentBottomBar({
 }
 
 export default function FilamentPage() {
+  useAmsLiveUpdates(); // the page follows the AMS
   const location = useLocation();
   const {
     cols,

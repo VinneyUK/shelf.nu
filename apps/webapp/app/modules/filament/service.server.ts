@@ -709,11 +709,14 @@ export async function knownCodes(organizationId: string): Promise<KnownCode[]> {
 export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
   const present = new Set<string>();
   let proposed = 0;
+  /** What changed, in words, for the pop-up on an open Filament page */
+  const events: string[] = [];
+  const name = (t: Tray) => `${t.colourName ?? t.colourHex} ${t.type}`;
   for (const t of trays) {
     present.add(t.tagUid);
     const known = await db.spool.findFirst({
       where: { organizationId, tagUid: t.tagUid },
-      select: { id: true, openedOn: true, status: true },
+      select: { id: true, openedOn: true, status: true, amsSlot: true },
     });
     if (known) {
       if (known.status === "retired") continue; // retired by you: the AMS doesn't un-retire it
@@ -729,6 +732,8 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
           },
         });
       });
+      if (known.amsSlot !== t.slot)
+        events.push(`${name(t)} is in AMS slot ${t.slot}.`);
       continue;
     }
     const result = await proposeSpool(organizationId, {
@@ -741,10 +746,25 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
       tagUid: t.tagUid,
       amsSlot: t.slot,
     });
-    if (result.kind === "pending") proposed += 1;
+    if (result.kind === "pending") {
+      proposed += 1;
+      events.push(
+        `New filament in AMS slot ${t.slot}: ${name(t)}, waiting for you.`
+      );
+    }
   }
   // tagged filament Shelf thought was in the AMS, whose tag isn't in a slot now, is out
   // (one you put in a slot by hand, with no tag on record, is left where you put it)
+  const leaving = await db.spool.findMany({
+    where: {
+      organizationId,
+      amsSlot: { not: null },
+      tagUid: { not: null, notIn: [...present] },
+    },
+    select: { colourName: true, type: true, amsSlot: true },
+  });
+  for (const l of leaving)
+    events.push(`${l.colourName} ${l.type} came out of AMS slot ${l.amsSlot}.`);
   const out = await db.spool.updateMany({
     where: {
       organizationId,
@@ -753,5 +773,5 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
     },
     data: { amsSlot: null },
   });
-  return { inSlots: trays.length, proposed, unloaded: out.count };
+  return { inSlots: trays.length, proposed, unloaded: out.count, events };
 }

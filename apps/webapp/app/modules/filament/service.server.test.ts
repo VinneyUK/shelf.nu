@@ -663,6 +663,9 @@ describe("codes Shelf knows", () => {
 });
 
 describe("the AMS, brought into Filament", () => {
+  beforeEach(() => {
+    m.spool.findMany.mockResolvedValue([]); // nothing leaving, unless a test says so
+  });
   const tray = (
     slot: number,
     tagUid: string,
@@ -695,13 +698,17 @@ describe("the AMS, brought into Filament", () => {
     expect(m.spool.update.mock.calls.at(-1)?.[0].data.openedOn).toBeInstanceOf(
       Date
     );
-    expect(result).toEqual({ inSlots: 1, proposed: 0, unloaded: 0 });
+    expect(result).toMatchObject({ inSlots: 1, proposed: 0, unloaded: 0 });
   });
   it("sends a new tag to the inbox with its slot, line and colour", async () => {
     m.spool.findFirst.mockResolvedValue(null);
     m.spoolCandidate.findFirst.mockResolvedValue(null);
+    m.spool.findMany.mockResolvedValue([]);
     m.spool.updateMany.mockResolvedValue({ count: 0 });
     const result = await syncAmsTrays("o1", [tray(1, "TAGNEW")]);
+    expect(result.events).toEqual([
+      "New filament in AMS slot 1: Red PLA Basic, waiting for you.",
+    ]);
     expect(m.spoolCandidate.create.mock.calls.at(-1)?.[0].data).toMatchObject({
       source: "ams",
       type: "PLA Basic",
@@ -720,11 +727,38 @@ describe("the AMS, brought into Filament", () => {
       status: "retired",
     });
     m.spool.update.mockClear();
+    m.spool.findMany.mockResolvedValue([
+      { colourName: "Black", type: "PLA Basic", amsSlot: 2 },
+      { colourName: "Green", type: "PLA Basic", amsSlot: 4 },
+    ]);
     m.spool.updateMany.mockResolvedValue({ count: 2 });
     const result = await syncAmsTrays("o1", [tray(3, "RETIRED")]);
+    expect(result.events).toEqual([
+      "Black PLA Basic came out of AMS slot 2.",
+      "Green PLA Basic came out of AMS slot 4.",
+    ]);
     expect(m.spool.update).not.toHaveBeenCalled();
     const where = m.spool.updateMany.mock.calls.at(-1)?.[0].where;
     expect(where.tagUid).toEqual({ not: null, notIn: ["RETIRED"] });
     expect(result.unloaded).toBe(2);
+  });
+  it("says when known filament has moved to another slot, and stays quiet when it hasn't", async () => {
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      openedOn: new Date(),
+      status: "active",
+      amsSlot: 4,
+    });
+    expect((await syncAmsTrays("o1", [tray(2, "TAG1")])).events).toEqual([
+      "Red PLA Basic is in AMS slot 2.",
+    ]);
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      openedOn: new Date(),
+      status: "active",
+      amsSlot: 2,
+    });
+    expect((await syncAmsTrays("o1", [tray(2, "TAG1")])).events).toEqual([]);
   });
 });

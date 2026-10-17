@@ -153,6 +153,35 @@ function plainError(cause: unknown) {
   return m;
 }
 
+// --------------------------------------------- what changed, for open pages
+
+type AmsEvent = { id: number; text: string };
+/** Per workspace: a version that goes up on every AMS change, and the last few events */
+const updates = new Map<string, { version: number; events: AmsEvent[] }>();
+let nextEventId = 1;
+
+export function recordChange(organizationId: string, texts: string[]) {
+  const u = updates.get(organizationId) ?? { version: 0, events: [] };
+  u.version += 1;
+  for (const text of texts) u.events.push({ id: nextEventId++, text });
+  u.events = u.events.slice(-20);
+  updates.set(organizationId, u);
+}
+
+/**
+ * For an open Filament page: the current version, and the events since the
+ * one it last saw (none on its first ask, so opening the page isn't noisy).
+ */
+export function amsUpdatesSince(organizationId: string, since: number | null) {
+  const u = updates.get(organizationId) ?? { version: 0, events: [] };
+  const lastSeenEvent = since === null ? Infinity : since;
+  return {
+    version: u.version,
+    lastEventId: u.events.at(-1)?.id ?? 0,
+    events: u.events.filter((e) => e.id > lastSeenEvent).map((e) => e.text),
+  };
+}
+
 // ------------------------------------------------------------- the watcher
 
 type Watch = {
@@ -230,7 +259,8 @@ async function handleReport(
   watch.last = trays;
   watch.lastSync = Date.now();
   try {
-    await syncAmsTrays(organizationId, trays);
+    const result = await syncAmsTrays(organizationId, trays);
+    recordChange(organizationId, result.events);
     await note(organizationId, { lastSeenAt: new Date(), lastError: null });
   } catch (cause) {
     Logger.error(cause);

@@ -12,6 +12,7 @@ import type {
 import { data, redirect, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barColour,
   DateField,
@@ -1193,6 +1194,7 @@ function StoreCard({
 }
 
 export default function FilamentDetail() {
+  useAmsLiveUpdates(); // the page follows the AMS
   const { filament, catalogue, spools, images, price, codes } =
     useLoaderData<typeof loader>();
   const money = useMoney();
