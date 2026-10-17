@@ -9,7 +9,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, Link, redirect, useFetcher, useLoaderData } from "react-router";
+import { data, redirect, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import {
@@ -23,7 +23,7 @@ import {
   type Result,
   selectClass,
 } from "~/components/filament/parts";
-import { ChevronRight, TrashIcon } from "~/components/icons/library";
+import { TrashIcon } from "~/components/icons/library";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -145,16 +145,10 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 }
 
 export const handle = {
-  // "Filament > Hot Pink": Shelf's "single" crumb only knows assets, boxes and places
+  // after the parent's "Filament": the filament's name
   breadcrumb: (match: { data?: { header?: { title?: string } } }) => (
-    <span className="flex items-center gap-2">
-      <Link to="/filament" className="text-gray-600 hover:text-gray-900">
-        Filament
-      </Link>
-      <ChevronRight className="size-4 text-gray-400" aria-hidden="true" />
-      <span className="single-crumb">
-        {match?.data?.header?.title ?? "Filament"}
-      </span>
+    <span className="single-crumb">
+      {match?.data?.header?.title ?? "Filament"}
     </span>
   ),
 };

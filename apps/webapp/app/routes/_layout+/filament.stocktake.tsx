@@ -10,7 +10,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, Link, useFetcher, useLoaderData } from "react-router";
+import { data, useFetcher, useLoaderData } from "react-router";
 import { ErrorContent } from "~/components/errors";
 import {
   barColour,
@@ -18,7 +18,7 @@ import {
   type Images,
   type Result,
 } from "~/components/filament/parts";
-import { ChevronRight } from "~/components/icons/library";
+
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -79,15 +79,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 }
 
 export const handle = {
-  breadcrumb: () => (
-    <span className="flex items-center gap-2">
-      <Link to="/filament" className="text-gray-600 hover:text-gray-900">
-        Filament
-      </Link>
-      <ChevronRight className="size-4 text-gray-400" aria-hidden="true" />
-      <span className="single-crumb">Stocktake</span>
-    </span>
-  ),
+  // after the parent's "Filament"
+  breadcrumb: () => <span className="single-crumb">Stocktake</span>,
 };
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => [

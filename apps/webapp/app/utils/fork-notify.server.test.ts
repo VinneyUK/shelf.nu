@@ -40,7 +40,10 @@ describe("the fork's pop-ups", () => {
 
   it("a wrapped action's answer becomes the pop-up for the button pressed", async () => {
     const action = withPopups(
-      async () => ({ message: "Connected: claude-sonnet-5-5 answered." }),
+      (_args: never) =>
+        Promise.resolve({
+          message: "Connected: claude-sonnet-5-5 answered.",
+        }),
       titles
     );
     const result = await action(args("test"));
@@ -54,7 +57,10 @@ describe("the fork's pop-ups", () => {
     });
   });
   it("'Saved.' needs no message: the title says it", async () => {
-    await withPopups(async () => ({ message: "Saved." }), titles)(args("save"));
+    await withPopups(
+      (_args: never) => Promise.resolve({ message: "Saved." }),
+      titles
+    )(args("save"));
     expect(send.mock.calls[0][0]).toMatchObject({
       title: "AI settings saved",
       message: null,
@@ -62,11 +68,13 @@ describe("the fork's pop-ups", () => {
   });
   it("an error, or an answer marked failed, is red", async () => {
     await withPopups(
-      async () => ({ data: { error: { message: "Bad key." } } }),
+      (_args: never) =>
+        Promise.resolve({ data: { error: { message: "Bad key." } } }),
       titles
     )(args("save"));
     await withPopups(
-      async () => ({ failed: true, message: "Not working: 401" }),
+      (_args: never) =>
+        Promise.resolve({ failed: true, message: "Not working: 401" }),
       titles
     )(args("test"));
     expect(
@@ -78,7 +86,7 @@ describe("the fork's pop-ups", () => {
   });
   it("stays quiet for a button it has no title for", async () => {
     await withPopups(
-      async () => ({ message: "Unknown action." }),
+      (_args: never) => Promise.resolve({ message: "Unknown action." }),
       titles
     )(args("other"));
     expect(send).not.toHaveBeenCalled();
