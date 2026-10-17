@@ -11,9 +11,9 @@ beforeEach(() => send.mockReset());
 
 describe("Filament's pop-ups", () => {
   it("say it worked in green with a tick, like Asset updated, and answer the page", () => {
-    const answer = done("u1", "Spool weighed", "45% left.", { percent: 45 });
+    const answer = done("u1", "Filament weighed", "45% left.", { percent: 45 });
     expect(send).toHaveBeenCalledWith({
-      title: "Spool weighed",
+      title: "Filament weighed",
       message: "45% left.",
       icon: { name: "success", variant: "success" },
       senderId: "u1",
@@ -27,7 +27,7 @@ describe("Filament's pop-ups", () => {
   it("say what failed and why in red with a cross", () => {
     failed("u1", "weigh", "Enter the weight in grams, as shown on the scale.");
     expect(send).toHaveBeenCalledWith({
-      title: "Couldn't weigh the spool",
+      title: "Couldn't weigh the filament",
       message: "Enter the weight in grams, as shown on the scale.",
       icon: { name: "x", variant: "error" },
       senderId: "u1",

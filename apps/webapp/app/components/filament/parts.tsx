@@ -5,7 +5,6 @@
 import { useId, useState } from "react";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import {
-  AMS_SLOTS,
   BAMBU_TYPES,
   catalogueEntry,
   coloursFor,
@@ -549,21 +548,8 @@ export function SpoolFields({
         label="Bought on"
         initial={initial?.purchasedOn}
       />
-      <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-        In the AMS
-        <select
-          name="amsSlot"
-          defaultValue={initial?.amsSlot ? String(initial.amsSlot) : ""}
-          className={selectClass}
-        >
-          <option value="">Not loaded</option>
-          {AMS_SLOTS.map((n) => (
-            <option key={n} value={n}>
-              Slot {n}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* the AMS slot is set by the printer, not here; an AMS-found entry keeps its own */}
+      <input type="hidden" name="amsSlot" value={initial?.amsSlot ?? ""} />
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
         Code on the box
         <input

@@ -57,6 +57,7 @@ import {
   SPOOL_WEIGHTS,
   spoolState,
   stateLabel,
+  typeWords,
 } from "~/modules/filament/catalogue";
 import {
   fetchMissingImages,
@@ -107,7 +108,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     if (spools.length === 0) {
       throw new ShelfError({
         cause: null,
-        message: "That filament isn't in your spools.",
+        message: "That filament isn't in your stock.",
         status: 404,
         label: "Assets",
       });
@@ -231,8 +232,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         fetchMissingImages(organizationId);
         notify(
           userId,
-          "Filament saved",
-          "The changes apply to every spool of this filament."
+          "Filament details saved",
+          "The changes apply to every spool and refill of this filament."
         );
         return next === slug
           ? payload({ ok: true })
@@ -244,7 +245,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         if (!first)
           throw new ShelfError({
             cause: null,
-            message: "That filament isn't in your spools.",
+            message: "That filament isn't in your stock.",
             status: 404,
             label: "Assets",
           });
@@ -270,7 +271,9 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         );
         return done(
           userId,
-          made.length === 1 ? "Spool added" : `${made.length} spools added`,
+          made.length === 1
+            ? "Filament added"
+            : `${made.length} filaments added`,
           `${first.colourName} · ${first.type}`
         );
       }
@@ -288,15 +291,15 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         return done(
           userId,
           "Status changed",
-          `${String(form.get("label") ?? "The spool")}: ${what}`
+          `${String(form.get("label") ?? "The filament")}: ${what}`
         );
       }
       case "open": {
         await openSpool(organizationId, id);
         return done(
           userId,
-          "Spool opened",
-          `${String(form.get("label") ?? "The spool")}: opened today.`
+          "Filament opened",
+          `${String(form.get("label") ?? "The filament")}: opened today.`
         );
       }
       case "spool":
@@ -305,7 +308,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           id,
           parseData(form, SpoolDetailsForm)
         );
-        return done(userId, "Spool saved", null);
+        return done(userId, "Filament saved", null);
       case "weigh": {
         const percent = await weighSpool(
           organizationId,
@@ -314,7 +317,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         );
         return done(
           userId,
-          "Spool weighed",
+          "Filament weighed",
           percent === 0
             ? "It's empty: confirm it on the Filament page."
             : `${percent}% left.`
@@ -324,7 +327,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         await retireSpool(organizationId, id);
         return done(
           userId,
-          "Spool retired",
+          "Filament retired",
           "Tick Show finished to see it, or bring it back."
         );
       case "keep":
@@ -333,10 +336,10 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           id,
           Number(form.get("remainingPercent") ?? 0)
         );
-        return done(userId, "Spool back in use", null);
+        return done(userId, "Filament back in use", null);
       case "delete": {
         await deleteSpool(organizationId, id);
-        notify(userId, "Spool deleted", null);
+        notify(userId, "Filament deleted", null);
         const left = await getFilamentBySlug(organizationId, slug);
         return left.length === 0
           ? redirect("/filament")
@@ -355,7 +358,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         if (!first)
           throw new ShelfError({
             cause: null,
-            message: "That filament isn't in your spools.",
+            message: "That filament isn't in your stock.",
             status: 404,
             label: "Assets",
           });
@@ -428,8 +431,8 @@ function DeleteSpool({
           </div>
           <AlertDialogTitle>Delete {label}?</AlertDialogTitle>
           <AlertDialogDescription>
-            This removes the spool completely. To keep it in the history, retire
-            it instead.
+            This removes it completely. To keep it in the history, retire it
+            instead.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -593,7 +596,7 @@ function SpoolLine({
               type="button"
               className="text-sm text-primary-600 hover:underline"
               onClick={() => setMode("edit")}
-              aria-label={`Add the bought date for spool #${index + 1}`}
+              aria-label={`Add the bought date for #${index + 1}`}
             >
               Add
             </button>
@@ -761,12 +764,20 @@ function SpoolLine({
             />
           </label>
           <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-4">
-            Leave a date empty if you don't know it. Loading a spool into the
-            AMS, or using some of it, opens it today.
+            Leave a date empty if you don't know it. Loading it into the AMS, or
+            using some of it, opens it today.
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-2 lg:col-span-4">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setMode("none")}
+            >
+              Cancel
+            </Button>
             <DeleteSpool
-              label={`spool #${index + 1} of ${spool.colourName}`}
+              label={`#${index + 1} of ${spool.colourName}`}
               disabled={busy}
               onDelete={() =>
                 void act.submit(
@@ -790,7 +801,7 @@ function SpoolLine({
               Retire
             </Button>
             <Button type="submit" size="sm" disabled={busy}>
-              Save spool
+              Save filament
             </Button>
           </div>
         </edit.Form>
@@ -818,7 +829,7 @@ function AddMore() {
       <fetcher.Form method="post" className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="intent" value="add" />
         <h3 className="w-full text-text-md font-semibold text-gray-900">
-          Add spools of this
+          Add more of this
         </h3>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           How many
@@ -853,17 +864,6 @@ function AddMore() {
             defaultValue={100}
             className={tw(inputClass, "w-20")}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-          In the AMS
-          <select name="amsSlot" defaultValue="" className={selectClass}>
-            <option value="">Not loaded</option>
-            {AMS_SLOTS.map((n) => (
-              <option key={n} value={n}>
-                Slot {n}
-              </option>
-            ))}
-          </select>
         </label>
         <div className="ml-auto flex items-center gap-2">
           <Button type="button" variant="secondary" onClick={close}>
@@ -1258,7 +1258,7 @@ export default function FilamentDetail() {
             </picture.Form>
           )}
           <Button to="?add=1" disabled={params.get("add") === "1"}>
-            Add spools of this
+            Add more of this
           </Button>
         </div>
       </Header>
@@ -1274,7 +1274,7 @@ export default function FilamentDetail() {
             <Card className="my-0 p-0">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
                 <h3 className="text-text-md font-semibold text-gray-900">
-                  Spools{" "}
+                  In stock{" "}
                   <span className="font-normal text-gray-500">
                     · {onHand.length} · {(grams / 1000).toFixed(2)} kg left
                   </span>
@@ -1292,7 +1292,7 @@ export default function FilamentDetail() {
               </div>
               {shown.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-gray-600">
-                  All of this filament's spools are finished.
+                  All of this filament is finished.
                 </p>
               ) : (
                 <>
@@ -1346,13 +1346,11 @@ export default function FilamentDetail() {
                 <div className="mt-2">
                   {fact(
                     "Left",
-                    `${(grams / 1000).toFixed(2)} kg on ${onHand.length} spool${
-                      onHand.length === 1 ? "" : "s"
-                    }`
+                    `${(grams / 1000).toFixed(2)} kg on ${typeWords(onHand)}`
                   )}
                   {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
                   {fact("Spent", anyPrice ? money(spent) : "—")}
-                  {fact("Spools ever", String(spools.length))}
+                  {fact("Bought ever", String(spools.length))}
                 </div>
               </Card>
             </div>

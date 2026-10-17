@@ -380,3 +380,19 @@ export function searchFilaments(
     .slice(0, limit)
     .map(({ score: _score, ...m }) => m);
 }
+
+/** How many of some filament are spools and how many refills. */
+export function typeCounts(items: { packaging?: string | null }[]) {
+  const refills = items.filter((i) => i.packaging === "refill").length;
+  return { spools: items.length - refills, refills };
+}
+
+/** "2 spools · 1 refill", "3 spools", "1 refill". */
+export function typeWords(items: { packaging?: string | null }[]) {
+  const c = typeCounts(items);
+  const parts = [
+    c.spools ? `${c.spools} spool${c.spools === 1 ? "" : "s"}` : "",
+    c.refills ? `${c.refills} refill${c.refills === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+  return parts.join(" · ") || "none";
+}

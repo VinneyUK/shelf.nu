@@ -5,7 +5,7 @@
  * line); the filaments as tiles or a list, each opening its own page; and
  * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
@@ -45,6 +45,7 @@ import {
   spoolState,
   stateCounts,
   summarise,
+  typeCounts,
 } from "~/modules/filament/catalogue";
 import {
   fetchMissingImages,
@@ -272,7 +273,9 @@ export async function action({ context, request }: ActionFunctionArgs) {
         fetchMissingImages(organizationId); // the picture, in the background
         return done(
           userId,
-          made.length === 1 ? "Spool added" : `${made.length} spools added`,
+          made.length === 1
+            ? "Filament added"
+            : `${made.length} filaments added`,
           `${input.colourName} · ${input.type}`
         );
       }
@@ -299,7 +302,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
         fetchMissingImages(organizationId);
         return done(
           userId,
-          quantity === 1 ? "Spool added" : `${quantity} spools added`,
+          quantity === 1 ? "Filament added" : `${quantity} filaments added`,
           `${input.colourName} · ${input.type}, from the inbox`
         );
       }
@@ -310,13 +313,13 @@ export async function action({ context, request }: ActionFunctionArgs) {
         await retireSpool(organizationId, id);
         return done(
           userId,
-          "Spool retired",
-          "It's in Finished spools, and can be brought back from there."
+          "Filament retired",
+          "It's in Finished filament, and can be brought back from there."
         );
       case "keep": {
         const percent = Number(form.get("remainingPercent") ?? 0);
         await keepSpool(organizationId, id, percent);
-        return done(userId, "Spool back in use", `${percent}% left.`);
+        return done(userId, "Filament back in use", `${percent}% left.`);
       }
       default:
         return payload({ ok: false });
@@ -351,7 +354,9 @@ function AddSpoolPanel({ codes }: { codes: KnownCode[] }) {
     <Card className="my-0">
       <fetcher.Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="intent" value="create" />
-        <h3 className="text-text-md font-semibold text-gray-900">Add spools</h3>
+        <h3 className="text-text-md font-semibold text-gray-900">
+          Add filament
+        </h3>
         <SpoolFields withQuantity codes={codes} />
         <div className="flex items-center justify-end gap-3">
           <Button type="button" variant="secondary" onClick={close}>
@@ -380,14 +385,19 @@ function Overview({
   const summary = summarise(spools);
   const newSpools = spools.filter((s) => spoolState(s) === "new").length;
   const figures: [string, string][] = [
-    ["Spools", `${summary.spools}${newSpools ? ` (${newSpools} new)` : ""}`],
+    ["In stock", `${summary.spools}${newSpools ? ` (${newSpools} new)` : ""}`],
     ["Filament left", `${(summary.gramsLeft / 1000).toFixed(1)} kg`],
     ["Worth", anyPrice ? money(summary.valueLeft) : "—"],
     ["Spent", anyPrice ? money(summary.spent) : "—"],
+    // the value of filament printed through: what was paid, less what's still on the shelf
+    [
+      "Used",
+      anyPrice ? money(Math.max(0, summary.spent - summary.valueLeft)) : "—",
+    ],
   ];
   return (
     <Card className="my-0 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
         {figures.map(([k, v]) => (
           <div key={k}>
             <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -443,6 +453,7 @@ function FilterBar({
   filters: PageData["filters"];
   lines: string[];
 }) {
+  const searchTimer = useRef<number | undefined>(undefined);
   const submit = (e: { currentTarget: HTMLSelectElement }) =>
     e.currentTarget.form?.requestSubmit();
   const select =
@@ -471,6 +482,15 @@ function FilterBar({
           <input
             type="search"
             name="s"
+            onChange={(e) => {
+              const form = e.currentTarget.form;
+              const empty = !e.currentTarget.value;
+              window.clearTimeout(searchTimer.current);
+              searchTimer.current = window.setTimeout(
+                () => form?.requestSubmit(),
+                empty ? 0 : 400
+              );
+            }}
             defaultValue={filters.search}
             placeholder="Search filament: a line, colour or code"
             className={tw(inputClass, "py-2 pl-9")}
@@ -629,7 +649,8 @@ function FilamentTile({
               />
             </span>
           </Fact>
-          <Fact label="Spools">{group.spools.length}</Fact>
+          <Fact label="Spools">{typeCounts(group.spools).spools}</Fact>
+          <Fact label="Refills">{typeCounts(group.spools).refills}</Fact>
           <Fact label="Paid/kg">{perKg !== null ? money(perKg) : "—"}</Fact>
           <Fact label="Store">
             {price?.best != null ? (
@@ -666,8 +687,8 @@ function FilamentTile({
           variant="secondary"
           size="sm"
           className="p-2"
-          aria-label="Add spools of this"
-          tooltip="Add spools of this"
+          aria-label="Add more of this"
+          tooltip="Add more of this"
         >
           <PlusIcon className="size-4" />
         </Button>
@@ -783,7 +804,7 @@ function CandidateCard({
             size="sm"
             disabled={busy}
           >
-            Add spool
+            Add filament
           </Button>
         </div>
       </fetcher.Form>
@@ -880,6 +901,31 @@ function RetiredRow({ spool }: { spool: SpoolRow }) {
   );
 }
 
+/** The list's columns, shared by its headings and its rows so they line up. */
+const LIST_COLUMNS =
+  "md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_4.5rem_4.5rem_minmax(0,1.6fr)_5.5rem_6rem_1.25rem] md:gap-4";
+
+/** The list's headings. */
+function ListHeadings() {
+  return (
+    <div
+      className={tw(
+        "hidden items-center border-b border-gray-200 px-1 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-400",
+        LIST_COLUMNS
+      )}
+    >
+      <span>Filament</span>
+      <span>Line</span>
+      <span className="text-right">Spools</span>
+      <span className="text-right">Refills</span>
+      <span>Left</span>
+      <span className="text-right">Paid/kg</span>
+      <span className="text-right">Store</span>
+      <span />
+    </div>
+  );
+}
+
 /** A filament in the list: one row, opening its page. */
 function FilamentListRow({
   group,
@@ -900,73 +946,93 @@ function FilamentListRow({
   const slots = group.spools
     .map((s) => s.amsSlot)
     .filter((n): n is number => n !== null);
+  const counts = typeCounts(group.spools);
   return (
     <li>
       <Link
         to={`/filament/${group.slug}`}
-        className="flex items-center gap-4 py-3 hover:bg-gray-25"
+        className={tw(
+          "flex items-center gap-4 px-1 py-3 hover:bg-gray-25",
+          LIST_COLUMNS
+        )}
       >
-        <FilamentPicture {...group} images={images} />
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold text-gray-900">{group.colourName}</div>
-          <div className="text-xs text-gray-500">
-            {group.type}
-            {slots.map((n) => (
-              <span
-                key={n}
-                className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-gray-700"
-              >
-                AMS {n}
+        <span className="flex min-w-0 flex-1 items-center gap-3">
+          <FilamentPicture {...group} images={images} />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-gray-900">
+              {group.colourName}
+            </span>
+            <span className="block text-xs text-gray-500 md:hidden">
+              {group.type}
+            </span>
+            {slots.length ? (
+              <span className="mt-0.5 flex gap-1">
+                {slots.map((n) => (
+                  <span
+                    key={n}
+                    className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700"
+                  >
+                    AMS {n}
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </span>
+        </span>
+        <span className="hidden truncate text-sm text-gray-700 md:block">
+          {group.type}
+        </span>
+        <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
+          {counts.spools || "—"}
+        </span>
+        <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
+          {counts.refills || "—"}
+        </span>
+        <span className="flex min-w-28 items-center gap-3">
+          <span
+            className="hidden flex-1 flex-col gap-1 sm:flex"
+            aria-label="Left on each one"
+          >
+            {group.spools.slice(0, 3).map((s) => (
+              <span key={s.id} className="block h-1.5 rounded-full bg-gray-100">
+                <span
+                  className={tw(
+                    "block h-1.5 rounded-full",
+                    barColour(s.remainingPercent)
+                  )}
+                  style={{ width: `${s.remainingPercent}%` }}
+                />
               </span>
             ))}
-          </div>
-        </div>
-        <div
-          className="hidden w-48 flex-col gap-1 md:flex"
-          aria-label="Left on each spool"
-        >
-          {group.spools.slice(0, 3).map((s) => (
-            <div key={s.id} className="h-1.5 rounded-full bg-gray-100">
-              <div
-                className={tw(
-                  "h-1.5 rounded-full",
-                  barColour(s.remainingPercent)
-                )}
-                style={{ width: `${s.remainingPercent}%` }}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="w-24 text-right text-sm">
-          <div className="tabular-nums text-gray-900">
-            {(group.gramsLeft / 1000).toFixed(2)} kg
-          </div>
-          <div className="text-xs text-gray-500">
-            {spoolCountWords(group.spools)}
-          </div>
-        </div>
-        <div className="hidden w-20 text-right text-xs tabular-nums text-gray-500 sm:block">
-          {perKg !== null ? `${money(perKg)}/kg` : ""}
-        </div>
-        <div className="w-24 text-right text-sm">
+          </span>
+          <span className="text-right text-sm">
+            <span className="block tabular-nums text-gray-900">
+              {(group.gramsLeft / 1000).toFixed(2)} kg
+            </span>
+            <span className="block text-xs text-gray-500">
+              {spoolCountWords(group.spools)}
+            </span>
+          </span>
+        </span>
+        <span className="hidden text-right text-sm tabular-nums text-gray-600 md:block">
+          {perKg !== null ? money(perKg) : "—"}
+        </span>
+        <span className="text-right text-sm">
           {price?.best != null ? (
             <>
-              <div className="tabular-nums text-gray-900">
+              <span className="block tabular-nums text-gray-900">
                 {money(price.best)}
-              </div>
-              <div
-                className={tw(
-                  "text-xs",
-                  price.onOffer
-                    ? "font-medium text-primary-700"
-                    : "text-gray-500"
-                )}
-              >
-                {price.onOffer ? "On offer" : "store"}
-              </div>
+              </span>
+              {price.onOffer ? (
+                <span className="block text-xs font-medium text-primary-700">
+                  On offer
+                </span>
+              ) : null}
             </>
-          ) : null}
-        </div>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </span>
         <ChevronRight className="text-gray-400" aria-hidden="true" />
       </Link>
     </li>
@@ -1060,7 +1126,7 @@ export default function FilamentPage() {
             </Button>
           ) : null}
           <Button to="?add=1" disabled={adding}>
-            Add spools
+            Add filament
           </Button>
         </div>
       </Header>
@@ -1101,7 +1167,7 @@ export default function FilamentPage() {
         {onHand.length === 0 ? (
           <Card className="my-0">
             <p className="text-sm text-gray-600">
-              No spools yet. Add your first with Add spools, at the top.
+              No filament yet. Add your first with Add filament, at the top.
             </p>
           </Card>
         ) : totalItems === 0 ? (
@@ -1126,6 +1192,7 @@ export default function FilamentPage() {
           </div>
         ) : (
           <Card className="my-0 py-0">
+            <ListHeadings />
             <ul className="divide-y divide-gray-100">
               {items.map((g) => (
                 <FilamentListRow
@@ -1142,7 +1209,7 @@ export default function FilamentPage() {
         {retired.length > 0 ? (
           <details className="rounded-lg border border-gray-200 bg-white p-4">
             <summary className="cursor-pointer text-sm font-semibold text-gray-900">
-              Finished spools ({retired.length})
+              Finished filament ({retired.length})
             </summary>
             <ul className="mt-2 divide-y divide-gray-100">
               {retired.map((s) => (

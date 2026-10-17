@@ -196,7 +196,7 @@ export async function weighSpool(
   grossGrams: number
 ) {
   const spool = await db.spool.findFirst({ where: { id, organizationId } });
-  if (!spool) throw bad("That spool doesn't exist.", 404);
+  if (!spool) throw bad("That filament doesn't exist.", 404);
   const tare =
     spool.spoolWeightGrams ?? catalogueEntry(spool.type)?.spoolWeight ?? null;
   if (tare === null) {
@@ -254,7 +254,7 @@ export async function updateSpool(
   input: SpoolInput
 ) {
   const existing = await db.spool.findFirst({ where: { id, organizationId } });
-  if (!existing) throw bad("That spool doesn't exist.", 404);
+  if (!existing) throw bad("That filament doesn't exist.", 404);
   const data = clean(input);
   data.openedOn = openedFor({
     ...data,
@@ -286,7 +286,7 @@ export async function retireSpool(organizationId: string, id: string) {
       remainingPercent: 0,
     },
   });
-  if (count === 0) throw bad("That spool can't be retired.", 404);
+  if (count === 0) throw bad("That filament can't be retired.", 404);
 }
 
 /** "It's not empty after all": back to active with some filament left. */
@@ -301,14 +301,14 @@ export async function keepSpool(
     where: { id, organizationId, status: { in: ["empty", "retired"] } },
     data: { status: "active", remainingPercent: percent, retiredAt: null },
   });
-  if (count === 0) throw bad("That spool can't be brought back.", 404);
+  if (count === 0) throw bad("That filament can't be brought back.", 404);
 }
 
 export async function deleteSpool(organizationId: string, id: string) {
   const { count } = await db.spool.deleteMany({
     where: { id, organizationId },
   });
-  if (count === 0) throw bad("That spool doesn't exist.", 404);
+  if (count === 0) throw bad("That filament doesn't exist.", 404);
 }
 
 // ------------------------------------------------------------------ the inbox
@@ -537,7 +537,7 @@ export async function updateSpoolDetails(
   input: SpoolDetailsInput
 ) {
   const existing = await db.spool.findFirst({ where: { id, organizationId } });
-  if (!existing) throw bad("That spool doesn't exist.", 404);
+  if (!existing) throw bad("That filament doesn't exist.", 404);
   if (
     input.pricePaid !== null &&
     (!Number.isFinite(input.pricePaid) || input.pricePaid < 0)
@@ -591,8 +591,8 @@ export async function openSpool(
   on?: Date | null
 ) {
   const spool = await db.spool.findFirst({ where: { id, organizationId } });
-  if (!spool) throw bad("That spool doesn't exist.", 404);
-  if (spool.status === "retired") throw bad("That spool is retired.");
+  if (!spool) throw bad("That filament doesn't exist.", 404);
+  if (spool.status === "retired") throw bad("That filament is retired.");
   const openedOn = checkOpened(spool.purchasedOn, on ?? today());
   await db.spool.update({ where: { id, organizationId }, data: { openedOn } });
   return openedOn;
@@ -609,10 +609,10 @@ export async function changeSpoolState(
   target: "new" | "opened" | "retired"
 ): Promise<string> {
   const spool = await db.spool.findFirst({ where: { id, organizationId } });
-  if (!spool) throw bad("That spool doesn't exist.", 404);
+  if (!spool) throw bad("That filament doesn't exist.", 404);
   if (target === "retired") {
     await retireSpool(organizationId, id);
-    return "Retired: it's in the finished spools.";
+    return "Retired: it's in the finished filament.";
   }
   if (target === "new") {
     // a sealed spool is full, unopened and out of the printer

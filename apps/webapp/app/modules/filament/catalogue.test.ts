@@ -22,6 +22,8 @@ import {
   stateLabel,
   stocktakeOrder,
   summarise,
+  typeCounts,
+  typeWords,
   valueLeft,
   weighedPercent,
 } from "./catalogue";
@@ -357,5 +359,24 @@ describe("plain colour words", () => {
     expect(colourWords("#F5547C")).toEqual(["pink"]);
     expect(colourWords("#5E43B7")).toEqual(["purple"]);
     expect(colourWords("#7D6556")).toEqual(["brown"]);
+  });
+});
+
+describe("spools and refills", () => {
+  const items = (spools: number, refills: number) => [
+    ...Array.from({ length: spools }, () => ({ packaging: "spool" })),
+    ...Array.from({ length: refills }, () => ({ packaging: "refill" })),
+  ];
+  it("are counted apart", () => {
+    expect(typeCounts(items(2, 1))).toEqual({ spools: 2, refills: 1 });
+    expect(typeCounts([{ packaging: null }])).toEqual({
+      spools: 1,
+      refills: 0,
+    });
+  });
+  it("are said apart", () => {
+    expect(typeWords(items(2, 1))).toBe("2 spools · 1 refill");
+    expect(typeWords(items(1, 0))).toBe("1 spool");
+    expect(typeWords(items(0, 3))).toBe("3 refills");
   });
 });

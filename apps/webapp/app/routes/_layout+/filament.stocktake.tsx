@@ -98,7 +98,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
     });
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
-    const label = String(form.get("label") ?? "Spool");
+    const label = String(form.get("label") ?? "Filament");
     const percent = await weighSpool(
       organizationId,
       id,
@@ -106,7 +106,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
     );
     return done(
       userId,
-      "Spool weighed",
+      "Filament weighed",
       percent === 0
         ? `${label}: empty. Confirm it on the Filament page.`
         : `${label}: ${percent}% left.`,
@@ -253,7 +253,7 @@ export default function Stocktake() {
     <>
       <Header
         hidePageDescription
-        subHeading="Put each spool on the scale and type the reading. Enter saves it and moves to the next."
+        subHeading="Put each one on the scale and type the reading. Enter saves it and moves to the next."
       >
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">
@@ -261,7 +261,7 @@ export default function Stocktake() {
           </span>
           {sealed > 0 ? (
             <Button to={withSealed ? "?" : "?sealed=1"} variant="secondary">
-              {withSealed ? "Skip sealed spools" : `Include ${sealed} sealed`}
+              {withSealed ? "Skip sealed" : `Include ${sealed} sealed`}
             </Button>
           ) : null}
           <Button to="/filament" variant="secondary">
@@ -273,7 +273,7 @@ export default function Stocktake() {
         <Card className="my-0 p-0">
           {spools.length === 0 ? (
             <p className="px-4 py-6 text-sm text-gray-600">
-              No spools on hand to weigh.
+              No filament on hand to weigh.
             </p>
           ) : (
             <ul className="divide-y divide-gray-100">
