@@ -4,7 +4,9 @@ import {
   BAMBU_TYPES,
   catalogueEntry,
   cleanHex,
+  cleanPackaging,
   coloursFor,
+  colourWords,
   costPerKg,
   daysAgo,
   filamentKey,
@@ -14,6 +16,7 @@ import {
   materialOf,
   oldestNew,
   remainingTone,
+  searchFilaments,
   spoolState,
   stateCounts,
   stateLabel,
@@ -275,5 +278,84 @@ describe("a spool's life", () => {
       ])?.id
     ).toBe("b");
     expect(oldestNew([])).toBeNull();
+  });
+});
+
+describe("finding a filament as you type", () => {
+  const codes = [
+    { code: "10100", type: "PLA Basic", colourName: "Jade White" },
+    { code: "99999", type: "PLA Special", colourName: "Mystery" },
+  ];
+  it("by colour", () => {
+    const hits = searchFilaments("jade", codes);
+    expect(hits[0]).toMatchObject({
+      type: "PLA Basic",
+      colourName: "Jade White",
+      colourHex: "#FFFFFF",
+      code: "10100",
+    });
+  });
+  it("by line and colour, in any order", () => {
+    expect(searchFilaments("white basic jade", codes)[0]).toMatchObject({
+      type: "PLA Basic",
+      colourName: "Jade White",
+    });
+  });
+  it("by a plain colour word, even when Bambu's name differs (Matte's black is Charcoal)", () => {
+    const hits = searchFilaments("matte black", codes);
+    expect(hits.map((h) => h.colourName)).toContain("Charcoal");
+    expect(hits.every((h) => h.type === "PLA Matte")).toBe(true);
+    expect(
+      searchFilaments("matte blue", codes).map((h) => h.colourName)
+    ).toEqual(
+      expect.arrayContaining([
+        "Ice Blue",
+        "Marine Blue",
+        "Dark Blue",
+        "Sky Blue",
+      ])
+    );
+  });
+  it("by the code on the box, first", () => {
+    expect(searchFilaments("10100", codes)[0]).toMatchObject({
+      colourName: "Jade White",
+      code: "10100",
+    });
+  });
+  it("finds a known code's filament even if the catalogue doesn't have it", () => {
+    expect(searchFilaments("99999", codes)[0]).toMatchObject({
+      type: "PLA Special",
+      colourName: "Mystery",
+    });
+  });
+  it("needs every word, and shows a handful", () => {
+    expect(searchFilaments("jade nonsense", codes)).toEqual([]);
+    expect(searchFilaments("", codes)).toEqual([]);
+    expect(searchFilaments("pla", codes).length).toBe(8);
+  });
+});
+
+describe("refill or spool", () => {
+  it("is a spool unless it says refill", () => {
+    expect(cleanPackaging("refill")).toBe("refill");
+    expect(cleanPackaging("spool")).toBe("spool");
+    expect(cleanPackaging(undefined)).toBe("spool");
+    expect(cleanPackaging("box")).toBe("spool");
+  });
+});
+
+describe("plain colour words", () => {
+  it("judge a shade by its hex", () => {
+    expect(colourWords("#000000")).toEqual(["black"]);
+    expect(colourWords("#FFFFFF")).toEqual(["white"]);
+    expect(colourWords("#8E9089")).toEqual(["grey", "gray"]);
+    expect(colourWords("#C12E1F")).toEqual(["red"]);
+    expect(colourWords("#0A2989")).toEqual(["blue"]);
+    expect(colourWords("#00AE42")).toEqual(["green"]);
+    expect(colourWords("#F4EE2A")).toEqual(["yellow"]);
+    expect(colourWords("#FF6A13")).toEqual(["orange"]);
+    expect(colourWords("#F5547C")).toEqual(["pink"]);
+    expect(colourWords("#5E43B7")).toEqual(["purple"]);
+    expect(colourWords("#7D6556")).toEqual(["brown"]);
   });
 });

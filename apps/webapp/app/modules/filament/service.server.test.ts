@@ -1,3 +1,5 @@
+const imageRows = vi.hoisted(() => vi.fn());
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => {
@@ -20,6 +22,7 @@ const m = vi.hoisted(() => {
 });
 vi.mock("~/database/db.server", () => ({
   db: {
+    filamentImage: { findMany: imageRows },
     spool: m.spool,
     spoolCandidate: m.spoolCandidate,
     $transaction: (fn: (tx: unknown) => unknown) =>
@@ -34,6 +37,7 @@ import {
   createSpools,
   getFilamentBySlug,
   keepSpool,
+  knownCodes,
   openedFor,
   openSpool,
   proposeSpool,
@@ -606,5 +610,50 @@ describe("changing a spool's status by hand", () => {
       remainingPercent: 30,
     });
     expect(await changeSpoolState("o1", "s1", "retired")).toMatch(/Retired/);
+  });
+});
+
+describe("refills", () => {
+  it("are kept as refills, and anything else is a spool", async () => {
+    const [refill] = await createSpools(
+      "o1",
+      { ...input, packaging: "refill" },
+      1
+    );
+    expect(refill.packaging).toBe("refill");
+    const [spool] = await createSpools("o1", input, 1);
+    expect(spool.packaging).toBe("spool");
+  });
+  it("come through the inbox as refills", async () => {
+    m.spool.findFirst.mockResolvedValue(null);
+    m.spoolCandidate.findFirst.mockResolvedValue(null);
+    await proposeSpool("o1", {
+      source: "receipt",
+      type: "PLA Basic",
+      colourName: "Jade White",
+      colourHex: "#fff",
+      packaging: "refill",
+    });
+    expect(m.spoolCandidate.create.mock.calls.at(-1)?.[0].data.packaging).toBe(
+      "refill"
+    );
+  });
+});
+
+describe("codes Shelf knows", () => {
+  it("come from your spools and from the store, one per filament", async () => {
+    m.spool.findMany.mockResolvedValue([
+      { type: "PLA Basic", colourName: "Jade White", filamentCode: "10100" },
+      { type: "PLA Basic", colourName: "Jade White", filamentCode: "10100" },
+      { type: "PLA Basic", colourName: "Hot Pink", filamentCode: null },
+    ]);
+    imageRows.mockResolvedValue([
+      { key: "pla basic|hot pink", filamentCode: "10204" },
+      { key: "pla basic|gone", filamentCode: "99999" },
+    ]);
+    expect(await knownCodes("o1")).toEqual([
+      { code: "10100", type: "PLA Basic", colourName: "Jade White" },
+      { code: "10204", type: "PLA Basic", colourName: "Hot Pink" },
+    ]);
   });
 });

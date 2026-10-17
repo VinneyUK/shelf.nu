@@ -15,8 +15,12 @@ import {
   catalogueEntry,
   clampPercent,
   cleanHex,
+  cleanPackaging,
+  filamentKey,
   filamentSlug,
+  type KnownCode,
   materialOf,
+  type Packaging,
   weighedPercent,
 } from "./catalogue";
 
@@ -42,6 +46,8 @@ export type SpoolInput = {
   openedOn?: Date | null;
   amsSlot: number | null;
   notes: string | null;
+  /** With its spool, or a refill */
+  packaging?: Packaging;
   /** The code Bambu prints on the spool and box */
   filamentCode?: string | null;
   /** The empty spool, in grams; from the catalogue when not given */
@@ -111,6 +117,7 @@ function clean(input: SpoolInput) {
       input.pricePaid === null ? null : Math.round(input.pricePaid * 100) / 100,
     purchasedOn: input.purchasedOn,
     openedOn: checkOpened(input.purchasedOn, input.openedOn ?? null),
+    packaging: cleanPackaging(input.packaging),
     amsSlot: input.amsSlot,
     notes: input.notes?.trim().slice(0, 500) || null,
     filamentCode:
@@ -319,6 +326,8 @@ export type Candidate = {
   amsSlot?: number | null;
   /** How many spools of it (from a receipt) */
   quantity?: number;
+  /** With its spool, or a refill */
+  packaging?: Packaging;
   filamentCode?: string | null;
 };
 
@@ -344,6 +353,7 @@ export async function proposeSpool(
   const colourHex = cleanHex(found.colourHex) ?? "#888888";
   const data = {
     quantity: Math.max(1, Math.min(20, Math.round(found.quantity ?? 1) || 1)),
+    packaging: cleanPackaging(found.packaging),
     filamentCode: found.filamentCode?.trim() || null,
     source: found.source,
     type: found.type.trim().slice(0, 60) || "Unknown",
@@ -511,6 +521,7 @@ export async function updateFilament(
 
 export type SpoolDetailsInput = {
   remainingPercent: number;
+  packaging?: Packaging;
   pricePaid: number | null;
   purchasedOn: Date | null;
   /** When it was opened; none for a New (sealed) spool */
@@ -562,6 +573,9 @@ export async function updateSpoolDetails(
             : Math.round(input.pricePaid * 100) / 100,
         purchasedOn: input.purchasedOn,
         openedOn,
+        ...(input.packaging
+          ? { packaging: cleanPackaging(input.packaging) }
+          : {}),
         amsSlot: existing.status === "retired" ? null : input.amsSlot,
         notes: input.notes?.trim().slice(0, 500) || null,
         status,
@@ -636,4 +650,44 @@ export async function changeSpoolState(
   if (spool.amsSlot)
     return `Taken out of AMS ${spool.amsSlot}: opened, on the shelf.`;
   return spool.openedOn ? "Opened, on the shelf." : "Opened today.";
+}
+
+/**
+ * Every box code Shelf knows, for finding a filament by its code: from your
+ * spools, and from the Bambu store (found with the pictures).
+ */
+export async function knownCodes(organizationId: string): Promise<KnownCode[]> {
+  const [spools, images] = await Promise.all([
+    db.spool.findMany({
+      where: { organizationId },
+      select: { type: true, colourName: true, filamentCode: true },
+    }),
+    db.filamentImage.findMany({
+      where: { organizationId, filamentCode: { not: null } },
+      select: { key: true, filamentCode: true },
+    }),
+  ]);
+  const byKey = new Map<string, KnownCode>();
+  const names = new Map(
+    spools.map((s) => [filamentKey(s.type, s.colourName), s])
+  );
+  for (const s of spools) {
+    if (s.filamentCode)
+      byKey.set(filamentKey(s.type, s.colourName), {
+        code: s.filamentCode,
+        type: s.type,
+        colourName: s.colourName,
+      });
+  }
+  for (const i of images) {
+    const spool = names.get(i.key);
+    if (spool && i.filamentCode && !byKey.has(i.key)) {
+      byKey.set(i.key, {
+        code: i.filamentCode,
+        type: spool.type,
+        colourName: spool.colourName,
+      });
+    }
+  }
+  return [...byKey.values()];
 }

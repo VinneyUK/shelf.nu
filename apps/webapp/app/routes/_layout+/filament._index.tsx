@@ -41,6 +41,7 @@ import {
   filamentKey,
   filamentSlug,
   groupSpools,
+  type KnownCode,
   spoolState,
   stateCounts,
   summarise,
@@ -61,6 +62,7 @@ import {
   dismissCandidate,
   getFilament,
   keepSpool,
+  knownCodes,
   retireSpool,
 } from "~/modules/filament/service.server";
 import { resolveFilamentView } from "~/modules/filament/view.server";
@@ -123,6 +125,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         resolveFilamentView(request),
       ]);
     // store prices: what's kept, and a background check of anything over a day old
+    const codes = await knownCodes(organizationId); // for finding a filament by its code
     const storePrices = await priceStatuses(organizationId);
     refreshStalePrices(organizationId);
     const prices: Record<string, PriceSummary> = Object.fromEntries(
@@ -191,6 +194,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         spools,
         candidates,
         images,
+        codes,
         prices,
         anyPrice: spools.some((s) => s.pricePaid !== null),
         lines: [...new Set(onHand.map((s) => s.type))].sort(),
@@ -220,6 +224,7 @@ const optionalNumber = z
   .transform((v) => (v.trim() === "" ? null : Number(v)));
 
 const SpoolForm = z.object({
+  packaging: z.enum(["spool", "refill"]).default("spool"),
   type: z.string().trim().min(1, "Choose the filament type."),
   colourName: z.string().trim().min(1, "Give the colour a name."),
   colourHex: z.string(),
@@ -329,7 +334,7 @@ type CandidateRow = PageData["candidates"][number];
 type Group = PageData["items"][number];
 
 /** Add spools, opened by the header's button (?add=1), closed when done. */
-function AddSpoolPanel() {
+function AddSpoolPanel({ codes }: { codes: KnownCode[] }) {
   const fetcher = useFetcher<Result>();
   const [, setParams] = useSearchParams();
   const close = () =>
@@ -347,7 +352,7 @@ function AddSpoolPanel() {
       <fetcher.Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="intent" value="create" />
         <h3 className="text-text-md font-semibold text-gray-900">Add spools</h3>
-        <SpoolFields withQuantity />
+        <SpoolFields withQuantity codes={codes} />
         <div className="flex items-center justify-end gap-3">
           <Button type="button" variant="secondary" onClick={close}>
             Cancel
@@ -726,9 +731,11 @@ function GetPictures({
 function CandidateCard({
   candidate,
   images,
+  codes,
 }: {
   candidate: CandidateRow;
   images: Images;
+  codes: KnownCode[];
 }) {
   const fetcher = useFetcher<Result>();
   const busy = isFormProcessing(fetcher.state);
@@ -756,7 +763,7 @@ function CandidateCard({
             </div>
           </div>
         </div>
-        <SpoolFields initial={candidate} withQuantity />
+        <SpoolFields initial={candidate} withQuantity codes={codes} />
         <div className="flex items-center justify-end gap-2">
           <Button
             type="submit"
@@ -1024,6 +1031,7 @@ export default function FilamentPage() {
     spools,
     candidates,
     images,
+    codes,
     prices,
     view,
     items,
@@ -1057,7 +1065,7 @@ export default function FilamentPage() {
         </div>
       </Header>
       <div className="mt-4 flex flex-col gap-4 pb-20">
-        {adding ? <AddSpoolPanel /> : null}
+        {adding ? <AddSpoolPanel codes={codes} /> : null}
 
         <Overview spools={spools} images={images} anyPrice={anyPrice} />
 
@@ -1067,7 +1075,12 @@ export default function FilamentPage() {
               Waiting for you ({candidates.length})
             </h3>
             {candidates.map((c) => (
-              <CandidateCard key={c.id} candidate={c} images={images} />
+              <CandidateCard
+                key={c.id}
+                candidate={c}
+                images={images}
+                codes={codes}
+              />
             ))}
           </div>
         ) : null}

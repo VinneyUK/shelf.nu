@@ -169,3 +169,37 @@ describe("the order date becomes the bought date", () => {
     expect(propose.mock.calls[0][1].purchasedOn).toEqual(day("2026-10-12"));
   });
 });
+
+describe("refills on an order", () => {
+  it("arrive as refills", async () => {
+    const call = vi.fn().mockResolvedValue({
+      isBambuOrder: true,
+      items: [
+        {
+          isFilament: true,
+          line: "PLA Basic",
+          colour: "Jade White",
+          quantity: 2,
+          kind: "refill",
+        },
+        {
+          isFilament: true,
+          line: "PLA Basic",
+          colour: "Black",
+          quantity: 1,
+          kind: "spool",
+        },
+        { isFilament: true, line: "PLA Basic", colour: "Red", quantity: 1 },
+      ],
+    });
+    const propose = vi
+      .fn()
+      .mockResolvedValue({ kind: "pending", candidateId: "c" });
+    await spoolsFromBambuOrder(order, { call, propose });
+    expect(propose.mock.calls.map((c) => c[1].packaging)).toEqual([
+      "refill",
+      "spool",
+      "spool",
+    ]);
+  });
+});

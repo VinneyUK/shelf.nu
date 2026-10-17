@@ -86,6 +86,7 @@ type Line = {
   quantity: number;
   unitPrice: number | null;
   sizeGrams: number | null;
+  kind?: string;
 };
 
 const TOOL: Tool = {
@@ -135,6 +136,12 @@ const TOOL: Tool = {
             unitPrice: {
               type: ["number", "null"],
               description: "Price paid per spool in pounds, after discounts.",
+            },
+            kind: {
+              type: "string",
+              enum: ["spool", "refill"],
+              description:
+                "spool if it comes on a spool; refill if it is filament only, for a reusable spool.",
             },
             sizeGrams: {
               type: ["integer", "null"],
@@ -225,6 +232,7 @@ export async function spoolsFromBambuOrder(
       purchasedOn,
       filamentCode: l.code,
       quantity: l.quantity,
+      packaging: l.kind === "refill" ? "refill" : "spool",
     });
   }
   return lines.length;

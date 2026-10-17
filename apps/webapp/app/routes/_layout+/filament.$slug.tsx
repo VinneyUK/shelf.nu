@@ -15,13 +15,15 @@ import { ErrorContent } from "~/components/errors";
 import {
   barColour,
   FilamentPicture,
+  FilamentSearch,
+  type Images,
   inputClass,
   OTHER,
-  Swatch,
-  useMoney,
-  type Images,
+  PackagingToggle,
   type Result,
   selectClass,
+  Swatch,
+  useMoney,
 } from "~/components/filament/parts";
 import { TrashIcon } from "~/components/icons/library";
 import Header from "~/components/layout/header";
@@ -48,6 +50,7 @@ import {
   daysAgo,
   filamentKey,
   gramsLeft,
+  type KnownCode,
   oldestNew,
   SPOOL_STATES,
   SPOOL_WEIGHTS,
@@ -71,6 +74,7 @@ import {
   deleteSpool,
   getFilamentBySlug,
   keepSpool,
+  knownCodes,
   openSpool,
   retireSpool,
   updateFilament,
@@ -113,6 +117,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       priceStatuses(organizationId),
     ]);
     refreshStalePrices(organizationId); // anything over a day old, in the background
+    const codes = await knownCodes(organizationId);
     const entry = catalogueEntry(first.type);
     return payload({
       header: { title: first.colourName },
@@ -138,6 +143,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       spools,
       images,
       price: prices[filamentKey(first.type, first.colourName)] ?? null,
+      codes,
     });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
@@ -181,6 +187,7 @@ const FilamentForm = z.object({
 });
 
 const SpoolDetailsForm = z.object({
+  packaging: z.enum(["spool", "refill"]).default("spool"),
   remainingPercent: z.coerce.number(),
   pricePaid: optionalNumber,
   purchasedOn: optionalDate,
@@ -190,6 +197,7 @@ const SpoolDetailsForm = z.object({
 });
 
 const AddForm = z.object({
+  packaging: z.enum(["spool", "refill"]).default("spool"),
   quantity: z.coerce.number().default(1),
   remainingPercent: z.coerce.number().default(100),
   pricePaid: optionalNumber,
@@ -255,6 +263,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
             purchasedOn: extra.purchasedOn,
             amsSlot: extra.amsSlot,
             notes: null,
+            packaging: extra.packaging,
           },
           extra.quantity
         );
@@ -552,6 +561,9 @@ function SpoolLine({
         </span>
         <span className="w-32 text-xs">
           <StatusPicker spool={spool} label={label} />
+          {spool.packaging === "refill" ? (
+            <span className="ml-1.5 text-[11px] text-gray-500">Refill</span>
+          ) : null}
         </span>
         <div className="flex min-w-32 flex-1 items-center gap-2">
           <div className="h-2 flex-1 rounded-full bg-gray-100">
@@ -755,6 +767,7 @@ function SpoolLine({
               ))}
             </select>
           </label>
+          <PackagingToggle initial={spool.packaging} />
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
             Notes
             <input
@@ -834,6 +847,7 @@ function AddMore() {
             className={tw(inputClass, "w-20")}
           />
         </label>
+        <PackagingToggle />
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
           Price paid (each)
           <input
@@ -888,7 +902,10 @@ function Specs({
   filament,
   storeCode,
   spoolCount,
+  codes,
 }: {
+  /** Codes Shelf knows, for finding a filament by its code */
+  codes: KnownCode[];
   filament: PageData["filament"];
   /** The code the Bambu store gave for this filament, when none is saved yet */
   storeCode: string | null;
@@ -908,6 +925,7 @@ function Specs({
     knownColour ? "" : filament.colourName
   );
   const [otherHex, setOtherHex] = useState(filament.colourHex);
+  const [code, setCode] = useState(filament.filamentCode ?? storeCode ?? "");
   const picked = colours.find(([n]) => n === colour);
   const colourName = picked ? picked[0] : otherName;
   const colourHex = picked ? picked[1] : otherHex;
@@ -924,6 +942,25 @@ function Specs({
       </p>
       <fetcher.Form method="post" className="mt-2">
         <input type="hidden" name="intent" value="filament" />
+        <div className="border-b border-gray-100 py-2">
+          <FilamentSearch
+            codes={codes}
+            onPick={(match) => {
+              const known = BAMBU_TYPES.some(([t]) => t === match.type);
+              setType(known ? match.type : OTHER);
+              if (!known) setOtherType(match.type);
+              const inCatalogue = coloursFor(match.type).some(
+                ([n]) => n === match.colourName
+              );
+              setColour(inCatalogue ? match.colourName : OTHER);
+              if (!inCatalogue) {
+                setOtherName(match.colourName);
+                setOtherHex(match.colourHex);
+              }
+              if (match.code) setCode(match.code);
+            }}
+          />
+        </div>
         <div className={row}>
           <span className={label}>Line</span>
           <span className="flex flex-col gap-1">
@@ -999,7 +1036,8 @@ function Specs({
           <span className={label}>Code on the box</span>
           <input
             name="filamentCode"
-            defaultValue={filament.filamentCode ?? storeCode ?? ""}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
             placeholder="e.g. 10100"
             className={inputClass}
           />
@@ -1155,7 +1193,7 @@ function StoreCard({
 }
 
 export default function FilamentDetail() {
-  const { filament, catalogue, spools, images, price } =
+  const { filament, catalogue, spools, images, price, codes } =
     useLoaderData<typeof loader>();
   const money = useMoney();
   const picture = useFetcher<Result>();
@@ -1353,6 +1391,7 @@ export default function FilamentDetail() {
                 filament.filamentCode ? null : image?.filamentCode ?? null
               }
               spoolCount={spools.length}
+              codes={codes}
             />
           </div>
         </div>

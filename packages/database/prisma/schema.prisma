@@ -2940,6 +2940,8 @@ model Spool {
   tagUid           String?
   /// The code Bambu prints on the spool and box, e.g. "10101"
   filamentCode     String?
+  /// spool (filament with its spool) | refill (filament only, for a reusable spool)
+  packaging        String    @default("spool")
   /// The empty spool, in grams, for weighing what's left
   spoolWeightGrams Int?
   /// manual | ams | receipt
@@ -2972,6 +2974,8 @@ model SpoolCandidate {
   amsSlot          Int?
   /// How many spools (a receipt can list several of one filament)
   quantity         Int       @default(1)
+  /// spool | refill
+  packaging        String    @default("spool")
   /// pending | approved | dismissed
   status           String    @default("pending")
   createdAt        DateTime  @default(now())
