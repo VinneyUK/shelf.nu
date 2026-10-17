@@ -77,3 +77,38 @@ describe("reading the AMS report", () => {
     );
   });
 });
+
+describe("a spool's identity", () => {
+  it("is its spool ID when the printer gives one, the same from either tag", () => {
+    const sideA = traysInReport(
+      report([
+        tray(2, {
+          tag_uid: "A2A2A2A200000100",
+          tray_uuid: "0123456789ABCDEF0123456789ABCDEF",
+        }),
+      ])
+    );
+    const sideB = traysInReport(
+      report([
+        tray(3, {
+          tag_uid: "B1B1B1B100000100",
+          tray_uuid: "0123456789ABCDEF0123456789ABCDEF",
+        }),
+      ])
+    );
+    expect(sideA[0].tagUid).toBe("0123456789ABCDEF0123456789ABCDEF");
+    expect(sideB[0].tagUid).toBe(sideA[0].tagUid);
+    expect([sideA[0].rawTag, sideB[0].rawTag]).toEqual([
+      "A2A2A2A200000100",
+      "B1B1B1B100000100",
+    ]);
+  });
+  it("is the tag's ID when the spool ID is missing or blank", () => {
+    expect(
+      traysInReport(
+        report([tray(0, { tray_uuid: "00000000000000000000000000000000" })])
+      )[0].tagUid
+    ).toBe("3DB9FB3500000100");
+    expect(traysInReport(report([tray(0)]))[0].tagUid).toBe("3DB9FB3500000100");
+  });
+});

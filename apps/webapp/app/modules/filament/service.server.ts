@@ -714,8 +714,9 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
   const name = (t: Tray) => `${t.colourName ?? t.colourHex} ${t.type}`;
   for (const t of trays) {
     present.add(t.tagUid);
+    present.add(t.rawTag);
     const known = await db.spool.findFirst({
-      where: { organizationId, tagUid: t.tagUid },
+      where: { organizationId, tagUid: { in: [t.tagUid, t.rawTag] } },
       select: { id: true, openedOn: true, status: true, amsSlot: true },
     });
     if (known) {
@@ -725,6 +726,7 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
         await tx.spool.update({
           where: { id: known.id, organizationId },
           data: {
+            tagUid: t.tagUid, // recorded by a tag ID before: now by its spool ID
             amsSlot: t.slot,
             remainingPercent: t.remainingPercent,
             openedOn: known.openedOn ?? today(),
@@ -737,7 +739,11 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
       continue;
     }
     // Not a tag Shelf knows: is it filament you added by hand (no tag yet)?
-    const linked = await linkUntaggedToTray(organizationId, t);
+    const linked = await linkUntaggedToTray(
+      organizationId,
+      t,
+      trays.flatMap((x) => [x.tagUid, x.rawTag])
+    );
     if (linked) {
       events.push(
         `${name(t)} in AMS slot ${t.slot}: matched to the one you added${
@@ -748,7 +754,11 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
     }
     // Truly new: the inbox, told once (not again on every reading)
     const waiting = await db.spoolCandidate.findFirst({
-      where: { organizationId, tagUid: t.tagUid, status: "pending" },
+      where: {
+        organizationId,
+        tagUid: { in: [t.tagUid, t.rawTag] },
+        status: "pending",
+      },
       select: { id: true },
     });
     const result = await proposeSpool(organizationId, {
@@ -980,29 +990,41 @@ export async function renameFilament(
  * entry for the tag goes. Null when nothing matches: it's filament you've
  * never had.
  */
-export async function linkUntaggedToTray(organizationId: string, t: Tray) {
-  const matches = await db.spool.findMany({
+export async function linkUntaggedToTray(
+  organizationId: string,
+  t: Tray,
+  /** Every spool and tag ID in this report, so filament seen in another slot isn't taken */
+  reported: string[] = [t.tagUid, t.rawTag]
+) {
+  const found = await db.spool.findMany({
     where: {
       organizationId,
-      tagUid: null,
       status: { not: "retired" },
       type: { equals: t.type, mode: "insensitive" },
-      OR: [
-        ...(t.colourName
-          ? [
-              {
-                colourName: {
-                  equals: t.colourName,
-                  mode: "insensitive" as const,
-                },
-              },
-            ]
-          : []),
-        { colourHex: { equals: t.colourHex, mode: "insensitive" as const } },
+      AND: [
+        { OR: [{ tagUid: null }, { tagUid: { notIn: reported } }] },
+        {
+          OR: [
+            ...(t.colourName
+              ? [
+                  {
+                    colourName: {
+                      equals: t.colourName,
+                      mode: "insensitive" as const,
+                    },
+                  },
+                ]
+              : []),
+            {
+              colourHex: { equals: t.colourHex, mode: "insensitive" as const },
+            },
+          ],
+        },
       ],
     },
     select: {
       id: true,
+      tagUid: true,
       openedOn: true,
       amsSlot: true,
       remainingPercent: true,
@@ -1010,6 +1032,10 @@ export async function linkUntaggedToTray(organizationId: string, t: Tray) {
       createdAt: true,
     },
   });
+  // No tag yet; or recorded by one tag's ID (16 characters) that isn't in the
+  // AMS now: the same spool, read from its other side. One recorded by its
+  // spool ID (32) is another spool, and isn't taken.
+  const matches = found.filter((m) => !m.tagUid || m.tagUid.length === 16);
   if (matches.length === 0) return null;
   const opened = matches.filter((m) => m.openedOn);
   const time = (d: Date | null) => (d ? d.getTime() : Infinity);
@@ -1039,7 +1065,11 @@ export async function linkUntaggedToTray(organizationId: string, t: Tray) {
       },
     });
     await tx.spoolCandidate.updateMany({
-      where: { organizationId, tagUid: t.tagUid, status: "pending" },
+      where: {
+        organizationId,
+        tagUid: { in: [t.tagUid, t.rawTag] },
+        status: "pending",
+      },
       data: { status: "dismissed" },
     });
   });

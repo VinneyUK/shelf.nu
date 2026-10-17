@@ -7,7 +7,14 @@ import { cleanHex, coloursFor } from "./catalogue";
 export type Tray = {
   /** 1 to 4 */
   slot: number;
+  /**
+   * The spool's identity: its spool ID (tray_uuid), which is the same whichever
+   * of its two RFID tags the AMS reads; the tag's own ID when there's no spool
+   * ID. Kept in Spool.tagUid.
+   */
   tagUid: string;
+  /** The ID of the tag that was read (each spool has two: slots 1 and 3 read one side, 2 and 4 the other) */
+  rawTag: string;
   /** Bambu's line, e.g. "PLA Basic" */
   type: string;
   colourHex: string;
@@ -20,6 +27,7 @@ export type Tray = {
 type RawTray = {
   id?: string | number;
   tag_uid?: string;
+  tray_uuid?: string;
   tray_type?: string;
   tray_sub_brands?: string;
   tray_color?: string;
@@ -43,9 +51,11 @@ export function traysInReport(report: unknown): Tray[] {
   const trays: Tray[] = [];
   for (const unit of units) {
     for (const t of unit.tray ?? []) {
-      const tagUid = (t.tag_uid ?? "").trim().toUpperCase();
+      const rawTag = (t.tag_uid ?? "").trim().toUpperCase();
+      const spoolId = (t.tray_uuid ?? "").trim().toUpperCase();
+      const tagUid = spoolId && !NO_TAG.test(spoolId) ? spoolId : rawTag;
       const type = (t.tray_sub_brands || t.tray_type || "").trim();
-      if (!tagUid || NO_TAG.test(tagUid) || !type) continue;
+      if (!rawTag || NO_TAG.test(rawTag) || !type) continue;
       const hex = cleanHex(`#${(t.tray_color ?? "").slice(0, 6)}`);
       if (!hex) continue;
       const slot = Number(t.id);
@@ -55,6 +65,7 @@ export function traysInReport(report: unknown): Tray[] {
       trays.push({
         slot: slot + 1,
         tagUid,
+        rawTag,
         type,
         colourHex: hex,
         colourName: colourNameFor(type, hex),

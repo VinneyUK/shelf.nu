@@ -677,6 +677,7 @@ describe("the AMS, brought into Filament", () => {
   ) => ({
     slot,
     tagUid,
+    rawTag: tagUid,
     type: "PLA Basic",
     colourHex: "#C12E1F",
     colourName: "Red",
@@ -875,6 +876,7 @@ describe("a tag the AMS reports, matched to filament you added by hand", () => {
   const tray = (over: Record<string, unknown> = {}) => ({
     slot: 4,
     tagUid: "TAG4",
+    rawTag: "TAG4",
     type: "PLA Basic",
     colourHex: "#FFFFFF",
     colourName: "Jade White",
@@ -917,7 +919,11 @@ describe("a tag the AMS reports, matched to filament you added by hand", () => {
       },
     });
     expect(m.spoolCandidate.updateMany).toHaveBeenCalledWith({
-      where: { organizationId: "o1", tagUid: "TAG4", status: "pending" },
+      where: {
+        organizationId: "o1",
+        tagUid: { in: ["TAG4", "TAG4"] },
+        status: "pending",
+      },
       data: { status: "dismissed" },
     });
   });
@@ -953,12 +959,12 @@ describe("a tag the AMS reports, matched to filament you added by hand", () => {
     ).toBeNull();
     const where = m.spool.findMany.mock.calls.at(-1)?.[0].where;
     expect(where).toMatchObject({
-      tagUid: null,
       status: { not: "retired" },
       type: { equals: "PLA Basic", mode: "insensitive" },
     });
-    expect(where.OR).toEqual([
-      { colourHex: { equals: "#FFFFFF", mode: "insensitive" } },
+    expect(where.AND).toEqual([
+      { OR: [{ tagUid: null }, { tagUid: { notIn: ["TAG4", "TAG4"] } }] },
+      { OR: [{ colourHex: { equals: "#FFFFFF", mode: "insensitive" } }] },
     ]);
   });
   it("in the sync: a match is followed, not offered again", async () => {
@@ -987,5 +993,81 @@ describe("a tag the AMS reports, matched to filament you added by hand", () => {
     expect(
       (await syncAmsTrays("o1", [tray({ remainingPercent: 70 })])).events
     ).toEqual([]);
+  });
+});
+
+describe("a spool's two tags", () => {
+  const tray = (over: Record<string, unknown> = {}) => ({
+    slot: 4,
+    tagUid: "SPOOLID0000000000000000000000001", // the spool ID: the same from either side
+    rawTag: "B1B1B1B100000100", // the side the AMS read this time
+    type: "PLA Basic",
+    colourHex: "#E4BDD0",
+    colourName: "Pink",
+    remainingPercent: 72,
+    weightGrams: 1000,
+    ...over,
+  });
+  beforeEach(() => {
+    m.spool.update.mockReset().mockResolvedValue({});
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    m.spoolCandidate.updateMany.mockResolvedValue({ count: 1 });
+  });
+  it("recognises filament recorded by a tag's ID, and records its spool ID from then on", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "p1",
+      openedOn: new Date(),
+      status: "active",
+      amsSlot: 3,
+    });
+    m.spool.findMany.mockResolvedValue([]);
+    await syncAmsTrays("o1", [tray()]);
+    expect(m.spool.findFirst.mock.calls.at(-1)?.[0].where.tagUid).toEqual({
+      in: ["SPOOLID0000000000000000000000001", "B1B1B1B100000100"],
+    });
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      tagUid: "SPOOLID0000000000000000000000001",
+      amsSlot: 4,
+    });
+  });
+  it("links a spool recorded by its other side's tag, when that tag isn't in the AMS (the Pink in slot 4)", async () => {
+    m.spool.findMany.mockResolvedValueOnce([
+      {
+        id: "pink1",
+        tagUid: "A2A2A2A200000100",
+        openedOn: new Date("2026-10-17"),
+        amsSlot: null,
+        remainingPercent: 71,
+        purchasedOn: null,
+        createdAt: new Date(),
+      },
+    ]);
+    expect(await linkUntaggedToTray("o1", tray())).toEqual({
+      spoolId: "pink1",
+      wasNew: false,
+    });
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      tagUid: "SPOOLID0000000000000000000000001",
+      amsSlot: 4,
+    });
+    expect(
+      m.spoolCandidate.updateMany.mock.calls.at(-1)?.[0].where.tagUid
+    ).toEqual({
+      in: ["SPOOLID0000000000000000000000001", "B1B1B1B100000100"],
+    });
+  });
+  it("never takes a spool recorded by its own spool ID: that's another spool", async () => {
+    m.spool.findMany.mockResolvedValueOnce([
+      {
+        id: "other",
+        tagUid: "SPOOLID0000000000000000000000009",
+        openedOn: new Date(),
+        amsSlot: null,
+        remainingPercent: 70,
+        purchasedOn: null,
+        createdAt: new Date(),
+      },
+    ]);
+    expect(await linkUntaggedToTray("o1", tray())).toBeNull();
   });
 });
