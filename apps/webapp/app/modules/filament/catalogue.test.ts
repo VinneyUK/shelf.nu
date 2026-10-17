@@ -20,6 +20,7 @@ import {
   spoolState,
   stateCounts,
   stateLabel,
+  stockOrder,
   stocktakeOrder,
   summarise,
   typeCounts,
@@ -230,7 +231,7 @@ describe("a spool's life", () => {
     expect(spoolState(s("retired", null, "2026-10-01"))).toBe("retired");
   });
   it("names the slot of a spool in use", () => {
-    expect(stateLabel(s("active", 2, "2026-10-01"))).toBe("In use · AMS 2");
+    expect(stateLabel(s("active", 2, "2026-10-01"))).toBe("AMS 2");
     expect(stateLabel(s("active", null, null))).toBe("New");
   });
   it("counts new and open spools for a tile", () => {
@@ -378,5 +379,50 @@ describe("spools and refills", () => {
     expect(typeWords(items(2, 1))).toBe("2 spools · 1 refill");
     expect(typeWords(items(1, 0))).toBe("1 spool");
     expect(typeWords(items(0, 3))).toBe("3 refills");
+  });
+});
+
+describe("the order of a filament's stock", () => {
+  const item = (id: string, over: Record<string, unknown>) => ({
+    id,
+    status: "active",
+    amsSlot: null as number | null,
+    openedOn: "2026-09-01" as string | null,
+    remainingPercent: 50,
+    weightGrams: 1000,
+    purchasedOn: null as string | null,
+    createdAt: "2026-08-01",
+    retiredAt: null as string | null,
+    ...over,
+  });
+  it("puts open ones first, least left at the top; then new, oldest bought; then retired", () => {
+    const order = stockOrder([
+      item("new-later", {
+        openedOn: null,
+        remainingPercent: 100,
+        purchasedOn: "2026-10-01",
+      }),
+      item("retired", {
+        status: "retired",
+        remainingPercent: 0,
+        retiredAt: "2026-10-05",
+      }),
+      item("open-half", { remainingPercent: 50 }),
+      item("ams-low", { amsSlot: 2, remainingPercent: 12 }),
+      item("new-first", {
+        openedOn: null,
+        remainingPercent: 100,
+        purchasedOn: "2026-06-01",
+      }),
+      item("run-out", { status: "empty", remainingPercent: 0 }),
+    ]).map((s) => s.id);
+    expect(order).toEqual([
+      "run-out",
+      "ams-low",
+      "open-half",
+      "new-first",
+      "new-later",
+      "retired",
+    ]);
   });
 });

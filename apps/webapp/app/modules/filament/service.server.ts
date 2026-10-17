@@ -775,3 +775,182 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
   });
   return { inSlots: trays.length, proposed, unloaded: out.count, events };
 }
+
+/** The cells of a filament's row you can change one at a time. */
+export const SPOOL_FIELDS = [
+  "status",
+  "packaging",
+  "left",
+  "leftKg",
+  "pricePaid",
+  "purchasedOn",
+  "openedOn",
+  "filamentCode",
+  "weightGrams",
+  "spoolWeightGrams",
+] as const;
+export type SpoolField = (typeof SPOOL_FIELDS)[number];
+
+const dateOrNull = (raw: string, what: string) => {
+  if (!raw.trim()) return null;
+  const d = new Date(`${raw.trim().slice(0, 10)}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) throw bad(`That isn't a date for ${what}.`);
+  return d;
+};
+const numberIn = (raw: string, what: string, min: number, max: number) => {
+  const n = Number(raw);
+  if (!raw.trim() || !Number.isFinite(n) || n < min || n > max) {
+    throw bad(
+      `${what} should be a number from ${min} to ${max.toLocaleString(
+        "en-GB"
+      )}.`
+    );
+  }
+  return n;
+};
+
+/**
+ * Changes one cell of a filament's row, keeping the rules: an opened date
+ * isn't before the bought date; loading into a slot, or using some, opens it;
+ * at 0% it's waiting for you to confirm it's run out. Returns what changed,
+ * in words, for the pop-up.
+ */
+export async function updateSpoolField(
+  organizationId: string,
+  id: string,
+  field: SpoolField,
+  raw: string
+): Promise<string> {
+  const spool = await db.spool.findFirst({ where: { id, organizationId } });
+  if (!spool) throw bad("That filament doesn't exist.", 404);
+  const save = (data: Parameters<typeof db.spool.update>[0]["data"]) =>
+    db.spool.update({ where: { id, organizationId }, data });
+
+  switch (field) {
+    case "status": {
+      const slot = /^ams([1-4])$/.exec(raw)?.[1];
+      if (slot) {
+        const n = Number(slot);
+        await db.$transaction(async (tx) => {
+          await freeSlot(tx, organizationId, n, id);
+          await tx.spool.update({
+            where: { id, organizationId },
+            data: {
+              amsSlot: n,
+              openedOn: spool.openedOn ?? today(),
+              status: "active",
+              retiredAt: null,
+              remainingPercent:
+                spool.remainingPercent === 0 ? 5 : spool.remainingPercent,
+            },
+          });
+        });
+        return `In AMS slot ${n}.`;
+      }
+      if (raw !== "new" && raw !== "opened" && raw !== "retired")
+        throw bad("Choose New, Opened, an AMS slot or Retired.");
+      return changeSpoolState(organizationId, id, raw);
+    }
+    case "packaging":
+      await save({ packaging: cleanPackaging(raw) });
+      return cleanPackaging(raw) === "refill"
+        ? "Now a refill."
+        : "Now a spool.";
+    case "left":
+    case "leftKg": {
+      const percent =
+        field === "left"
+          ? clampPercent(numberIn(raw, "Left (%)", 0, 100))
+          : clampPercent(
+              (numberIn(raw, "Left (kg)", 0, 10) * 1000 * 100) /
+                spool.weightGrams
+            );
+      await save({
+        remainingPercent: percent,
+        openedOn: openedFor({
+          openedOn: spool.openedOn,
+          amsSlot: spool.amsSlot,
+          remainingPercent: percent,
+        }),
+        ...(spool.status === "retired"
+          ? {}
+          : { status: percent === 0 ? "empty" : "active" }),
+      });
+      return `${percent}% left (${(
+        (spool.weightGrams * percent) /
+        100 /
+        1000
+      ).toFixed(2)} kg).`;
+    }
+    case "pricePaid": {
+      const price = raw.trim()
+        ? Math.round(numberIn(raw, "The price", 0, 10000) * 100) / 100
+        : null;
+      await save({ pricePaid: price });
+      return price === null ? "Price cleared." : `Paid £${price.toFixed(2)}.`;
+    }
+    case "purchasedOn": {
+      const d = dateOrNull(raw, "Bought on");
+      checkOpened(d, spool.openedOn);
+      await save({ purchasedOn: d });
+      return d ? "Bought date saved." : "Bought date cleared.";
+    }
+    case "openedOn": {
+      const d = checkOpened(spool.purchasedOn, dateOrNull(raw, "Opened on"));
+      const openedOn = openedFor({
+        openedOn: d,
+        amsSlot: spool.amsSlot,
+        remainingPercent: spool.remainingPercent,
+      });
+      await save({ openedOn });
+      return openedOn ? "Opened date saved." : "Opened date cleared: it's New.";
+    }
+    case "filamentCode": {
+      const code =
+        raw
+          .trim()
+          .replace(/[^A-Za-z0-9]/g, "")
+          .slice(0, 20) || null;
+      await save({ filamentCode: code });
+      return code ? `Code ${code}.` : "Code cleared.";
+    }
+    case "weightGrams":
+      await save({
+        weightGrams: Math.round(numberIn(raw, "The size (g)", 1, 10000)),
+      });
+      return "Size saved.";
+    case "spoolWeightGrams": {
+      const g = raw.trim()
+        ? Math.round(numberIn(raw, "The empty spool (g)", 0, 2000))
+        : null;
+      await save({ spoolWeightGrams: g });
+      return g === null
+        ? "Empty spool weight cleared."
+        : "Empty spool weight saved.";
+    }
+  }
+}
+
+/**
+ * The line and colour of a filament: all its items move together (the page
+ * follows them). Returns the new address.
+ */
+export async function renameFilament(
+  organizationId: string,
+  slug: string,
+  input: { type: string; colourName: string; colourHex: string }
+) {
+  const spools = await getFilamentBySlug(organizationId, slug);
+  if (spools.length === 0) throw bad("That filament doesn't exist.", 404);
+  const type = input.type.trim().slice(0, 60);
+  if (!type) throw bad("Choose the line.");
+  const colourName = input.colourName.trim().slice(0, 60);
+  if (!colourName) throw bad("Give the colour a name.");
+  const colourHex = cleanHex(input.colourHex);
+  if (!colourHex) throw bad("Choose a colour.");
+  await db.spool.updateMany({
+    where: { organizationId, id: { in: spools.map((s) => s.id) } },
+    data: { type, material: materialOf(type), colourName, colourHex },
+  });
+  return filamentSlug(type, colourName);
+}

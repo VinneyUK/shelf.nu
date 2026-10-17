@@ -4,6 +4,13 @@
  * once for every spool; Bambu's catalogue facts; and Add spools of this.
  */
 import { useEffect, useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverPortal,
+  PopoverTrigger,
+} from "@radix-ui/react-popover";
+import { MoreHorizontalIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -12,9 +19,11 @@ import type {
 import { data, redirect, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import { FilamentCell } from "~/components/filament/filament-cell";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barColour,
+  CodeChip,
   DateField,
   FilamentPicture,
   FilamentSearch,
@@ -45,7 +54,6 @@ import {
 } from "~/components/shared/modal";
 import { useSearchParams } from "~/hooks/search-params";
 import {
-  AMS_SLOTS,
   BAMBU_TYPES,
   catalogueEntry,
   coloursFor,
@@ -53,17 +61,17 @@ import {
   daysAgo,
   filamentKey,
   gramsLeft,
-  type KnownCode,
   oldestNew,
   SPOOL_STATES,
-  SPOOL_WEIGHTS,
   spoolState,
   stateLabel,
+  stockOrder,
   typeWords,
 } from "~/modules/filament/catalogue";
 import {
   fetchMissingImages,
   imageStatuses,
+  setFilamentImageFromUrl,
 } from "~/modules/filament/images.server";
 import { done, failed, notify } from "~/modules/filament/notify.server";
 import { priceSummary } from "~/modules/filament/prices";
@@ -80,9 +88,13 @@ import {
   keepSpool,
   knownCodes,
   openSpool,
+  renameFilament,
   retireSpool,
+  SPOOL_FIELDS,
+  type SpoolField,
   updateFilament,
   updateSpoolDetails,
+  updateSpoolField,
   weighSpool,
 } from "~/modules/filament/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
@@ -279,6 +291,61 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           `${first.colourName} · ${first.type}`
         );
       }
+      case "field": {
+        const field = String(form.get("field") ?? "");
+        if (!(SPOOL_FIELDS as readonly string[]).includes(field)) {
+          throw new ShelfError({
+            cause: null,
+            message: "That can't be changed here.",
+            status: 400,
+            label: "Assets",
+          });
+        }
+        const what = await updateSpoolField(
+          organizationId,
+          id,
+          field as SpoolField,
+          String(form.get("value") ?? "")
+        );
+        return done(userId, "Filament saved", what);
+      }
+      case "rename": {
+        const next = await renameFilament(organizationId, slug, {
+          type: String(form.get("type") ?? ""),
+          colourName: String(form.get("colourName") ?? ""),
+          colourHex: String(form.get("colourHex") ?? ""),
+        });
+        fetchMissingImages(organizationId);
+        notify(
+          userId,
+          "Filament saved",
+          "Its line and colour apply to every spool and refill of it."
+        );
+        return next === slug
+          ? payload({ ok: true })
+          : redirect(`/filament/${next}`);
+      }
+      case "image-url": {
+        const spools = await getFilamentBySlug(organizationId, slug);
+        const first = spools[0];
+        if (!first)
+          throw new ShelfError({
+            cause: null,
+            message: "That filament isn't in your stock.",
+            status: 404,
+            label: "Assets",
+          });
+        await setFilamentImageFromUrl(
+          organizationId,
+          filamentKey(first.type, first.colourName),
+          String(form.get("url") ?? "")
+        );
+        return done(
+          userId,
+          "Picture updated",
+          "Fetched from that address and kept."
+        );
+      }
       case "state": {
         const target = String(form.get("target") ?? "");
         if (target !== "new" && target !== "opened" && target !== "retired") {
@@ -405,8 +472,6 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 type PageData = ReturnType<typeof useLoaderData<typeof loader>>;
 type Spool = PageData["spools"][number];
 
-const label = "text-sm text-gray-500";
-
 /** Delete a spool, after Shelf's own confirmation dialog (as for deleting an asset). */
 function DeleteSpool({
   label,
@@ -455,360 +520,6 @@ function DeleteSpool({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-/** The column headings above the spools. */
-function SpoolHeadings() {
-  return (
-    <div className="hidden items-center gap-x-4 border-b border-gray-200 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-400 md:flex">
-      <span className="w-8">#</span>
-      <span className="w-32">Status</span>
-      <span className="w-14">Type</span>
-      <span className="min-w-32 flex-1">Left</span>
-      <span className="w-20 text-right">Weight</span>
-      <span className="w-20 text-right">Paid</span>
-      <span className="w-28 text-right">Bought</span>
-      <span className="w-28 text-right">Opened</span>
-      <span className="w-[9.5rem]" />
-    </div>
-  );
-}
-
-/**
- * A spool's status as a chip you can change: New, Opened or Retired, going
- * back as well as forward. (In use comes from choosing an AMS slot in Edit.)
- */
-function StatusPicker({ spool, label }: { spool: Spool; label: string }) {
-  const fetcher = useFetcher<Result>();
-  const state = spoolState(spool);
-  return (
-    <fetcher.Form method="post" className="relative inline-flex">
-      <input type="hidden" name="intent" value="state" />
-      <input type="hidden" name="id" value={spool.id} />
-      <input type="hidden" name="label" value={label} />
-      <select
-        key={state}
-        name="target"
-        defaultValue={state}
-        disabled={isFormProcessing(fetcher.state)}
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        aria-label={`Status of ${label}`}
-        className={tw(
-          "cursor-pointer rounded border-0 py-0.5 pl-1.5 pr-7 text-xs font-medium focus:ring-2 focus:ring-primary-100",
-          SPOOL_STATES[state].tone
-        )}
-      >
-        {state === "in-use" ? (
-          <option value="in-use" disabled>
-            {stateLabel(spool)}
-          </option>
-        ) : null}
-        {state === "run-out" ? (
-          <option value="run-out" disabled>
-            Run out?
-          </option>
-        ) : null}
-        <option value="new">New</option>
-        <option value="opened">Opened</option>
-        <option value="retired">Retired</option>
-      </select>
-    </fetcher.Form>
-  );
-}
-
-/** A date with how long ago underneath. */
-function When({ date }: { date: string | Date }) {
-  return (
-    <span className="flex flex-col items-end leading-tight">
-      <DateS date={date} />
-      <span className="text-[11px] text-gray-400">{daysAgo(date)}</span>
-    </span>
-  );
-}
-
-/**
- * One spool of this filament: its status (New, Opened, In use, Run out?,
- * Retired), what's left, what it cost, when it was bought and opened; and the
- * buttons its status calls for.
- */
-function SpoolLine({
-  spool,
-  index,
-  tare,
-  openFirst,
-}: {
-  spool: Spool;
-  index: number;
-  tare: number | null;
-  /** The oldest-bought New spool, when there's a choice of which to open */
-  openFirst: boolean;
-}) {
-  const money = useMoney();
-  const edit = useFetcher<Result>();
-  const act = useFetcher<Result>();
-  const [mode, setMode] = useState<"none" | "weigh" | "edit">("none");
-  useEffect(() => {
-    if (edit.state === "idle" && edit.data && !edit.data.error) setMode("none");
-  }, [edit.state, edit.data]);
-  const state = spoolState(spool);
-  const busy = isFormProcessing(act.state) || isFormProcessing(edit.state);
-  const label = `${spool.colourName} · ${spool.type}`;
-  return (
-    <li className={tw("px-4 py-3", state === "retired" ? "bg-gray-25" : "")}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="w-8 font-mono text-sm text-gray-400">
-          #{index + 1}
-        </span>
-        <span className="w-32 text-xs">
-          <StatusPicker spool={spool} label={label} />
-        </span>
-        <span className="w-14 text-sm text-gray-700">
-          {spool.packaging === "refill" ? "Refill" : "Spool"}
-        </span>
-        <div className="flex min-w-32 flex-1 items-center gap-2">
-          <div className="h-2 flex-1 rounded-full bg-gray-100">
-            <div
-              className={tw(
-                "h-2 rounded-full",
-                barColour(spool.remainingPercent)
-              )}
-              style={{ width: `${spool.remainingPercent}%` }}
-            />
-          </div>
-          <span className="w-10 text-right text-sm tabular-nums text-gray-700">
-            {spool.remainingPercent}%
-          </span>
-        </div>
-        <span className="w-20 text-right text-sm tabular-nums text-gray-700">
-          {(gramsLeft(spool) / 1000).toFixed(2)} kg
-        </span>
-        <span className="w-20 text-right text-sm tabular-nums text-gray-700">
-          {spool.pricePaid !== null ? (
-            money(spool.pricePaid)
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
-        </span>
-        <span className="w-28 text-right text-sm text-gray-700">
-          {spool.purchasedOn ? (
-            <When date={spool.purchasedOn} />
-          ) : (
-            <button
-              type="button"
-              className="text-sm text-primary-600 hover:underline"
-              onClick={() => setMode("edit")}
-              aria-label={`Add the bought date for #${index + 1}`}
-            >
-              Add
-            </button>
-          )}
-        </span>
-        <span className="w-28 text-right text-sm text-gray-700">
-          {spool.openedOn ? (
-            <When date={spool.openedOn} />
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
-        </span>
-        <div className="flex w-[9.5rem] flex-wrap justify-end gap-2">
-          {state === "retired" ? (
-            <act.Form method="post">
-              <input type="hidden" name="id" value={spool.id} />
-              <input type="hidden" name="remainingPercent" value={5} />
-              <Button
-                type="submit"
-                name="intent"
-                value="keep"
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-              >
-                Bring back
-              </Button>
-            </act.Form>
-          ) : (
-            <>
-              {state === "new" ? (
-                <act.Form method="post">
-                  <input type="hidden" name="id" value={spool.id} />
-                  <input type="hidden" name="label" value={label} />
-                  <Button
-                    type="submit"
-                    name="intent"
-                    value="open"
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy}
-                  >
-                    Open
-                  </Button>
-                </act.Form>
-              ) : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setMode(mode === "weigh" ? "none" : "weigh")}
-                >
-                  Weigh
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setMode(mode === "edit" ? "none" : "edit")}
-              >
-                Edit
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      {openFirst ? (
-        <p className="mt-1 text-right text-xs text-gray-500">
-          Bought first: open this one before the others.
-        </p>
-      ) : null}
-
-      {mode === "weigh" ? (
-        <act.Form
-          method="post"
-          className="mt-3 flex flex-wrap items-center justify-end gap-2 text-sm"
-        >
-          <input type="hidden" name="intent" value="weigh" />
-          <input type="hidden" name="id" value={spool.id} />
-          <label className="flex items-center gap-1 text-gray-700">
-            On the scale
-            <input
-              name="grossGrams"
-              type="number"
-              min={1}
-              className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-              autoFocus
-            />
-            g
-          </label>
-          <span className="text-xs text-gray-500">
-            {tare
-              ? `less the empty spool, ${tare} g`
-              : "set the empty spool's weight in Filament details first"}
-          </span>
-          <Button type="submit" size="sm" disabled={busy || !tare}>
-            Update
-          </Button>
-        </act.Form>
-      ) : null}
-
-      {mode === "edit" ? (
-        <edit.Form
-          method="post"
-          className="mt-3 grid gap-3 rounded-lg bg-gray-25 p-3 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          <input type="hidden" name="intent" value="spool" />
-          <input type="hidden" name="id" value={spool.id} />
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            Left (%)
-            <input
-              name="remainingPercent"
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={spool.remainingPercent}
-              className={inputClass}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            Price paid
-            <input
-              name="pricePaid"
-              type="number"
-              min={0}
-              step={0.01}
-              defaultValue={spool.pricePaid ?? ""}
-              className={inputClass}
-            />
-          </label>
-          <DateField
-            name="purchasedOn"
-            label="Bought on"
-            initial={spool.purchasedOn}
-            autoFocus={!spool.purchasedOn}
-          />
-          <DateField
-            name="openedOn"
-            label="Opened on"
-            initial={spool.openedOn}
-          />
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            In the AMS
-            <select
-              name="amsSlot"
-              defaultValue={spool.amsSlot ? String(spool.amsSlot) : ""}
-              className={selectClass}
-            >
-              <option value="">Not loaded</option>
-              {AMS_SLOTS.map((n) => (
-                <option key={n} value={n}>
-                  Slot {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <PackagingToggle initial={spool.packaging} />
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900 sm:col-span-2">
-            Notes
-            <input
-              name="notes"
-              defaultValue={spool.notes ?? ""}
-              className={inputClass}
-            />
-          </label>
-          <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-4">
-            Leave a date empty if you don't know it. Loading it into the AMS, or
-            using some of it, opens it today.
-          </p>
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-2 lg:col-span-4">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setMode("none")}
-            >
-              Cancel
-            </Button>
-            <DeleteSpool
-              label={`#${index + 1} of ${spool.colourName}`}
-              disabled={busy}
-              onDelete={() =>
-                void act.submit(
-                  { intent: "delete", id: spool.id },
-                  { method: "post" }
-                )
-              }
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              onClick={() =>
-                void act.submit(
-                  { intent: "retire", id: spool.id },
-                  { method: "post" }
-                )
-              }
-            >
-              Retire
-            </Button>
-            <Button type="submit" size="sm" disabled={busy}>
-              Save filament
-            </Button>
-          </div>
-        </edit.Form>
-      ) : null}
-    </li>
   );
 }
 
@@ -891,195 +602,6 @@ function AddMore({
           </Button>
           <Button type="submit" disabled={isFormProcessing(fetcher.state)}>
             Add
-          </Button>
-        </div>
-      </fetcher.Form>
-    </Card>
-  );
-}
-
-/** The filament's specs, edited once for every spool, Spoolman-style: label on the left, value on the right. */
-function Specs({
-  filament,
-  storeCode,
-  spoolCount,
-  codes,
-}: {
-  /** Codes Shelf knows, for finding a filament by its code */
-  codes: KnownCode[];
-  filament: PageData["filament"];
-  /** The code the Bambu store gave for this filament, when none is saved yet */
-  storeCode: string | null;
-  spoolCount: number;
-}) {
-  const fetcher = useFetcher<Result>();
-  const known = BAMBU_TYPES.some(([t]) => t === filament.type);
-  const [type, setType] = useState(known ? filament.type : OTHER);
-  const [otherType, setOtherType] = useState(known ? "" : filament.type);
-  const line = type === OTHER ? otherType : type;
-  const colours = coloursFor(line);
-  const knownColour = colours.find(([n]) => n === filament.colourName);
-  const [colour, setColour] = useState<string>(
-    knownColour ? knownColour[0] : OTHER
-  );
-  const [otherName, setOtherName] = useState(
-    knownColour ? "" : filament.colourName
-  );
-  const [otherHex, setOtherHex] = useState(filament.colourHex);
-  const [code, setCode] = useState(filament.filamentCode ?? storeCode ?? "");
-  const picked = colours.find(([n]) => n === colour);
-  const colourName = picked ? picked[0] : otherName;
-  const colourHex = picked ? picked[1] : otherHex;
-  const tare = catalogueEntry(line)?.spoolWeight ?? null;
-  const row =
-    "grid grid-cols-[8rem_1fr] items-center gap-3 border-b border-gray-100 py-2";
-  return (
-    <Card className="my-0">
-      <h3 className="text-text-md font-semibold text-gray-900">
-        Filament details
-      </h3>
-      <p className="text-xs text-gray-500">
-        Changes apply to every spool of this filament.
-      </p>
-      <fetcher.Form method="post" className="mt-2">
-        <input type="hidden" name="intent" value="filament" />
-        <div className="border-b border-gray-100 py-2">
-          <FilamentSearch
-            codes={codes}
-            onPick={(match) => {
-              const known = BAMBU_TYPES.some(([t]) => t === match.type);
-              setType(known ? match.type : OTHER);
-              if (!known) setOtherType(match.type);
-              const inCatalogue = coloursFor(match.type).some(
-                ([n]) => n === match.colourName
-              );
-              setColour(inCatalogue ? match.colourName : OTHER);
-              if (!inCatalogue) {
-                setOtherName(match.colourName);
-                setOtherHex(match.colourHex);
-              }
-              if (match.code) setCode(match.code);
-            }}
-          />
-        </div>
-        <div className={row}>
-          <span className={label}>Line</span>
-          <span className="flex flex-col gap-1">
-            <select
-              value={type}
-              onChange={(e) => {
-                setType(e.target.value);
-                const first = coloursFor(
-                  e.target.value === OTHER ? otherType : e.target.value
-                )[0];
-                setColour(first ? first[0] : OTHER);
-              }}
-              className={selectClass}
-            >
-              {BAMBU_TYPES.map(([t]) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-              <option value={OTHER}>Other…</option>
-            </select>
-            {type === OTHER ? (
-              <input
-                value={otherType}
-                onChange={(e) => setOtherType(e.target.value)}
-                className={inputClass}
-              />
-            ) : null}
-          </span>
-          <input type="hidden" name="type" value={line} />
-        </div>
-        <div className={row}>
-          <span className={label}>Colour</span>
-          <span className="flex flex-col gap-1">
-            <span className="flex items-center gap-2">
-              <Swatch hex={colourHex} size="size-8" />
-              <select
-                value={colour}
-                onChange={(e) => setColour(e.target.value)}
-                className={selectClass}
-              >
-                {colours.map(([n]) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-                <option value={OTHER}>Other colour…</option>
-              </select>
-            </span>
-            {colour === OTHER ? (
-              <span className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={otherHex}
-                  onChange={(e) => setOtherHex(e.target.value.toUpperCase())}
-                  aria-label="Colour"
-                  className="h-9 w-10 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
-                />
-                <input
-                  value={otherName}
-                  onChange={(e) => setOtherName(e.target.value)}
-                  placeholder="Colour name"
-                  className={inputClass}
-                />
-              </span>
-            ) : null}
-            <span className="font-mono text-xs text-gray-500">{colourHex}</span>
-          </span>
-          <input type="hidden" name="colourName" value={colourName} />
-          <input type="hidden" name="colourHex" value={colourHex} />
-        </div>
-        <label className={row}>
-          <span className={label}>Code on the box</span>
-          <input
-            name="filamentCode"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="e.g. 10100"
-            className={inputClass}
-          />
-          {storeCode ? (
-            <span className="col-start-2 text-xs text-gray-500">
-              From the Bambu store. Save to keep it.
-            </span>
-          ) : null}
-        </label>
-        <label className={row}>
-          <span className={label}>Spool size</span>
-          <select
-            name="weightGrams"
-            defaultValue={String(filament.weightGrams)}
-            className={selectClass}
-          >
-            {SPOOL_WEIGHTS.map((g) => (
-              <option key={g} value={g}>
-                {g >= 1000 ? `${g / 1000} kg` : `${g} g`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={row}>
-          <span className={label}>Empty spool (g)</span>
-          <input
-            name="spoolWeightGrams"
-            type="number"
-            min={0}
-            defaultValue={filament.spoolWeightGrams ?? ""}
-            placeholder={tare ? String(tare) : ""}
-            className={inputClass}
-          />
-        </label>
-        <div className="mt-3 flex items-center justify-end gap-2">
-          <Button
-            type="submit"
-            size="sm"
-            disabled={isFormProcessing(fetcher.state)}
-          >
-            {spoolCount === 1 ? "Save" : `Save for all ${spoolCount} spools`}
           </Button>
         </div>
       </fetcher.Form>
@@ -1193,6 +715,653 @@ function StoreCard({
   );
 }
 
+/** A date, or how it reads when it isn't known. */
+function DateText({
+  date,
+  empty = "Not known",
+}: {
+  date: string | Date | null;
+  empty?: string;
+}) {
+  return date ? (
+    <span className="flex flex-col leading-tight">
+      <DateS date={date} />
+      <span className="text-[11px] text-gray-400">{daysAgo(date)}</span>
+    </span>
+  ) : (
+    <span className="text-gray-400">{empty}</span>
+  );
+}
+
+const STATUS_OPTIONS = [
+  { value: "new", label: "New" },
+  { value: "opened", label: "Opened" },
+  { value: "ams1", label: "AMS 1" },
+  { value: "ams2", label: "AMS 2" },
+  { value: "ams3", label: "AMS 3" },
+  { value: "ams4", label: "AMS 4" },
+  { value: "retired", label: "Retired" },
+];
+
+/**
+ * A filament's stock as a table: every cell click-to-change, as in Assets.
+ * Open ones first (least left at the top), then new (oldest bought first),
+ * then retired. Left shows as % or kg.
+ */
+function StockTable({
+  items,
+  numbers,
+  tare,
+  openFirstId,
+}: {
+  items: Spool[];
+  /** Each item's number, by the order it was added */
+  numbers: Map<string, number>;
+  /** The empty spool's weight from the catalogue, for items without their own */
+  tare: number | null;
+  /** The new one to open next, when there's a choice */
+  openFirstId: string | null;
+}) {
+  const [unit, setUnit] = useState<"percent" | "kg">("percent");
+  const head =
+    "px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-400";
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[60rem] text-sm">
+        <thead className="border-b border-gray-200">
+          <tr>
+            <th className={tw(head, "w-10 pl-4")}>#</th>
+            <th className={head}>Status</th>
+            <th className={head}>Type</th>
+            <th className={tw(head, "w-56")}>
+              <span className="flex items-center gap-2">
+                Left
+                <span
+                  className="inline-flex rounded border border-gray-200 p-0.5 normal-case"
+                  role="radiogroup"
+                  aria-label="Show what's left in"
+                >
+                  {(["percent", "kg"] as const).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      role="radio"
+                      aria-checked={unit === u}
+                      onClick={() => setUnit(u)}
+                      className={tw(
+                        "rounded px-1.5 text-[11px] tracking-normal",
+                        unit === u
+                          ? "bg-gray-100 font-semibold text-gray-900"
+                          : "text-gray-500"
+                      )}
+                    >
+                      {u === "percent" ? "%" : "kg"}
+                    </button>
+                  ))}
+                </span>
+              </span>
+            </th>
+            <th className={head}>Paid</th>
+            <th className={head}>Bought</th>
+            <th className={head}>Opened</th>
+            <th className={head}>Code</th>
+            <th className={head}>Size</th>
+            <th className={head}>Empty spool</th>
+            <th className={tw(head, "w-10 pr-4")}>
+              <span className="sr-only">More</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {items.map((s) => (
+            <StockRow
+              key={s.id}
+              spool={s}
+              number={numbers.get(s.id) ?? 0}
+              unit={unit}
+              tare={tare}
+              openFirst={s.id === openFirstId}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StockRow({
+  spool,
+  number,
+  unit,
+  tare,
+  openFirst,
+}: {
+  spool: Spool;
+  number: number;
+  unit: "percent" | "kg";
+  tare: number | null;
+  openFirst: boolean;
+}) {
+  const money = useMoney();
+  const state = spoolState(spool);
+  const kg = gramsLeft(spool) / 1000;
+  const cell = "px-2 py-2 align-middle";
+  return (
+    <tr className={state === "retired" ? "bg-gray-25 text-gray-500" : ""}>
+      <td className={tw(cell, "pl-4 font-mono text-gray-400")}>
+        #{number}
+        {openFirst ? (
+          <span
+            className="mt-0.5 block whitespace-nowrap font-sans text-[10px] text-primary-600"
+            title="Bought first: open this one before the others"
+          >
+            open next
+          </span>
+        ) : null}
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="status"
+          label="Status"
+          editor={{
+            kind: "select",
+            value:
+              state === "in-use"
+                ? `ams${spool.amsSlot}`
+                : state === "run-out"
+                ? "run-out"
+                : state,
+            options:
+              state === "run-out"
+                ? [
+                    { value: "run-out", label: "Run out?", disabled: true },
+                    ...STATUS_OPTIONS,
+                  ]
+                : STATUS_OPTIONS,
+          }}
+        >
+          <span
+            className={tw(
+              "whitespace-nowrap rounded px-1.5 py-0.5 text-xs",
+              SPOOL_STATES[state].tone
+            )}
+          >
+            {stateLabel(spool)}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="packaging"
+          label="Type"
+          editor={{
+            kind: "select",
+            value: spool.packaging === "refill" ? "refill" : "spool",
+            options: [
+              { value: "spool", label: "Spool" },
+              { value: "refill", label: "Refill" },
+            ],
+          }}
+        >
+          {spool.packaging === "refill" ? "Refill" : "Spool"}
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field={unit === "percent" ? "left" : "leftKg"}
+          label={unit === "percent" ? "Left (%)" : "Left (kg)"}
+          editor={
+            unit === "percent"
+              ? {
+                  kind: "number",
+                  value: spool.remainingPercent,
+                  min: 0,
+                  max: 100,
+                  suffix: "%",
+                }
+              : {
+                  kind: "number",
+                  value: Number(kg.toFixed(3)),
+                  min: 0,
+                  max: spool.weightGrams / 1000,
+                  step: 0.001,
+                  suffix: "kg",
+                }
+          }
+          className="w-full"
+        >
+          <span className="flex w-48 items-center gap-2">
+            <span className="h-1.5 flex-1 rounded-full bg-gray-100">
+              <span
+                className={tw(
+                  "block h-1.5 rounded-full",
+                  barColour(spool.remainingPercent)
+                )}
+                style={{ width: `${spool.remainingPercent}%` }}
+              />
+            </span>
+            <span className="w-16 text-right tabular-nums text-gray-900">
+              {unit === "percent"
+                ? `${spool.remainingPercent}%`
+                : `${kg.toFixed(2)} kg`}
+            </span>
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="pricePaid"
+          label="Price paid (£)"
+          editor={{
+            kind: "number",
+            value: spool.pricePaid,
+            min: 0,
+            step: 0.01,
+          }}
+        >
+          <span className="tabular-nums">
+            {spool.pricePaid !== null ? (
+              money(spool.pricePaid)
+            ) : (
+              <span className="text-gray-400">—</span>
+            )}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="purchasedOn"
+          label="Bought on"
+          editor={{ kind: "date", value: spool.purchasedOn }}
+        >
+          <DateText date={spool.purchasedOn} />
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="openedOn"
+          label="Opened on"
+          editor={{ kind: "date", value: spool.openedOn }}
+        >
+          <DateText date={spool.openedOn} empty="—" />
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="filamentCode"
+          label="Code on the box"
+          editor={{
+            kind: "text",
+            value: spool.filamentCode ?? "",
+            placeholder: "e.g. 10100",
+          }}
+        >
+          {spool.filamentCode ? (
+            <span className="font-mono text-xs">{spool.filamentCode}</span>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="weightGrams"
+          label="Size (filament, g)"
+          editor={{
+            kind: "number",
+            value: spool.weightGrams,
+            min: 1,
+            max: 10000,
+            suffix: "g",
+          }}
+        >
+          <span className="whitespace-nowrap tabular-nums">
+            {spool.weightGrams >= 1000
+              ? `${spool.weightGrams / 1000} kg`
+              : `${spool.weightGrams} g`}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="spoolWeightGrams"
+          label="Empty spool (g)"
+          editor={{
+            kind: "number",
+            value: spool.spoolWeightGrams,
+            min: 0,
+            max: 2000,
+            suffix: "g",
+          }}
+        >
+          {spool.spoolWeightGrams !== null ? (
+            <span className="whitespace-nowrap tabular-nums">
+              {spool.spoolWeightGrams} g
+            </span>
+          ) : tare ? (
+            <span
+              className="whitespace-nowrap tabular-nums text-gray-400"
+              title="Bambu's figure; click to set this one's own"
+            >
+              {tare} g
+            </span>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </FilamentCell>
+      </td>
+      <td className={tw(cell, "pr-4 text-right")}>
+        <RowMenu
+          spool={spool}
+          number={number}
+          tare={spool.spoolWeightGrams ?? tare}
+        />
+      </td>
+    </tr>
+  );
+}
+
+/** A row's "⋯" menu: weigh it on the scale, or delete it. */
+function RowMenu({
+  spool,
+  number,
+  tare,
+}: {
+  spool: Spool;
+  number: number;
+  tare: number | null;
+}) {
+  const act = useFetcher<Result>();
+  const [open, setOpen] = useState(false);
+  const [grams, setGrams] = useState("");
+  const busy = isFormProcessing(act.state);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`More for #${number}`}
+          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        >
+          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          className="z-[60] w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
+        >
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void act.submit(
+                { intent: "weigh", id: spool.id, grossGrams: grams },
+                { method: "post" }
+              );
+              setOpen(false);
+            }}
+          >
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+              Weigh it: on the scale
+              <span className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  value={grams}
+                  onChange={(e) => setGrams(e.target.value)}
+                  className={tw(inputClass, "w-full")}
+                  autoFocus
+                />
+                <span className="text-sm font-normal text-gray-500">g</span>
+              </span>
+            </label>
+            <span className="text-xs text-gray-500">
+              {tare
+                ? `Less the empty spool, ${tare} g.`
+                : "Set its empty spool weight first."}
+            </span>
+            <Button type="submit" size="sm" disabled={busy || !tare || !grams}>
+              Update what's left
+            </Button>
+          </form>
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <DeleteSpool
+              label={`#${number} of ${spool.colourName}`}
+              disabled={busy}
+              onDelete={() =>
+                void act.submit(
+                  { intent: "delete", id: spool.id },
+                  { method: "post" }
+                )
+              }
+            />
+          </div>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
+/**
+ * The filament's picture: click it to see where it came from and give another
+ * address, or to change the line and colour (for every spool and refill of it).
+ */
+function PicturePopover({
+  filament,
+  images,
+  codes,
+}: {
+  filament: PageData["filament"];
+  images: Images;
+  codes: PageData["codes"];
+}) {
+  const image = images[filament.key] as
+    | (Images[string] & { sourceUrl?: string | null })
+    | undefined;
+  const picture = useFetcher<Result>();
+  const rename = useFetcher<Result>();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const knownType = BAMBU_TYPES.some(([t]) => t === filament.type);
+  const [type, setType] = useState(knownType ? filament.type : OTHER);
+  const [otherType, setOtherType] = useState(knownType ? "" : filament.type);
+  const line = type === OTHER ? otherType : type;
+  const colours = coloursFor(line);
+  const knownColour = colours.some(([n]) => n === filament.colourName);
+  const [colour, setColour] = useState<string>(
+    knownColour ? filament.colourName : OTHER
+  );
+  const [otherName, setOtherName] = useState(
+    knownColour ? "" : filament.colourName
+  );
+  const [otherHex, setOtherHex] = useState(filament.colourHex);
+  const picked = colours.find(([n]) => n === colour);
+  const colourName = colour === OTHER ? otherName : colour;
+  const colourHex = colour === OTHER ? otherHex : picked?.[1] ?? otherHex;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="The picture, line and colour"
+          title="Change the picture, line or colour"
+          className="mr-4 rounded-md hover:ring-2 hover:ring-primary-200"
+        >
+          <FilamentPicture {...filament} images={images} size="size-14" />
+        </button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="z-[60] w-96 rounded-md border border-gray-200 bg-white p-4 shadow-lg"
+        >
+          <h4 className="text-sm font-semibold text-gray-900">Picture</h4>
+          <p className="mt-1 break-all text-xs text-gray-600">
+            {image?.sourceUrl ? (
+              <>
+                From{" "}
+                <a
+                  href={image.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline"
+                >
+                  {image.sourceUrl}
+                </a>
+              </>
+            ) : image?.status === "found" ? (
+              "From the Bambu store (its address wasn't kept)."
+            ) : (
+              image?.message ?? "No picture yet."
+            )}
+          </p>
+          <picture.Form
+            method="post"
+            className="mt-2 flex gap-2"
+            onSubmit={() => setUrl("")}
+          >
+            <input type="hidden" name="intent" value="image-url" />
+            <input
+              name="url"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Paste a picture's address (https://…)"
+              className={tw(inputClass, "min-w-0 flex-1")}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              disabled={!url || isFormProcessing(picture.state)}
+            >
+              Use
+            </Button>
+          </picture.Form>
+
+          <h4 className="mt-4 border-t border-gray-100 pt-3 text-sm font-semibold text-gray-900">
+            Line and colour
+          </h4>
+          <p className="text-xs text-gray-500">
+            For every spool and refill of this filament.
+          </p>
+          <rename.Form method="post" className="mt-2 flex flex-col gap-2">
+            <input type="hidden" name="intent" value="rename" />
+            <input type="hidden" name="type" value={line} />
+            <input type="hidden" name="colourName" value={colourName} />
+            <input type="hidden" name="colourHex" value={colourHex} />
+            <FilamentSearch
+              codes={codes}
+              onPick={(m) => {
+                const known = BAMBU_TYPES.some(([t]) => t === m.type);
+                setType(known ? m.type : OTHER);
+                if (!known) setOtherType(m.type);
+                const inCatalogue = coloursFor(m.type).some(
+                  ([n]) => n === m.colourName
+                );
+                setColour(inCatalogue ? m.colourName : OTHER);
+                if (!inCatalogue) {
+                  setOtherName(m.colourName);
+                  setOtherHex(m.colourHex);
+                }
+              }}
+            />
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+              Line
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className={selectClass}
+              >
+                {BAMBU_TYPES.map(([t]) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value={OTHER}>Other…</option>
+              </select>
+            </label>
+            {type === OTHER ? (
+              <input
+                value={otherType}
+                onChange={(e) => setOtherType(e.target.value)}
+                placeholder="The line's name"
+                className={inputClass}
+              />
+            ) : null}
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+              Colour
+              <span className="flex items-center gap-2">
+                <Swatch hex={colourHex} size="size-6" />
+                <select
+                  value={colour}
+                  onChange={(e) => setColour(e.target.value)}
+                  className={tw(selectClass, "flex-1")}
+                >
+                  {colours.map(([n]) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                  <option value={OTHER}>Other…</option>
+                </select>
+              </span>
+            </label>
+            {colour === OTHER ? (
+              <span className="flex items-center gap-2">
+                <input
+                  value={otherName}
+                  onChange={(e) => setOtherName(e.target.value)}
+                  placeholder="The colour's name"
+                  className={tw(inputClass, "flex-1")}
+                />
+                <input
+                  type="color"
+                  value={otherHex}
+                  onChange={(e) => setOtherHex(e.target.value)}
+                  aria-label="The colour"
+                  className="h-9 w-12 rounded border border-gray-300"
+                />
+              </span>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  !line || !colourName || isFormProcessing(rename.state)
+                }
+              >
+                Save
+              </Button>
+            </div>
+          </rename.Form>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
 export default function FilamentDetail() {
   useAmsLiveUpdates(); // the page follows the AMS
   const { filament, catalogue, spools, images, price, codes } =
@@ -1203,7 +1372,16 @@ export default function FilamentDetail() {
   const [showFinished, setShowFinished] = useState(false);
   const onHand = spools.filter((s) => s.status !== "retired");
   const finished = spools.filter((s) => s.status === "retired");
-  const shown = showFinished ? spools : onHand;
+  const shown = stockOrder(showFinished ? spools : onHand);
+  // each item keeps its number, by the order it was added
+  const numbers = new Map(
+    [...spools]
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      .map((s, i) => [s.id, i + 1])
+  );
   const firstToOpen = oldestNew(spools);
   const newCount = spools.filter((s) => spoolState(s) === "new").length;
   const grams = onHand.reduce((n, s) => n + gramsLeft(s), 0);
@@ -1216,7 +1394,7 @@ export default function FilamentDetail() {
   const anyPrice = spools.some((s) => s.pricePaid !== null);
   const spent = spools.reduce((n, s) => n + (s.pricePaid ?? 0), 0);
   const image = (images as Images)[filament.key];
-  const tare = filament.spoolWeightGrams ?? catalogue?.spoolWeight ?? null;
+  const tare = catalogue?.spoolWeight ?? null;
   const code = filament.filamentCode ?? image?.filamentCode ?? null;
   const fact = (k: string, v: string | null) =>
     v ? (
@@ -1234,10 +1412,10 @@ export default function FilamentDetail() {
       <Header
         slots={{
           "left-of-title": (
-            <FilamentPicture
-              {...filament}
+            <PicturePopover
+              filament={filament}
               images={images as Images}
-              size="mr-4 size-14"
+              codes={codes}
             />
           ),
         }}
@@ -1248,11 +1426,7 @@ export default function FilamentDetail() {
             <span>Bambu Lab</span>
             <span aria-hidden="true">·</span>
             <span>1.75 mm</span>
-            {code ? (
-              <span className="rounded border border-gray-200 px-1.5 py-0.5 font-mono text-xs text-gray-700">
-                {code}
-              </span>
-            ) : null}
+            {code ? <CodeChip code={code} /> : null}
           </div>
         }
       >
@@ -1293,114 +1467,86 @@ export default function FilamentDetail() {
             }}
           />
         ) : null}
-        {!image?.productUrl && image?.message ? (
-          <p className="text-xs text-gray-500">Picture: {image.message}</p>
-        ) : null}
 
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="flex flex-col gap-4">
-            <Card className="my-0 p-0">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-                <h3 className="text-text-md font-semibold text-gray-900">
-                  In stock{" "}
-                  <span className="font-normal text-gray-500">
-                    · {onHand.length} · {(grams / 1000).toFixed(2)} kg left
-                  </span>
-                </h3>
-                {finished.length > 0 ? (
-                  <label className="flex items-center gap-2 text-sm text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={showFinished}
-                      onChange={(e) => setShowFinished(e.target.checked)}
-                    />
-                    Show finished ({finished.length})
-                  </label>
-                ) : null}
-              </div>
-              {shown.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-gray-600">
-                  All of this filament is finished.
-                </p>
-              ) : (
-                <>
-                  <SpoolHeadings />
-                  <ul className="divide-y divide-gray-100">
-                    {shown.map((s) => (
-                      <SpoolLine
-                        key={s.id}
-                        spool={s}
-                        index={spools.indexOf(s)}
-                        tare={tare}
-                        openFirst={newCount > 1 && s.id === firstToOpen?.id}
-                      />
-                    ))}
-                  </ul>
-                </>
+        <Card className="my-0 p-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+            <h3 className="text-text-md font-semibold text-gray-900">
+              In stock{" "}
+              <span className="font-normal text-gray-500">
+                · {typeWords(onHand)} · {(grams / 1000).toFixed(2)} kg left
+              </span>
+            </h3>
+            {finished.length > 0 ? (
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={showFinished}
+                  onChange={(e) => setShowFinished(e.target.checked)}
+                />
+                Show finished ({finished.length})
+              </label>
+            ) : null}
+          </div>
+          {shown.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-gray-600">
+              All of this filament is finished.
+            </p>
+          ) : (
+            <StockTable
+              items={shown}
+              numbers={numbers}
+              tare={tare}
+              openFirstId={newCount > 1 ? firstToOpen?.id ?? null : null}
+            />
+          )}
+        </Card>
+
+        <div className="grid items-start gap-4 lg:grid-cols-3">
+          <Card className="my-0">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              From Bambu's catalogue
+            </h3>
+            <div className="mt-2">
+              {fact("Material", filament.material)}
+              {fact("Diameter", "1.75 mm")}
+              {fact(
+                "Density",
+                catalogue?.density ? `${catalogue.density} g/cm³` : null
               )}
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card className="my-0">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                  From Bambu's catalogue
-                </h3>
-                <div className="mt-2">
-                  {fact("Material", filament.material)}
-                  {fact("Diameter", "1.75 mm")}
-                  {fact(
-                    "Density",
-                    catalogue?.density ? `${catalogue.density} g/cm³` : null
-                  )}
-                  {fact(
-                    "Nozzle",
-                    catalogue?.nozzleTemp ? `${catalogue.nozzleTemp} °C` : null
-                  )}
-                  {fact(
-                    "Bed",
-                    catalogue?.bedTemp ? `${catalogue.bedTemp} °C` : null
-                  )}
-                  {!catalogue ? (
-                    <p className="py-2 text-sm text-gray-500">
-                      This line isn't in the catalogue.
-                    </p>
-                  ) : null}
-                </div>
-              </Card>
-              <Card className="my-0">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                  Your figures
-                </h3>
-                <div className="mt-2">
-                  {fact(
-                    "Left",
-                    `${(grams / 1000).toFixed(2)} kg on ${typeWords(onHand)}`
-                  )}
-                  {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
-                  {fact("Spent", anyPrice ? money(spent) : "—")}
-                  {fact("Bought ever", String(spools.length))}
-                </div>
-              </Card>
+              {fact(
+                "Nozzle",
+                catalogue?.nozzleTemp ? `${catalogue.nozzleTemp} °C` : null
+              )}
+              {fact(
+                "Bed",
+                catalogue?.bedTemp ? `${catalogue.bedTemp} °C` : null
+              )}
+              {!catalogue ? (
+                <p className="py-2 text-sm text-gray-500">
+                  This line isn't in the catalogue.
+                </p>
+              ) : null}
             </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <StoreCard
-              price={price}
-              paidPerKg={perKg}
-              productUrl={price?.productUrl ?? image?.productUrl ?? null}
-            />
-
-            <Specs
-              key={`${filament.type}|${filament.colourName}`}
-              filament={filament}
-              storeCode={
-                filament.filamentCode ? null : image?.filamentCode ?? null
-              }
-              spoolCount={spools.length}
-              codes={codes}
-            />
-          </div>
+          </Card>
+          <Card className="my-0">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Your figures
+            </h3>
+            <div className="mt-2">
+              {fact(
+                "Left",
+                `${(grams / 1000).toFixed(2)} kg on ${typeWords(onHand)}`
+              )}
+              {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
+              {fact("Spent", anyPrice ? money(spent) : "—")}
+              {fact("Bought ever", String(spools.length))}
+            </div>
+          </Card>
+          <StoreCard
+            price={price}
+            paidPerKg={perKg}
+            productUrl={price?.productUrl ?? image?.productUrl ?? null}
+          />
         </div>
       </div>
     </>

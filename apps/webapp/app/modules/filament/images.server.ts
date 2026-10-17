@@ -5,6 +5,7 @@
  * one filament at a time, at the store client's polite pace.
  */
 import { db } from "~/database/db.server";
+import { ShelfError } from "~/utils/error";
 import { Logger } from "~/utils/logger";
 import { downloadImage, findFilament, StoreError } from "./bambu-store.server";
 import { filamentKey } from "./catalogue";
@@ -141,6 +142,7 @@ export async function imageStatuses(organizationId: string) {
       message: true,
       productUrl: true,
       filamentCode: true,
+      sourceUrl: true,
     },
   });
   return Object.fromEntries(rows.map((r) => [r.key, r]));
@@ -157,4 +159,91 @@ export async function getFilamentImage(organizationId: string, key: string) {
         contentType: row.contentType ?? "image/jpeg",
       }
     : null;
+}
+
+const MAX_PICTURE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Sets a filament's picture from an address you give (when Shelf found none,
+ * or the wrong one): fetched now and kept, as the store's pictures are. Web
+ * addresses only, an image, up to 5 MB.
+ */
+export async function setFilamentImageFromUrl(
+  organizationId: string,
+  key: string,
+  address: string
+) {
+  let url: URL;
+  try {
+    url = new URL(address.trim());
+  } catch {
+    throw new ShelfError({
+      cause: null,
+      message: "That isn't a web address.",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new ShelfError({
+      cause: null,
+      message: "Use a web address (https://…).",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
+      redirect: "follow",
+    });
+  } catch (cause) {
+    throw new ShelfError({
+      cause,
+      message: "Couldn't fetch that picture.",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  const contentType = (res.headers.get("content-type") ?? "")
+    .split(";")[0]
+    .trim();
+  if (!res.ok)
+    throw new ShelfError({
+      cause: null,
+      message: `That address answered ${res.status}.`,
+      status: 400,
+      label: "Assets",
+    });
+  if (!contentType.startsWith("image/")) {
+    throw new ShelfError({
+      cause: null,
+      message: "That address isn't a picture.",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > MAX_PICTURE_BYTES) {
+    throw new ShelfError({
+      cause: null,
+      message: "That picture is over 5 MB.",
+      status: 400,
+      label: "Assets",
+    });
+  }
+  const data = {
+    status: "found",
+    bytes,
+    contentType,
+    sourceUrl: url.toString(),
+    message: null,
+    fetchedAt: new Date(),
+  };
+  await db.filamentImage.upsert({
+    where: { organizationId_key: { organizationId, key } },
+    create: { organizationId, key, ...data },
+    update: data,
+  });
 }

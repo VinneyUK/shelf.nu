@@ -1,6 +1,7 @@
 const imageRows = vi.hoisted(() => vi.fn());
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { filamentSlug } from "./catalogue";
 
 const m = vi.hoisted(() => {
   const spool = {
@@ -44,11 +45,13 @@ import {
   openedFor,
   openSpool,
   proposeSpool,
+  renameFilament,
   retireSpool,
   syncAmsTrays,
   updateFilament,
   updateSpool,
   updateSpoolDetails,
+  updateSpoolField,
   weighSpool,
 } from "./service.server";
 
@@ -760,5 +763,109 @@ describe("the AMS, brought into Filament", () => {
       amsSlot: 2,
     });
     expect((await syncAmsTrays("o1", [tray(2, "TAG1")])).events).toEqual([]);
+  });
+});
+
+describe("changing one cell of a filament's row", () => {
+  const item = (over: Record<string, unknown> = {}) => ({
+    id: "s1",
+    status: "active",
+    amsSlot: null,
+    openedOn: null,
+    purchasedOn: new Date("2026-09-01"),
+    remainingPercent: 100,
+    weightGrams: 1000,
+    ...over,
+  });
+  const lastSaved = () => m.spool.update.mock.calls.at(-1)?.[0].data;
+  it("loads it into an AMS slot, opening it and freeing the slot", async () => {
+    m.spool.findFirst.mockResolvedValue(item());
+    m.spool.updateMany.mockResolvedValue({ count: 1 });
+    expect(await updateSpoolField("o1", "s1", "status", "ams2")).toBe(
+      "In AMS slot 2."
+    );
+    expect(lastSaved()).toMatchObject({ amsSlot: 2, status: "active" });
+    expect(lastSaved().openedOn).toBeInstanceOf(Date);
+    expect(m.spool.updateMany).toHaveBeenCalled(); // whatever was in slot 2 is out
+  });
+  it("takes what's left in kg, by the item's own size", async () => {
+    m.spool.findFirst.mockResolvedValue(item({ weightGrams: 500 }));
+    expect(await updateSpoolField("o1", "s1", "leftKg", "0.25")).toBe(
+      "50% left (0.25 kg)."
+    );
+    expect(lastSaved()).toMatchObject({
+      remainingPercent: 50,
+      status: "active",
+    });
+    expect(lastSaved().openedOn).toBeInstanceOf(Date); // some used: it's open
+  });
+  it("at 0% it waits for you to confirm it's run out", async () => {
+    m.spool.findFirst.mockResolvedValue(
+      item({ openedOn: new Date("2026-09-10") })
+    );
+    await updateSpoolField("o1", "s1", "left", "0");
+    expect(lastSaved()).toMatchObject({ remainingPercent: 0, status: "empty" });
+  });
+  it("sets and clears a price", async () => {
+    m.spool.findFirst.mockResolvedValue(item());
+    expect(await updateSpoolField("o1", "s1", "pricePaid", "13.994")).toBe(
+      "Paid £13.99."
+    );
+    expect(await updateSpoolField("o1", "s1", "pricePaid", "")).toBe(
+      "Price cleared."
+    );
+    expect(lastSaved()).toEqual({ pricePaid: null });
+    await expect(
+      updateSpoolField("o1", "s1", "pricePaid", "-1")
+    ).rejects.toThrow(/from 0/);
+  });
+  it("won't have it opened before it was bought", async () => {
+    m.spool.findFirst.mockResolvedValue(item());
+    await expect(
+      updateSpoolField("o1", "s1", "openedOn", "2026-08-01")
+    ).rejects.toThrow(/before the bought date/);
+    expect(await updateSpoolField("o1", "s1", "openedOn", "2026-09-05")).toBe(
+      "Opened date saved."
+    );
+  });
+  it("tidies a box code and its sizes", async () => {
+    m.spool.findFirst.mockResolvedValue(item());
+    expect(await updateSpoolField("o1", "s1", "filamentCode", " 10-100 ")).toBe(
+      "Code 10100."
+    );
+    await updateSpoolField("o1", "s1", "spoolWeightGrams", "");
+    expect(lastSaved()).toEqual({ spoolWeightGrams: null });
+    await expect(
+      updateSpoolField("o1", "s1", "weightGrams", "0")
+    ).rejects.toThrow(/from 1/);
+  });
+});
+
+describe("the line and colour of a filament", () => {
+  it("move every spool and refill of it, and give its new address", async () => {
+    m.spool.findMany.mockResolvedValue([
+      { id: "a", type: "PLA Basic", colourName: "Jade White" },
+      { id: "b", type: "PLA Basic", colourName: "Jade White" },
+    ]);
+    m.spool.updateMany.mockResolvedValue({ count: 2 });
+    const next = await renameFilament(
+      "o1",
+      filamentSlug("PLA Basic", "Jade White"),
+      {
+        type: "PLA Matte",
+        colourName: "Ivory White",
+        colourHex: "#ffffff",
+      }
+    );
+    expect(next).toBe(filamentSlug("PLA Matte", "Ivory White"));
+    expect(m.spool.updateMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { id: { in: ["a", "b"] } },
+      data: {
+        type: "PLA Matte",
+        material: "PLA",
+        colourName: "Ivory White",
+        colourHex: "#FFFFFF",
+      },
+    });
   });
 });

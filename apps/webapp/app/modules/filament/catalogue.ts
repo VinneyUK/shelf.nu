@@ -214,9 +214,7 @@ export function spoolState(s: Lifecycle): SpoolState {
 /** The state's words, with the slot for a spool in use: "In use · AMS 2". */
 export function stateLabel(s: Lifecycle) {
   const state = spoolState(s);
-  return state === "in-use"
-    ? `In use · AMS ${s.amsSlot}`
-    : SPOOL_STATES[state].label;
+  return state === "in-use" ? `AMS ${s.amsSlot}` : SPOOL_STATES[state].label;
 }
 
 /** "today", "yesterday", "3 days ago", "3 weeks ago", "8 months ago", "2 years ago". */
@@ -395,4 +393,38 @@ export function typeWords(items: { packaging?: string | null }[]) {
     c.refills ? `${c.refills} refill${c.refills === 1 ? "" : "s"}` : "",
   ].filter(Boolean);
   return parts.join(" · ") || "none";
+}
+
+/**
+ * A filament's stock in the order you'd use it: open ones first (in the AMS,
+ * on the shelf, run out), least left at the top; then new ones, oldest bought
+ * first; then retired ones, last retired first.
+ */
+export function stockOrder<
+  S extends Lifecycle & {
+    remainingPercent: number;
+    weightGrams: number;
+    purchasedOn: Date | string | null;
+    createdAt: Date | string;
+    retiredAt?: Date | string | null;
+  },
+>(items: S[]): S[] {
+  const rank = (s: S) => {
+    const st = spoolState(s);
+    return st === "retired" ? 2 : st === "new" ? 1 : 0;
+  };
+  const time = (d: Date | string | null | undefined) =>
+    d ? new Date(d).getTime() : Infinity;
+  const left = (s: S) => (s.weightGrams * s.remainingPercent) / 100;
+  return [...items].sort((a, b) => {
+    const r = rank(a) - rank(b);
+    if (r) return r;
+    if (rank(a) === 0) return left(a) - left(b);
+    if (rank(a) === 1)
+      return (
+        time(a.purchasedOn) - time(b.purchasedOn) ||
+        time(a.createdAt) - time(b.createdAt)
+      );
+    return time(b.retiredAt) - time(a.retiredAt);
+  });
 }
