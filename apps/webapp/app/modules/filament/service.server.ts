@@ -583,3 +583,57 @@ export async function openSpool(
   await db.spool.update({ where: { id, organizationId }, data: { openedOn } });
   return openedOn;
 }
+
+/**
+ * Changes a spool's status by hand, including going back: New, Opened or
+ * Retired (In use comes from choosing an AMS slot). Returns what happened, in
+ * words, for the pop-up.
+ */
+export async function changeSpoolState(
+  organizationId: string,
+  id: string,
+  target: "new" | "opened" | "retired"
+): Promise<string> {
+  const spool = await db.spool.findFirst({ where: { id, organizationId } });
+  if (!spool) throw bad("That spool doesn't exist.", 404);
+  if (target === "retired") {
+    await retireSpool(organizationId, id);
+    return "Retired: it's in the finished spools.";
+  }
+  if (target === "new") {
+    // a sealed spool is full, unopened and out of the printer
+    await db.spool.update({
+      where: { id, organizationId },
+      data: {
+        openedOn: null,
+        amsSlot: null,
+        remainingPercent: 100,
+        status: "active",
+        retiredAt: null,
+      },
+    });
+    return spool.remainingPercent < 100 || spool.amsSlot
+      ? "Marked New: unopened, out of the AMS, back to 100%."
+      : "Marked New: unopened.";
+  }
+  // opened: open a New spool, unload one from the AMS, or bring one back
+  const back = spool.status !== "active";
+  await db.spool.update({
+    where: { id, organizationId },
+    data: {
+      openedOn: spool.openedOn ?? today(),
+      amsSlot: null,
+      status: "active",
+      retiredAt: null,
+      remainingPercent:
+        back && spool.remainingPercent === 0 ? 5 : spool.remainingPercent,
+    },
+  });
+  if (back)
+    return `Back in use, on the shelf with ${
+      spool.remainingPercent || 5
+    }% left.`;
+  if (spool.amsSlot)
+    return `Taken out of AMS ${spool.amsSlot}: opened, on the shelf.`;
+  return spool.openedOn ? "Opened, on the shelf." : "Opened today.";
+}

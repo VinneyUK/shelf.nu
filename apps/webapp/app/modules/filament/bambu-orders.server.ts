@@ -18,6 +18,51 @@ import { getAiSettingsRow } from "~/modules/ai/settings.server";
 import { BAMBU_TYPES, coloursFor } from "./catalogue";
 import { proposeSpool } from "./service.server";
 
+const MONTHS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
+
+/**
+ * The order date as a date: 2026-10-12, 12/10/2026 (UK order: day first) or
+ * 12 October 2026. Null if it isn't a real date: an unknown date stays blank.
+ */
+export function parseOrderDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim();
+  let y: number, m: number, d: number;
+  let hit = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (hit) [y, m, d] = [Number(hit[1]), Number(hit[2]), Number(hit[3])];
+  else if ((hit = v.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/)))
+    [d, m, y] = [Number(hit[1]), Number(hit[2]), Number(hit[3])];
+  else if (
+    (hit = v.match(
+      /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3})[A-Za-z]*,?\s+(\d{4})$/
+    ))
+  ) {
+    [d, y] = [Number(hit[1]), Number(hit[3])];
+    m = MONTHS.indexOf(hit[2].toLowerCase()) + 1;
+  } else return null;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const real =
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d;
+  return real && y > 2015 && date.getTime() <= Date.now() + 86_400_000
+    ? date
+    : null;
+}
+
 /** Mentions Bambu Lab and reads like an order. */
 export function looksLikeBambuOrder({
   subject,
@@ -56,7 +101,8 @@ const TOOL: Tool = {
       },
       orderDate: {
         type: ["string", "null"],
-        description: "The order date as YYYY-MM-DD, if shown.",
+        description:
+          "The order date as YYYY-MM-DD. If the order doesn't print one, use the date of the original Bambu Lab email in the forwarded header (Date: …). Null if neither is shown.",
       },
       items: {
         type: "array",
@@ -159,11 +205,7 @@ export async function spoolsFromBambuOrder(
     tool: TOOL,
   });
   if (!answer.isBambuOrder) return 0;
-  const purchasedOn =
-    typeof answer.orderDate === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(answer.orderDate)
-      ? new Date(`${answer.orderDate}T00:00:00.000Z`)
-      : null;
+  const purchasedOn = parseOrderDate(answer.orderDate);
   const lines = (
     Array.isArray(answer.items) ? (answer.items as Line[]) : []
   ).filter((l) => l && l.isFilament && l.line && l.colour);

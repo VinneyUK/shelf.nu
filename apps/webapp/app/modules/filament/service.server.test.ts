@@ -29,6 +29,7 @@ vi.mock("~/database/db.server", () => ({
 
 import {
   approveCandidate,
+  changeSpoolState,
   createSpool,
   createSpools,
   getFilamentBySlug,
@@ -531,5 +532,79 @@ describe("opening spools", () => {
       notes: null,
     });
     expect(inUse.openedOn).toEqual(todayDate());
+  });
+});
+
+describe("changing a spool's status by hand", () => {
+  const last = () => m.spool.update.mock.calls.at(-1)?.[0].data;
+  it("back to New: unopened, out of the AMS, full", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      openedOn: new Date("2026-10-01"),
+      amsSlot: 2,
+      remainingPercent: 60,
+    });
+    expect(await changeSpoolState("o1", "s1", "new")).toMatch(/back to 100%/);
+    expect(last()).toMatchObject({
+      openedOn: null,
+      amsSlot: null,
+      remainingPercent: 100,
+      status: "active",
+    });
+  });
+  it("to Opened: opens a New spool today", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      openedOn: null,
+      amsSlot: null,
+      remainingPercent: 100,
+    });
+    expect(await changeSpoolState("o1", "s1", "opened")).toBe("Opened today.");
+    expect(last().openedOn).toBeInstanceOf(Date);
+  });
+  it("to Opened: takes a spool out of the AMS, keeping its opened date", async () => {
+    const opened = new Date("2026-09-20");
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      openedOn: opened,
+      amsSlot: 3,
+      remainingPercent: 40,
+    });
+    expect(await changeSpoolState("o1", "s1", "opened")).toMatch(
+      /Taken out of AMS 3/
+    );
+    expect(last()).toMatchObject({
+      openedOn: opened,
+      amsSlot: null,
+      remainingPercent: 40,
+    });
+  });
+  it("to Opened: brings back a retired spool with a little left", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "retired",
+      openedOn: new Date("2026-09-20"),
+      amsSlot: null,
+      remainingPercent: 0,
+    });
+    expect(await changeSpoolState("o1", "s1", "opened")).toMatch(/5% left/);
+    expect(last()).toMatchObject({
+      status: "active",
+      retiredAt: null,
+      remainingPercent: 5,
+    });
+  });
+  it("to Retired", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      openedOn: null,
+      amsSlot: null,
+      remainingPercent: 30,
+    });
+    expect(await changeSpoolState("o1", "s1", "retired")).toMatch(/Retired/);
   });
 });

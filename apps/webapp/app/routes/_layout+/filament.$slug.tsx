@@ -66,6 +66,7 @@ import {
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
 import {
+  changeSpoolState,
   createSpools,
   deleteSpool,
   getFilamentBySlug,
@@ -263,6 +264,23 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           `${first.colourName} · ${first.type}`
         );
       }
+      case "state": {
+        const target = String(form.get("target") ?? "");
+        if (target !== "new" && target !== "opened" && target !== "retired") {
+          throw new ShelfError({
+            cause: null,
+            message: "Choose New, Opened or Retired.",
+            status: 400,
+            label: "Assets",
+          });
+        }
+        const what = await changeSpoolState(organizationId, id, target);
+        return done(
+          userId,
+          "Status changed",
+          `${String(form.get("label") ?? "The spool")}: ${what}`
+        );
+      }
       case "open": {
         await openSpool(organizationId, id);
         return done(
@@ -441,6 +459,54 @@ function SpoolHeadings() {
   );
 }
 
+/**
+ * A spool's status as a chip you can change: New, Opened or Retired, going
+ * back as well as forward. (In use comes from choosing an AMS slot in Edit.)
+ */
+function StatusPicker({ spool, label }: { spool: Spool; label: string }) {
+  const fetcher = useFetcher<Result>();
+  const state = spoolState(spool);
+  return (
+    <fetcher.Form method="post" className="relative inline-flex">
+      <input type="hidden" name="intent" value="state" />
+      <input type="hidden" name="id" value={spool.id} />
+      <input type="hidden" name="label" value={label} />
+      <select
+        key={state}
+        name="target"
+        defaultValue={state}
+        disabled={isFormProcessing(fetcher.state)}
+        onChange={(e) => e.currentTarget.form?.requestSubmit()}
+        aria-label={`Status of ${label}`}
+        className={tw(
+          "cursor-pointer appearance-none rounded border-0 py-0.5 pl-1.5 pr-5 text-xs font-medium focus:ring-2 focus:ring-primary-100",
+          SPOOL_STATES[state].tone
+        )}
+      >
+        {state === "in-use" ? (
+          <option value="in-use" disabled>
+            {stateLabel(spool)}
+          </option>
+        ) : null}
+        {state === "run-out" ? (
+          <option value="run-out" disabled>
+            Run out?
+          </option>
+        ) : null}
+        <option value="new">New</option>
+        <option value="opened">Opened</option>
+        <option value="retired">Retired</option>
+      </select>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+      >
+        ▾
+      </span>
+    </fetcher.Form>
+  );
+}
+
 /** A date with how long ago underneath. */
 function When({ date }: { date: string | Date }) {
   return (
@@ -485,11 +551,7 @@ function SpoolLine({
           #{index + 1}
         </span>
         <span className="w-32 text-xs">
-          <span
-            className={tw("rounded px-1.5 py-0.5", SPOOL_STATES[state].tone)}
-          >
-            {stateLabel(spool)}
-          </span>
+          <StatusPicker spool={spool} label={label} />
         </span>
         <div className="flex min-w-32 flex-1 items-center gap-2">
           <div className="h-2 flex-1 rounded-full bg-gray-100">

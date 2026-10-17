@@ -8,6 +8,7 @@ vi.mock("./service.server", () => ({ proposeSpool: vi.fn() }));
 
 import {
   looksLikeBambuOrder,
+  parseOrderDate,
   spoolsFromBambuOrder,
 } from "./bambu-orders.server";
 
@@ -131,5 +132,40 @@ describe("reading an order into the Filament inbox", () => {
     expect(await spoolsFromBambuOrder(order, { call, propose })).toBe(0);
     expect(call).not.toHaveBeenCalled();
     expect(propose).not.toHaveBeenCalled();
+  });
+});
+
+describe("the order date becomes the bought date", () => {
+  const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+  it("in whichever way it's written", () => {
+    expect(parseOrderDate("2026-10-12")).toEqual(day("2026-10-12"));
+    expect(parseOrderDate("12/10/2026")).toEqual(day("2026-10-12")); // UK: day first
+    expect(parseOrderDate("12 October 2026")).toEqual(day("2026-10-12"));
+    expect(parseOrderDate("3rd Sep 2026")).toEqual(day("2026-09-03"));
+  });
+  it("stays blank when there's no real date", () => {
+    expect(parseOrderDate(null)).toBeNull();
+    expect(parseOrderDate("soon")).toBeNull();
+    expect(parseOrderDate("31/02/2026")).toBeNull();
+    expect(parseOrderDate("2099-01-01")).toBeNull(); // not in the future
+  });
+  it("reaches the inbox entry, whatever the format", async () => {
+    const call = vi.fn().mockResolvedValue({
+      isBambuOrder: true,
+      orderDate: "12/10/2026",
+      items: [
+        {
+          isFilament: true,
+          line: "PLA Basic",
+          colour: "Jade White",
+          quantity: 1,
+        },
+      ],
+    });
+    const propose = vi
+      .fn()
+      .mockResolvedValue({ kind: "pending", candidateId: "c" });
+    await spoolsFromBambuOrder(order, { call, propose });
+    expect(propose.mock.calls[0][1].purchasedOn).toEqual(day("2026-10-12"));
   });
 });
