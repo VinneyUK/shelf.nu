@@ -45,9 +45,14 @@ import {
   catalogueEntry,
   coloursFor,
   costPerKg,
+  daysAgo,
   filamentKey,
   gramsLeft,
+  oldestNew,
+  SPOOL_STATES,
   SPOOL_WEIGHTS,
+  spoolState,
+  stateLabel,
 } from "~/modules/filament/catalogue";
 import {
   fetchMissingImages,
@@ -65,6 +70,7 @@ import {
   deleteSpool,
   getFilamentBySlug,
   keepSpool,
+  openSpool,
   retireSpool,
   updateFilament,
   updateSpoolDetails,
@@ -183,6 +189,7 @@ const SpoolDetailsForm = z.object({
   remainingPercent: z.coerce.number(),
   pricePaid: optionalNumber,
   purchasedOn: optionalDate,
+  openedOn: optionalDate,
   amsSlot: optionalNumber,
   notes: optionalText,
 });
@@ -260,6 +267,14 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           userId,
           made.length === 1 ? "Spool added" : `${made.length} spools added`,
           `${first.colourName} · ${first.type}`
+        );
+      }
+      case "open": {
+        await openSpool(organizationId, id);
+        return done(
+          userId,
+          "Spool opened",
+          `${String(form.get("label") ?? "The spool")}: opened today.`
         );
       }
       case "spool":
@@ -421,25 +436,43 @@ function SpoolHeadings() {
   return (
     <div className="hidden items-center gap-x-4 border-b border-gray-200 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-400 md:flex">
       <span className="w-8">#</span>
-      <span className="w-28">Where</span>
-      <span className="min-w-40 flex-1">Left</span>
+      <span className="w-32">Status</span>
+      <span className="min-w-32 flex-1">Left</span>
       <span className="w-20 text-right">Weight</span>
       <span className="w-20 text-right">Paid</span>
-      <span className="w-24 text-right">Bought</span>
+      <span className="w-28 text-right">Bought</span>
+      <span className="w-28 text-right">Opened</span>
       <span className="w-[9.5rem]" />
     </div>
   );
 }
 
-/** One spool of this filament: where it is, what's left, what it cost; weigh, edit, retire. */
+/** A date with how long ago underneath. */
+function When({ date }: { date: string | Date }) {
+  return (
+    <span className="flex flex-col items-end leading-tight">
+      <DateS date={date} />
+      <span className="text-[11px] text-gray-400">{daysAgo(date)}</span>
+    </span>
+  );
+}
+
+/**
+ * One spool of this filament: its status (New, Opened, In use, Run out?,
+ * Retired), what's left, what it cost, when it was bought and opened; and the
+ * buttons its status calls for.
+ */
 function SpoolLine({
   spool,
   index,
   tare,
+  openFirst,
 }: {
   spool: Spool;
   index: number;
   tare: number | null;
+  /** The oldest-bought New spool, when there's a choice of which to open */
+  openFirst: boolean;
 }) {
   const money = useMoney();
   const edit = useFetcher<Result>();
@@ -448,34 +481,23 @@ function SpoolLine({
   useEffect(() => {
     if (edit.state === "idle" && edit.data && !edit.data.error) setMode("none");
   }, [edit.state, edit.data]);
-  const retired = spool.status === "retired";
+  const state = spoolState(spool);
   const busy = isFormProcessing(act.state) || isFormProcessing(edit.state);
+  const label = `${spool.colourName} · ${spool.type}`;
   return (
-    <li className={tw("px-4 py-3", retired ? "bg-gray-25" : "")}>
+    <li className={tw("px-4 py-3", state === "retired" ? "bg-gray-25" : "")}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="w-8 font-mono text-sm text-gray-400">
           #{index + 1}
         </span>
-        <span className="w-28 text-xs">
-          {retired ? (
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">
-              Finished
-            </span>
-          ) : spool.status === "empty" ? (
-            <span className="rounded bg-warning-50 px-1.5 py-0.5 text-warning-700">
-              Run out?
-            </span>
-          ) : spool.amsSlot ? (
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">
-              In AMS {spool.amsSlot}
-            </span>
-          ) : (
-            <span className="rounded bg-success-50 px-1.5 py-0.5 text-success-700">
-              On the shelf
-            </span>
-          )}
+        <span className="w-32 text-xs">
+          <span
+            className={tw("rounded px-1.5 py-0.5", SPOOL_STATES[state].tone)}
+          >
+            {stateLabel(spool)}
+          </span>
         </span>
-        <div className="flex min-w-40 flex-1 items-center gap-2">
+        <div className="flex min-w-32 flex-1 items-center gap-2">
           <div className="h-2 flex-1 rounded-full bg-gray-100">
             <div
               className={tw(
@@ -499,15 +521,29 @@ function SpoolLine({
             <span className="text-gray-400">—</span>
           )}
         </span>
-        <span className="w-24 text-right text-sm text-gray-700">
+        <span className="w-28 text-right text-sm text-gray-700">
           {spool.purchasedOn ? (
-            <DateS date={spool.purchasedOn} />
+            <When date={spool.purchasedOn} />
+          ) : (
+            <button
+              type="button"
+              className="text-sm text-primary-600 hover:underline"
+              onClick={() => setMode("edit")}
+              aria-label={`Add the bought date for spool #${index + 1}`}
+            >
+              Add
+            </button>
+          )}
+        </span>
+        <span className="w-28 text-right text-sm text-gray-700">
+          {spool.openedOn ? (
+            <When date={spool.openedOn} />
           ) : (
             <span className="text-gray-400">—</span>
           )}
         </span>
-        <div className="flex w-[9.5rem] justify-end gap-2">
-          {retired ? (
+        <div className="flex w-[9.5rem] flex-wrap justify-end gap-2">
+          {state === "retired" ? (
             <act.Form method="post">
               <input type="hidden" name="id" value={spool.id} />
               <input type="hidden" name="remainingPercent" value={5} />
@@ -524,14 +560,31 @@ function SpoolLine({
             </act.Form>
           ) : (
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setMode(mode === "weigh" ? "none" : "weigh")}
-              >
-                Weigh
-              </Button>
+              {state === "new" ? (
+                <act.Form method="post">
+                  <input type="hidden" name="id" value={spool.id} />
+                  <input type="hidden" name="label" value={label} />
+                  <Button
+                    type="submit"
+                    name="intent"
+                    value="open"
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy}
+                  >
+                    Open
+                  </Button>
+                </act.Form>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setMode(mode === "weigh" ? "none" : "weigh")}
+                >
+                  Weigh
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="secondary"
@@ -544,6 +597,11 @@ function SpoolLine({
           )}
         </div>
       </div>
+      {openFirst ? (
+        <p className="mt-1 text-right text-xs text-gray-500">
+          Bought first: open this one before the others.
+        </p>
+      ) : null}
 
       {mode === "weigh" ? (
         <act.Form
@@ -577,7 +635,7 @@ function SpoolLine({
       {mode === "edit" ? (
         <edit.Form
           method="post"
-          className="mt-3 grid gap-3 rounded-lg bg-gray-25 p-3 sm:grid-cols-3 lg:grid-cols-5"
+          className="mt-3 grid gap-3 rounded-lg bg-gray-25 p-3 sm:grid-cols-3 lg:grid-cols-6"
         >
           <input type="hidden" name="intent" value="spool" />
           <input type="hidden" name="id" value={spool.id} />
@@ -612,6 +670,18 @@ function SpoolLine({
                 spool.purchasedOn ? String(spool.purchasedOn).slice(0, 10) : ""
               }
               className={inputClass}
+              autoFocus={!spool.purchasedOn}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+            Opened on
+            <input
+              name="openedOn"
+              type="date"
+              defaultValue={
+                spool.openedOn ? String(spool.openedOn).slice(0, 10) : ""
+              }
+              className={inputClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
@@ -637,7 +707,11 @@ function SpoolLine({
               className={inputClass}
             />
           </label>
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-3 lg:col-span-5">
+          <p className="text-xs text-gray-500 sm:col-span-3 lg:col-span-6">
+            Leave a date empty if you don't know it. Loading a spool into the
+            AMS, or using some of it, opens it today.
+          </p>
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-3 lg:col-span-6">
             <DeleteSpool
               label={`spool #${index + 1} of ${spool.colourName}`}
               disabled={busy}
@@ -668,7 +742,6 @@ function SpoolLine({
           </div>
         </edit.Form>
       ) : null}
-      <div className="mt-1 flex justify-end"></div>
     </li>
   );
 }
@@ -1035,6 +1108,8 @@ export default function FilamentDetail() {
   const onHand = spools.filter((s) => s.status !== "retired");
   const finished = spools.filter((s) => s.status === "retired");
   const shown = showFinished ? spools : onHand;
+  const firstToOpen = oldestNew(spools);
+  const newCount = spools.filter((s) => spoolState(s) === "new").length;
   const grams = onHand.reduce((n, s) => n + gramsLeft(s), 0);
   const priced = spools
     .map((s) => costPerKg(s))
@@ -1154,6 +1229,7 @@ export default function FilamentDetail() {
                         spool={s}
                         index={spools.indexOf(s)}
                         tare={tare}
+                        openFirst={newCount > 1 && s.id === firstToOpen?.id}
                       />
                     ))}
                   </ul>

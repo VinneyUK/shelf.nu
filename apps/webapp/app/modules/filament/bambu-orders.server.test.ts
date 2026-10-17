@@ -12,14 +12,12 @@ import {
 } from "./bambu-orders.server";
 
 beforeEach(() => {
-  ai.settings
-    .mockReset()
-    .mockResolvedValue({
-      enabled: true,
-      apiKey: "k",
-      model: "m",
-      workspaceId: "",
-    });
+  ai.settings.mockReset().mockResolvedValue({
+    enabled: true,
+    apiKey: "k",
+    model: "m",
+    workspaceId: "",
+  });
 });
 
 const order = {

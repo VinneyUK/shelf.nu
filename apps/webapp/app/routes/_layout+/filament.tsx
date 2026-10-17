@@ -41,6 +41,8 @@ import {
   filamentKey,
   filamentSlug,
   groupSpools,
+  spoolState,
+  stateCounts,
   summarise,
 } from "~/modules/filament/catalogue";
 import {
@@ -78,9 +80,10 @@ export const handle = { breadcrumb: () => "Filament" };
 
 const STATES = {
   all: "All",
-  ams: "In the AMS",
-  shelf: "On the shelf",
-  out: "Run out",
+  new: "New",
+  opened: "Opened",
+  inuse: "In use",
+  out: "Run out?",
   offer: "On offer",
 } as const;
 const SORTS = {
@@ -137,9 +140,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const matched = onHand.filter(
       (s) =>
         (state === "all" ||
-          (state === "ams" && s.amsSlot !== null && s.status === "active") ||
-          (state === "shelf" && s.amsSlot === null && s.status === "active") ||
-          (state === "out" && s.status === "empty") ||
+          (state === "new" && spoolState(s) === "new") ||
+          (state === "opened" && spoolState(s) === "opened") ||
+          (state === "inuse" && spoolState(s) === "in-use") ||
+          (state === "out" && spoolState(s) === "run-out") ||
           (state === "offer" &&
             Boolean(prices[filamentKey(s.type, s.colourName)]?.onOffer))) &&
         (!line || s.type === line) &&
@@ -371,8 +375,9 @@ function Overview({
 }) {
   const money = useMoney();
   const summary = summarise(spools);
+  const newSpools = spools.filter((s) => spoolState(s) === "new").length;
   const figures: [string, string][] = [
-    ["Spools", String(summary.spools)],
+    ["Spools", `${summary.spools}${newSpools ? ` (${newSpools} new)` : ""}`],
     ["Filament left", `${(summary.gramsLeft / 1000).toFixed(1)} kg`],
     ["Worth", anyPrice ? money(summary.valueLeft) : "—"],
     ["Spent", anyPrice ? money(summary.spent) : "—"],
@@ -518,6 +523,18 @@ function CheckPrices() {
   );
 }
 
+/** A filament's spools in words: "2 new · 1 open", or "3 spools". */
+function spoolCountWords(spools: Parameters<typeof stateCounts>[0]) {
+  const c = stateCounts(spools);
+  const parts = [
+    c.new ? `${c.new} new` : "",
+    c.open ? `${c.open} open` : "",
+  ].filter(Boolean);
+  return parts.length
+    ? parts.join(" · ")
+    : `${spools.length} spool${spools.length === 1 ? "" : "s"}`;
+}
+
 /** One labelled fact, as on an asset tile. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -587,7 +604,7 @@ function FilamentTile({
               className="size-2.5 rounded-full ring-1 ring-black/10"
               style={{ background: group.colourHex }}
             />
-            {group.spools.length} spool{group.spools.length === 1 ? "" : "s"}
+            {spoolCountWords(group.spools)}
           </span>
         </div>
       </div>
@@ -920,7 +937,7 @@ function FilamentListRow({
             {(group.gramsLeft / 1000).toFixed(2)} kg
           </div>
           <div className="text-xs text-gray-500">
-            {group.spools.length} spool{group.spools.length === 1 ? "" : "s"}
+            {spoolCountWords(group.spools)}
           </div>
         </div>
         <div className="hidden w-20 text-right text-xs tabular-nums text-gray-500 sm:block">

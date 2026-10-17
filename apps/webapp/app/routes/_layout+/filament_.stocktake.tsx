@@ -22,7 +22,11 @@ import { ChevronRight } from "~/components/icons/library";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
-import { catalogueEntry, stocktakeOrder } from "~/modules/filament/catalogue";
+import {
+  catalogueEntry,
+  spoolState,
+  stocktakeOrder,
+} from "~/modules/filament/catalogue";
 import { imageStatuses } from "~/modules/filament/images.server";
 import { done, failed } from "~/modules/filament/notify.server";
 import { getFilament, weighSpool } from "~/modules/filament/service.server";
@@ -50,13 +54,24 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       getFilament(organizationId),
       imageStatuses(organizationId),
     ]);
+    // sealed (New) spools are full by definition: skipped unless asked for
+    const withSealed = new URL(request.url).searchParams.get("sealed") === "1";
     const onHand = stocktakeOrder(
-      spools.filter((s) => s.status !== "retired")
+      spools.filter(
+        (s) => s.status !== "retired" && (withSealed || spoolState(s) !== "new")
+      )
     ).map((s) => ({
       ...s,
       tare: s.spoolWeightGrams ?? catalogueEntry(s.type)?.spoolWeight ?? null,
     }));
-    return payload({ header: { title: "Stocktake" }, spools: onHand, images });
+    const sealed = spools.filter((s) => spoolState(s) === "new").length;
+    return payload({
+      header: { title: "Stocktake" },
+      spools: onHand,
+      images,
+      withSealed,
+      sealed,
+    });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
     throw data(error(reason), { status: reason.status });
@@ -224,7 +239,7 @@ function StocktakeRow({
 }
 
 export default function Stocktake() {
-  const { spools, images } = useLoaderData<typeof loader>();
+  const { spools, images, withSealed, sealed } = useLoaderData<typeof loader>();
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const [weighed, setWeighed] = useState<Set<number>>(new Set());
   const next = (from: number) => {
@@ -251,6 +266,11 @@ export default function Stocktake() {
           <span className="text-sm text-gray-600">
             {weighed.size} of {spools.length} weighed
           </span>
+          {sealed > 0 ? (
+            <Button to={withSealed ? "?" : "?sealed=1"} variant="secondary">
+              {withSealed ? "Skip sealed spools" : `Include ${sealed} sealed`}
+            </Button>
+          ) : null}
           <Button to="/filament" variant="secondary">
             Done
           </Button>

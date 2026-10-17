@@ -40,6 +40,7 @@ const FAILED: Record<string, string> = {
   dismiss: "Couldn't dismiss it",
   retire: "Couldn't retire the spool",
   keep: "Couldn't bring the spool back",
+  open: "Couldn't open the spool",
   filament: "Couldn't save the filament",
   spool: "Couldn't save the spool",
   weigh: "Couldn't weigh the spool",

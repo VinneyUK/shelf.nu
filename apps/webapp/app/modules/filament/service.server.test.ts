@@ -33,6 +33,8 @@ import {
   createSpools,
   getFilamentBySlug,
   keepSpool,
+  openedFor,
+  openSpool,
   proposeSpool,
   retireSpool,
   updateFilament,
@@ -406,5 +408,128 @@ describe("an inbox entry for several spools", () => {
       quantity: 4,
       source: "receipt",
     });
+  });
+});
+
+describe("opening spools", () => {
+  const todayDate = () =>
+    new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  it("opens itself when it goes into the AMS or starts being used, unless a date is given", () => {
+    expect(
+      openedFor({ openedOn: null, amsSlot: null, remainingPercent: 100 })
+    ).toBeNull();
+    expect(
+      openedFor({ openedOn: null, amsSlot: 3, remainingPercent: 100 })
+    ).toEqual(todayDate());
+    expect(
+      openedFor({ openedOn: null, amsSlot: null, remainingPercent: 80 })
+    ).toEqual(todayDate());
+    const given = new Date("2026-09-01T00:00:00.000Z");
+    expect(
+      openedFor({ openedOn: given, amsSlot: 3, remainingPercent: 20 })
+    ).toBe(given);
+  });
+  it("adds new spools sealed, except the one going into the AMS", async () => {
+    const made = await createSpools("o1", { ...input, amsSlot: 1 }, 3);
+    expect(made.map((s) => (s.openedOn ? "opened" : "new"))).toEqual([
+      "opened",
+      "new",
+      "new",
+    ]);
+  });
+  it("won't have a spool opened before it was bought", async () => {
+    await expect(
+      createSpool("o1", {
+        ...input,
+        purchasedOn: new Date("2026-10-10"),
+        openedOn: new Date("2026-10-01"),
+      })
+    ).rejects.toThrow(/before the bought date/);
+  });
+  it("opens a New spool today, or on the day you say", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      purchasedOn: new Date("2026-09-01"),
+    });
+    expect(await openSpool("o1", "s1")).toEqual(todayDate());
+    expect(await openSpool("o1", "s1", new Date("2026-09-15"))).toEqual(
+      new Date("2026-09-15")
+    );
+    await expect(openSpool("o1", "s1", new Date("2026-08-01"))).rejects.toThrow(
+      /before the bought date/
+    );
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "retired",
+      purchasedOn: null,
+    });
+    await expect(openSpool("o1", "s1")).rejects.toThrow(/retired/);
+  });
+  it("opens a spool when weighing shows some has gone", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      type: "PLA Basic",
+      weightGrams: 1000,
+      spoolWeightGrams: 250,
+      openedOn: null,
+    });
+    await weighSpool("o1", "s1", 750);
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data.openedOn).toEqual(
+      todayDate()
+    );
+    await weighSpool("o1", "s1", 1250); // still full: still sealed
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data.openedOn).toBeNull();
+  });
+  it("brings a spool the AMS found in opened, and a receipt's spools in new", async () => {
+    m.spoolCandidate.findFirst.mockResolvedValue({
+      id: "c1",
+      source: "ams",
+      tagUid: "T",
+      quantity: 1,
+    });
+    await approveCandidate("o1", "c1", input);
+    expect(m.spool.create.mock.calls.at(-1)?.[0].data.openedOn).toEqual(
+      todayDate()
+    );
+    m.spoolCandidate.findFirst.mockResolvedValue({
+      id: "c2",
+      source: "receipt",
+      tagUid: null,
+      quantity: 2,
+    });
+    await approveCandidate("o1", "c2", {
+      ...input,
+      purchasedOn: new Date("2026-10-12"),
+    });
+    const last = m.spool.create.mock.calls.slice(-2).map((c) => c[0].data);
+    expect(last.map((d) => d.openedOn)).toEqual([null, null]);
+    expect(last[0].purchasedOn).toEqual(new Date("2026-10-12"));
+  });
+  it("lets you clear an opened date on a full spool on the shelf, but not on one in use", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "active",
+      openedOn: new Date("2026-10-01"),
+    });
+    const cleared = await updateSpoolDetails("o1", "s1", {
+      remainingPercent: 100,
+      pricePaid: null,
+      purchasedOn: null,
+      openedOn: null,
+      amsSlot: null,
+      notes: null,
+    });
+    expect(cleared.openedOn).toBeNull();
+    const inUse = await updateSpoolDetails("o1", "s1", {
+      remainingPercent: 100,
+      pricePaid: null,
+      purchasedOn: null,
+      openedOn: null,
+      amsSlot: 2,
+      notes: null,
+    });
+    expect(inUse.openedOn).toEqual(todayDate());
   });
 });

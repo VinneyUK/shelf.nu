@@ -182,3 +182,81 @@ export function stocktakeOrder<
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 }
+
+// ---------------------------------------------------------- a spool's life
+
+/** New (sealed) → Opened (on the shelf) → In use (in the AMS) → Run out? → Retired. */
+export type SpoolState = "new" | "opened" | "in-use" | "run-out" | "retired";
+
+export const SPOOL_STATES: Record<SpoolState, { label: string; tone: string }> =
+  {
+    new: { label: "New", tone: "bg-gray-100 text-gray-700" },
+    opened: { label: "Opened", tone: "bg-success-50 text-success-700" },
+    "in-use": { label: "In use", tone: "bg-blue-50 text-blue-700" },
+    "run-out": { label: "Run out?", tone: "bg-warning-50 text-warning-700" },
+    retired: { label: "Retired", tone: "bg-gray-100 text-gray-600" },
+  };
+
+type Lifecycle = {
+  status: string;
+  amsSlot: number | null;
+  openedOn: Date | string | null;
+};
+
+/** A spool's state, from its facts: retired, run out, in the AMS, opened, or still sealed. */
+export function spoolState(s: Lifecycle): SpoolState {
+  if (s.status === "retired") return "retired";
+  if (s.status === "empty") return "run-out";
+  if (s.amsSlot !== null) return "in-use";
+  return s.openedOn ? "opened" : "new";
+}
+
+/** The state's words, with the slot for a spool in use: "In use · AMS 2". */
+export function stateLabel(s: Lifecycle) {
+  const state = spoolState(s);
+  return state === "in-use"
+    ? `In use · AMS ${s.amsSlot}`
+    : SPOOL_STATES[state].label;
+}
+
+/** "today", "yesterday", "3 days ago", "3 weeks ago", "8 months ago", "2 years ago". */
+export function daysAgo(date: Date | string, now: Date = new Date()) {
+  const day = (d: Date) =>
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const days = Math.round((day(now) - day(new Date(date))) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  if (days < 60) return `${Math.round(days / 7)} weeks ago`;
+  if (days < 730) return `${Math.round(days / 30.44)} months ago`;
+  return `${Math.round(days / 365.25)} years ago`;
+}
+
+/** The New spool to open next: the oldest bought (unknown dates last), then the first added. */
+export function oldestNew<
+  S extends Lifecycle & {
+    purchasedOn: Date | string | null;
+    createdAt: Date | string;
+  },
+>(spools: S[]): S | null {
+  const time = (d: Date | string | null) =>
+    d ? new Date(d).getTime() : Infinity;
+  return (
+    spools
+      .filter((s) => spoolState(s) === "new")
+      .sort(
+        (a, b) =>
+          time(a.purchasedOn) - time(b.purchasedOn) ||
+          time(a.createdAt) - time(b.createdAt)
+      )[0] ?? null
+  );
+}
+
+/** How many of a filament's spools are new, opened and in use, for its tile: "2 new · 1 open". */
+export function stateCounts(spools: Lifecycle[]) {
+  const states = spools.map(spoolState);
+  return {
+    new: states.filter((s) => s === "new").length,
+    open: states.filter((s) => s === "opened" || s === "in-use").length,
+  };
+}

@@ -38,6 +38,8 @@ export type SpoolInput = {
   remainingPercent: number;
   pricePaid: number | null;
   purchasedOn: Date | null;
+  /** When it was opened; none for a New (sealed) spool */
+  openedOn?: Date | null;
   amsSlot: number | null;
   notes: string | null;
   /** The code Bambu prints on the spool and box */
@@ -45,6 +47,35 @@ export type SpoolInput = {
   /** The empty spool, in grams; from the catalogue when not given */
   spoolWeightGrams?: number | null;
 };
+
+/** Today, as a date. */
+const today = () =>
+  new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+
+/** An opened date can't be before the bought date. */
+function checkOpened(purchasedOn: Date | null, openedOn: Date | null) {
+  if (purchasedOn && openedOn && openedOn.getTime() < purchasedOn.getTime()) {
+    throw bad("The opened date can't be before the bought date.");
+  }
+  return openedOn;
+}
+
+/**
+ * A spool opens itself when it goes into the AMS or starts being used (today),
+ * unless it already has a date. A date you give always wins.
+ */
+export function openedFor({
+  openedOn,
+  amsSlot,
+  remainingPercent,
+}: {
+  openedOn: Date | null;
+  amsSlot: number | null;
+  remainingPercent: number;
+}) {
+  if (openedOn) return openedOn;
+  return amsSlot !== null || remainingPercent < 100 ? today() : null;
+}
 
 /** Checks and tidies what was typed in. */
 function clean(input: SpoolInput) {
@@ -79,6 +110,7 @@ function clean(input: SpoolInput) {
     pricePaid:
       input.pricePaid === null ? null : Math.round(input.pricePaid * 100) / 100,
     purchasedOn: input.purchasedOn,
+    openedOn: checkOpened(input.purchasedOn, input.openedOn ?? null),
     amsSlot: input.amsSlot,
     notes: input.notes?.trim().slice(0, 500) || null,
     filamentCode:
@@ -176,6 +208,7 @@ export async function weighSpool(
     where: { id, organizationId },
     data: {
       remainingPercent: percent,
+      openedOn: spool.openedOn ?? (percent < 100 ? today() : null),
       status:
         spool.status === "retired"
           ? "retired"
@@ -193,6 +226,7 @@ export async function createSpool(
   source = "manual"
 ) {
   const data = clean(input);
+  data.openedOn = openedFor(data);
   return db.$transaction(async (tx) => {
     await freeSlot(tx, organizationId, data.amsSlot);
     return tx.spool.create({
@@ -215,6 +249,10 @@ export async function updateSpool(
   const existing = await db.spool.findFirst({ where: { id, organizationId } });
   if (!existing) throw bad("That spool doesn't exist.", 404);
   const data = clean(input);
+  data.openedOn = openedFor({
+    ...data,
+    openedOn: input.openedOn === undefined ? existing.openedOn : data.openedOn,
+  });
   const status =
     existing.status === "retired"
       ? "retired"
@@ -357,6 +395,9 @@ export async function approveCandidate(
   });
   if (!candidate) throw bad("That one has already been dealt with.", 404);
   const data = clean(input);
+  const firstOpened =
+    candidate.source === "ams" ? data.openedOn ?? today() : openedFor(data);
+  const laterOpened = openedFor({ ...data, amsSlot: null });
   const count = Math.max(
     1,
     Math.min(20, Math.round(quantity ?? candidate.quantity ?? 1) || 1)
@@ -370,6 +411,7 @@ export async function approveCandidate(
         organizationId,
         source: candidate.source,
         tagUid: candidate.tagUid,
+        openedOn: firstOpened,
         status: data.remainingPercent === 0 ? "empty" : "active",
       },
     });
@@ -378,6 +420,7 @@ export async function approveCandidate(
         data: {
           ...data,
           amsSlot: null,
+          openedOn: laterOpened,
           organizationId,
           source: candidate.source,
           status: data.remainingPercent === 0 ? "empty" : "active",
@@ -470,6 +513,8 @@ export type SpoolDetailsInput = {
   remainingPercent: number;
   pricePaid: number | null;
   purchasedOn: Date | null;
+  /** When it was opened; none for a New (sealed) spool */
+  openedOn?: Date | null;
   amsSlot: number | null;
   notes: string | null;
 };
@@ -491,6 +536,14 @@ export async function updateSpoolDetails(
   if (input.amsSlot !== null && ![1, 2, 3, 4].includes(input.amsSlot))
     throw bad("The AMS has slots 1 to 4.");
   const remainingPercent = clampPercent(input.remainingPercent);
+  const openedOn = openedFor({
+    openedOn: checkOpened(
+      input.purchasedOn,
+      input.openedOn === undefined ? existing.openedOn : input.openedOn
+    ),
+    amsSlot: existing.status === "retired" ? null : input.amsSlot,
+    remainingPercent,
+  });
   const status =
     existing.status === "retired"
       ? "retired"
@@ -508,10 +561,25 @@ export async function updateSpoolDetails(
             ? null
             : Math.round(input.pricePaid * 100) / 100,
         purchasedOn: input.purchasedOn,
+        openedOn,
         amsSlot: existing.status === "retired" ? null : input.amsSlot,
         notes: input.notes?.trim().slice(0, 500) || null,
         status,
       },
     });
   });
+}
+
+/** Opens a New spool: today, or the day you say (not before it was bought). */
+export async function openSpool(
+  organizationId: string,
+  id: string,
+  on?: Date | null
+) {
+  const spool = await db.spool.findFirst({ where: { id, organizationId } });
+  if (!spool) throw bad("That spool doesn't exist.", 404);
+  if (spool.status === "retired") throw bad("That spool is retired.");
+  const openedOn = checkOpened(spool.purchasedOn, on ?? today());
+  await db.spool.update({ where: { id, organizationId }, data: { openedOn } });
+  return openedOn;
 }

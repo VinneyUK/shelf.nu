@@ -2928,6 +2928,8 @@ model Spool {
   remainingPercent Int       @default(100)
   pricePaid        Float?
   purchasedOn      DateTime? @db.Date
+  /// When the spool was opened; none means it is still New (sealed)
+  openedOn         DateTime? @db.Date
   /// active | empty (reached 0%, waiting for you to confirm) | retired
   status           String    @default("active")
   /// 1 to 4 when loaded in the AMS

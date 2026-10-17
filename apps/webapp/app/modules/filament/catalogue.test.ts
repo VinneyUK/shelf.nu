@@ -6,12 +6,17 @@ import {
   cleanHex,
   coloursFor,
   costPerKg,
+  daysAgo,
   filamentKey,
   filamentSlug,
   gramsLeft,
   groupSpools,
   materialOf,
+  oldestNew,
   remainingTone,
+  spoolState,
+  stateCounts,
+  stateLabel,
   stocktakeOrder,
   summarise,
   valueLeft,
@@ -203,5 +208,72 @@ describe("the stocktake order", () => {
       s("b1", "PLA Basic", "Jade White", "2026-01-15"),
     ]).map((x) => x.id);
     expect(order).toEqual(["a", "b1", "b2", "c"]);
+  });
+});
+
+describe("a spool's life", () => {
+  const s = (
+    status: string,
+    amsSlot: number | null,
+    openedOn: string | null
+  ) => ({ status, amsSlot, openedOn });
+  it("is New until opened, Opened on the shelf, In use in the AMS, then Run out? and Retired", () => {
+    expect(spoolState(s("active", null, null))).toBe("new");
+    expect(spoolState(s("active", null, "2026-10-01"))).toBe("opened");
+    expect(spoolState(s("active", 2, "2026-10-01"))).toBe("in-use");
+    expect(spoolState(s("empty", 2, "2026-10-01"))).toBe("run-out");
+    expect(spoolState(s("retired", null, "2026-10-01"))).toBe("retired");
+  });
+  it("names the slot of a spool in use", () => {
+    expect(stateLabel(s("active", 2, "2026-10-01"))).toBe("In use · AMS 2");
+    expect(stateLabel(s("active", null, null))).toBe("New");
+  });
+  it("counts new and open spools for a tile", () => {
+    expect(
+      stateCounts([
+        s("active", null, null),
+        s("active", null, null),
+        s("active", 1, "2026-10-01"),
+        s("active", null, "2026-10-02"),
+      ])
+    ).toEqual({ new: 2, open: 2 });
+  });
+  it("says how long ago, in plain words", () => {
+    const now = new Date("2026-10-17T12:00:00Z");
+    expect(daysAgo("2026-10-17", now)).toBe("today");
+    expect(daysAgo("2026-10-16", now)).toBe("yesterday");
+    expect(daysAgo("2026-10-12", now)).toBe("5 days ago");
+    expect(daysAgo("2026-09-26", now)).toBe("3 weeks ago");
+    expect(daysAgo("2026-02-17", now)).toBe("8 months ago");
+    expect(daysAgo("2024-10-17", now)).toBe("2 years ago");
+  });
+  it("suggests opening the oldest-bought new spool, unknown dates last", () => {
+    const spool = (
+      id: string,
+      purchasedOn: string | null,
+      createdAt: string,
+      openedOn: string | null = null
+    ) => ({
+      id,
+      status: "active",
+      amsSlot: null,
+      openedOn,
+      purchasedOn,
+      createdAt,
+    });
+    const pick = oldestNew([
+      spool("unknown", null, "2026-01-01"),
+      spool("newer", "2026-09-01", "2026-09-02"),
+      spool("older", "2026-05-01", "2026-09-03"),
+      spool("open", "2026-01-01", "2026-01-02", "2026-02-01"),
+    ]);
+    expect(pick?.id).toBe("older");
+    expect(
+      oldestNew([
+        spool("a", null, "2026-03-01"),
+        spool("b", null, "2026-02-01"),
+      ])?.id
+    ).toBe("b");
+    expect(oldestNew([])).toBeNull();
   });
 });
