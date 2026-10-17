@@ -5,14 +5,22 @@
  * line); the filaments as tiles or a list, each opening its own page; and
  * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, Form, Link, useFetcher, useLoaderData } from "react-router";
+import {
+  data,
+  Form,
+  Link,
+  useFetcher,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import {
@@ -123,6 +131,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const sortParam = url.searchParams.get("sort") ?? "recent";
     const sort: Sort = sortParam in SORTS ? (sortParam as Sort) : "recent";
     const line = (url.searchParams.get("line") ?? "").trim();
+    const colour = (url.searchParams.get("colour") ?? "").trim();
+    // tiles per row: auto, or 3 to 8; remembered in a cookie
+    const colsParam = url.searchParams.get("cols");
+    const colsCookie = /(?:^|;\s*)filament_cols=(auto|[3-8])/.exec(
+      request.headers.get("Cookie") ?? ""
+    )?.[1];
+    const cols =
+      colsParam && /^(auto|[3-8])$/.test(colsParam)
+        ? colsParam
+        : colsCookie ?? "auto";
     const pageParam = Math.max(1, Number(url.searchParams.get("page")) || 1);
     const perPageParam = Number(url.searchParams.get("per_page")) || 0;
     const prefs = await updateCookieWithPerPage(request, perPageParam);
@@ -173,6 +191,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
           (state === "offer" &&
             Boolean(prices[filamentKey(s.type, s.colourName)]?.onOffer))) &&
         (!line || s.type === line) &&
+        (!colour || s.colourName.toLowerCase() === colour.toLowerCase()) &&
         (!q ||
           `${s.type} ${s.material} ${s.colourName} ${s.filamentCode ?? ""}`
             .toLowerCase()
@@ -204,6 +223,24 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
             return newest(b) - newest(a);
         }
       });
+    // the list's totals, across everything the filters match
+    const pricedKg = matched
+      .map((s) => costPerKg(s))
+      .filter((n): n is number => n !== null);
+    const storeBest = groups
+      .map((g) => prices[g.key]?.best)
+      .filter((n): n is number => typeof n === "number");
+    const totals = {
+      spools: matched.filter((s) => s.packaging !== "refill").length,
+      refills: matched.filter((s) => s.packaging === "refill").length,
+      kgLeft: groups.reduce((n, g) => n + g.gramsLeft, 0) / 1000,
+      avgPaidPerKg: pricedKg.length
+        ? pricedKg.reduce((a, b) => a + b, 0) / pricedKg.length
+        : null,
+      avgStore: storeBest.length
+        ? storeBest.reduce((a, b) => a + b, 0) / storeBest.length
+        : null,
+    };
     const totalItems = groups.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
     const page = Math.min(pageParam, totalPages);
@@ -211,6 +248,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const headers = new Headers();
     headers.append("Set-Cookie", await userPrefs.serialize(prefs));
     if (setCookie) headers.append("Set-Cookie", setCookie);
+    if (colsParam && colsParam === cols) {
+      headers.append(
+        "Set-Cookie",
+        `filament_cols=${cols}; Path=/; Max-Age=31536000; SameSite=Lax`
+      );
+    }
 
     return data(
       payload({
@@ -229,7 +272,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         prices,
         anyPrice: spools.some((s) => s.pricePaid !== null),
         lines: [...new Set(onHand.map((s) => s.type))].sort(),
-        filters: { search, state, sort, line },
+        filters: { search, state, sort, line, colour },
+        cols,
+        totals,
         items: groups.slice((page - 1) * perPage, page * perPage),
         page,
         perPage,
@@ -655,10 +700,13 @@ function FilamentTile({
   group,
   images,
   price,
+  compact = false,
 }: {
   group: Group;
   images: Images;
   price?: PriceSummary;
+  /** At 6 or more per row there's no room for the price pills or the code */
+  compact?: boolean;
 }) {
   const money = useMoney();
   const image = images[group.key];
@@ -705,7 +753,7 @@ function FilamentTile({
             {spoolCountWords(group.spools)}
           </span>
         </div>
-        {perKg !== null ? (
+        {!compact && perKg !== null ? (
           <span
             className={tw(priceChip, "absolute bottom-2 left-2")}
             style={{ fontSize: "10.5px" }}
@@ -714,7 +762,7 @@ function FilamentTile({
             {money(perKg)}/kg
           </span>
         ) : null}
-        {price?.best != null ? (
+        {!compact && price?.best != null ? (
           <span
             className={tw(priceChip, "absolute bottom-2 right-2")}
             style={{ fontSize: "10.5px" }}
@@ -731,12 +779,22 @@ function FilamentTile({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-3">
-        <Link to={href} className="hover:underline">
-          <span className="block text-[15px] font-semibold leading-snug text-gray-900">
+        <div className="min-w-0">
+          <Link
+            to={`?colour=${encodeURIComponent(group.colourName)}`}
+            className="block truncate text-[15px] font-semibold leading-snug text-gray-900 hover:underline"
+            title={`Show only ${group.colourName}`}
+          >
             {group.colourName}
-          </span>
-          <span className="block text-xs text-gray-500">{group.type}</span>
-        </Link>
+          </Link>
+          <Link
+            to={`?line=${encodeURIComponent(group.type)}`}
+            className="block truncate text-xs text-gray-500 hover:underline"
+            title={`Show only ${group.type}`}
+          >
+            {group.type}
+          </Link>
+        </div>
         <TypeRows items={group.spools} />
       </div>
 
@@ -776,7 +834,7 @@ function FilamentTile({
             <GlobeIcon className="size-3.5" />
           </Button>
         ) : null}
-        {code ? <CodeChip code={code} /> : null}
+        {code && !compact ? <CodeChip code={code} /> : null}
       </div>
     </div>
   );
@@ -996,7 +1054,10 @@ function ListHeadings() {
   );
 }
 
-/** A filament in the list: one row, opening its page. */
+/**
+ * A filament in the list. The picture and the arrow open it; its colour and
+ * line show only that colour or line.
+ */
 function FilamentListRow({
   group,
   images,
@@ -1007,6 +1068,7 @@ function FilamentListRow({
   price?: PriceSummary;
 }) {
   const money = useMoney();
+  const href = `/filament/${group.slug}`;
   const priced = group.spools
     .map((s) => costPerKg(s))
     .filter((n): n is number => n !== null);
@@ -1018,99 +1080,164 @@ function FilamentListRow({
     .filter((n): n is number => n !== null);
   const counts = typeCounts(group.spools);
   return (
-    <li>
-      <Link
-        to={`/filament/${group.slug}`}
-        className={tw(
-          "flex items-center gap-4 px-1 py-3 hover:bg-gray-25",
-          LIST_COLUMNS
-        )}
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-3">
+    <li
+      className={tw(
+        "flex items-center gap-4 px-1 py-3 hover:bg-gray-25",
+        LIST_COLUMNS
+      )}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-3">
+        <Link
+          to={href}
+          aria-label={`Open ${group.colourName} ${group.type}`}
+          className="shrink-0"
+        >
           <FilamentPicture {...group} images={images} />
-          <span className="min-w-0">
-            <span className="block truncate font-semibold text-gray-900">
-              {group.colourName}
-            </span>
-            <span className="block text-xs text-gray-500 md:hidden">
-              {group.type}
-            </span>
-            {slots.length ? (
-              <span className="mt-0.5 flex gap-1">
-                {slots.map((n) => (
-                  <span
-                    key={n}
-                    className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700"
-                  >
-                    AMS {n}
-                  </span>
-                ))}
-              </span>
-            ) : null}
-          </span>
-        </span>
-        <span className="hidden truncate text-sm text-gray-700 md:block">
-          {group.type}
-        </span>
-        <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
-          {counts.spools || "—"}
-        </span>
-        <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
-          {counts.refills || "—"}
-        </span>
-        <span className="flex min-w-28 items-center gap-3">
-          <span
-            className="hidden flex-1 flex-col gap-1 sm:flex"
-            aria-label="Left on each one"
+        </Link>
+        <span className="min-w-0">
+          <Link
+            to={`?colour=${encodeURIComponent(group.colourName)}`}
+            className="block truncate font-semibold text-gray-900 hover:underline"
+            title={`Show only ${group.colourName}`}
           >
-            {group.spools.slice(0, 3).map((s) => (
-              <span key={s.id} className="block h-1.5 rounded-full bg-gray-100">
+            {group.colourName}
+          </Link>
+          <Link
+            to={`?line=${encodeURIComponent(group.type)}`}
+            className="block text-xs text-gray-500 hover:underline md:hidden"
+          >
+            {group.type}
+          </Link>
+          {slots.length ? (
+            <span className="mt-0.5 flex gap-1">
+              {slots.map((n) => (
                 <span
-                  className={tw(
-                    "block h-1.5 rounded-full",
-                    barColour(s.remainingPercent)
-                  )}
-                  style={{ width: `${s.remainingPercent}%` }}
-                />
-              </span>
-            ))}
-          </span>
-          <span className="text-right text-sm">
-            <span className="block tabular-nums text-gray-900">
-              {(group.gramsLeft / 1000).toFixed(2)} kg
+                  key={n}
+                  className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700"
+                >
+                  AMS {n}
+                </span>
+              ))}
             </span>
-            <span className="block text-xs text-gray-500">
-              {spoolCountWords(group.spools)}
-            </span>
-          </span>
+          ) : null}
         </span>
-        <span className="hidden text-right text-sm tabular-nums text-gray-600 md:block">
-          {perKg !== null ? money(perKg) : "—"}
+      </span>
+      <Link
+        to={`?line=${encodeURIComponent(group.type)}`}
+        className="hidden truncate text-sm text-gray-700 hover:underline md:block"
+        title={`Show only ${group.type}`}
+      >
+        {group.type}
+      </Link>
+      <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
+        {counts.spools || "—"}
+      </span>
+      <span className="hidden text-right text-sm tabular-nums text-gray-700 md:block">
+        {counts.refills || "—"}
+      </span>
+      <span className="flex min-w-28 items-center gap-3">
+        <span
+          className="hidden flex-1 flex-col gap-1 sm:flex"
+          aria-label="Left on each one"
+        >
+          {group.spools.slice(0, 3).map((s) => (
+            <span key={s.id} className="block h-1.5 rounded-full bg-gray-100">
+              <span
+                className={tw(
+                  "block h-1.5 rounded-full",
+                  barColour(s.remainingPercent)
+                )}
+                style={{ width: `${s.remainingPercent}%` }}
+              />
+            </span>
+          ))}
         </span>
         <span className="text-right text-sm">
-          {price?.best != null ? (
-            <>
-              <span className="block tabular-nums text-gray-900">
-                {money(price.best)}
-              </span>
-              {price.onOffer ? (
-                <span className="block text-xs font-medium text-primary-700">
-                  On offer
-                </span>
-              ) : null}
-            </>
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
+          <span className="block tabular-nums text-gray-900">
+            {(group.gramsLeft / 1000).toFixed(2)} kg
+          </span>
+          <span className="block text-xs text-gray-500">
+            {spoolCountWords(group.spools)}
+          </span>
         </span>
-        <ChevronRight className="text-gray-400" aria-hidden="true" />
+      </span>
+      <span className="hidden text-right text-sm tabular-nums text-gray-600 md:block">
+        {perKg !== null ? money(perKg) : "—"}
+      </span>
+      <span className="text-right text-sm">
+        {price?.best != null ? (
+          <>
+            <span className="block tabular-nums text-gray-900">
+              {money(price.best)}
+            </span>
+            {price.onOffer ? (
+              <span className="block text-xs font-medium text-primary-700">
+                On offer
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+      </span>
+      <Link
+        to={href}
+        aria-label={`Open ${group.colourName} ${group.type}`}
+        className="text-gray-400 hover:text-gray-700"
+      >
+        <ChevronRight aria-hidden="true" />
       </Link>
     </li>
   );
 }
 
+/** The list's totals: spools, refills and kg; the average paid per kg and store price. */
+function ListTotals({ totals }: { totals: PageData["totals"] }) {
+  const money = useMoney();
+  return (
+    <div
+      className={tw(
+        "flex items-center gap-4 border-t border-gray-200 bg-gray-25 px-1 py-2.5 text-sm font-medium text-gray-900",
+        LIST_COLUMNS
+      )}
+    >
+      <span>Total</span>
+      <span className="hidden md:block" />
+      <span className="hidden text-right tabular-nums md:block">
+        {totals.spools}
+      </span>
+      <span className="hidden text-right tabular-nums md:block">
+        {totals.refills}
+      </span>
+      <span className="ml-auto text-right tabular-nums md:ml-0">
+        {totals.kgLeft.toFixed(2)} kg
+      </span>
+      <span
+        className="hidden text-right tabular-nums md:block"
+        title="Average paid per kg"
+      >
+        {totals.avgPaidPerKg !== null
+          ? `avg ${money(totals.avgPaidPerKg)}`
+          : "—"}
+      </span>
+      <span className="text-right tabular-nums" title="Average store price">
+        {totals.avgStore !== null ? `avg ${money(totals.avgStore)}` : "—"}
+      </span>
+      <span />
+    </div>
+  );
+}
+
 /** The bottom bar, as on the assets list: pages, per page, back to the top, Tile or List. */
-function FilamentBottomBar({ view }: { view: "tile" | "list" }) {
+function FilamentBottomBar({
+  view,
+  cols,
+}: {
+  view: "tile" | "list";
+  cols: string;
+}) {
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { isMd } = useViewportHeight();
   const { state } = useSidebar();
   const active =
@@ -1139,6 +1266,28 @@ function FilamentBottomBar({ view }: { view: "tile" | "list" }) {
         >
           <ChevronRight className="chev -rotate-90" />
         </Button>
+        {view === "tile" ? (
+          <label className="hidden items-center gap-1.5 text-sm text-gray-600 lg:flex">
+            Per row
+            <select
+              value={cols}
+              onChange={(e) => {
+                const next = new URLSearchParams(params);
+                next.set("cols", e.target.value);
+                void navigate(`?${next.toString()}`);
+              }}
+              className="h-[34px] rounded-md border border-gray-300 py-0 pl-2 pr-7 text-sm"
+              aria-label="Tiles per row"
+            >
+              <option value="auto">Auto</option>
+              {[3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <ButtonGroup>
           <Button
             to="?view=tile"
@@ -1163,7 +1312,10 @@ function FilamentBottomBar({ view }: { view: "tile" | "list" }) {
 }
 
 export default function FilamentPage() {
+  const location = useLocation();
   const {
+    cols,
+    totals,
     spools,
     candidates,
     images,
@@ -1241,6 +1393,24 @@ export default function FilamentPage() {
         ) : null}
 
         <FilterBar filters={filters} lines={lines} />
+        {filters.colour ? (
+          <div className="flex">
+            <Link
+              to={`?${(() => {
+                const next = new URLSearchParams(location.search);
+                next.delete("colour");
+                return next.toString();
+              })()}`}
+              className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-50"
+              aria-label={`Stop showing only ${filters.colour}`}
+            >
+              Colour: {filters.colour}
+              <span aria-hidden="true" className="text-gray-400">
+                ×
+              </span>
+            </Link>
+          </div>
+        ) : null}
 
         {onHand.length === 0 ? (
           <Card className="my-0">
@@ -1258,13 +1428,28 @@ export default function FilamentPage() {
             </p>
           </Card>
         ) : view === "tile" ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div
+            className={tw(
+              "grid grid-cols-1 gap-4 sm:grid-cols-2",
+              cols === "auto"
+                ? "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                : "lg:[grid-template-columns:var(--tile-cols)]"
+            )}
+            style={
+              cols === "auto"
+                ? undefined
+                : ({
+                    "--tile-cols": `repeat(${cols}, minmax(0, 1fr))`,
+                  } as CSSProperties)
+            }
+          >
             {items.map((g) => (
               <FilamentTile
                 key={g.key}
                 group={g}
                 images={images}
                 price={prices[g.key]}
+                compact={cols !== "auto" && Number(cols) >= 6}
               />
             ))}
           </div>
@@ -1281,6 +1466,7 @@ export default function FilamentPage() {
                 />
               ))}
             </ul>
+            <ListTotals totals={totals} />
           </Card>
         )}
 
@@ -1297,7 +1483,7 @@ export default function FilamentPage() {
           </details>
         ) : null}
       </div>
-      <FilamentBottomBar view={view} />
+      <FilamentBottomBar view={view} cols={cols} />
     </>
   );
 }
