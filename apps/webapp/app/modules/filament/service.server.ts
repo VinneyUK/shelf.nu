@@ -11,6 +11,7 @@ import { db } from "~/database/db.server";
 /** The client inside db.$transaction (Shelf's client is an extended one). */
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 import { ShelfError } from "~/utils/error";
+import type { Tray } from "./ams";
 import { storeCodes } from "./codes.server";
 import {
   catalogueEntry,
@@ -697,4 +698,60 @@ export async function knownCodes(organizationId: string): Promise<KnownCode[]> {
       byKey.set(key, c);
   }
   return [...byKey.values()];
+}
+
+/**
+ * The AMS as the printer reports it, brought into Filament: a tag Shelf
+ * knows updates that filament's slot and what's left (and opens it);
+ * a new tag goes to the inbox with its slot, line and colour; filament whose
+ * tag is no longer in any slot is taken out of the AMS.
+ */
+export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
+  const present = new Set<string>();
+  let proposed = 0;
+  for (const t of trays) {
+    present.add(t.tagUid);
+    const known = await db.spool.findFirst({
+      where: { organizationId, tagUid: t.tagUid },
+      select: { id: true, openedOn: true, status: true },
+    });
+    if (known) {
+      if (known.status === "retired") continue; // retired by you: the AMS doesn't un-retire it
+      await db.$transaction(async (tx) => {
+        await freeSlot(tx, organizationId, t.slot, known.id);
+        await tx.spool.update({
+          where: { id: known.id, organizationId },
+          data: {
+            amsSlot: t.slot,
+            remainingPercent: t.remainingPercent,
+            openedOn: known.openedOn ?? today(),
+            status: t.remainingPercent === 0 ? "empty" : "active",
+          },
+        });
+      });
+      continue;
+    }
+    const result = await proposeSpool(organizationId, {
+      source: "ams",
+      type: t.type,
+      colourName: t.colourName ?? `${t.colourHex} (unnamed)`,
+      colourHex: t.colourHex,
+      weightGrams: t.weightGrams,
+      remainingPercent: t.remainingPercent,
+      tagUid: t.tagUid,
+      amsSlot: t.slot,
+    });
+    if (result.kind === "pending") proposed += 1;
+  }
+  // tagged filament Shelf thought was in the AMS, whose tag isn't in a slot now, is out
+  // (one you put in a slot by hand, with no tag on record, is left where you put it)
+  const out = await db.spool.updateMany({
+    where: {
+      organizationId,
+      amsSlot: { not: null },
+      tagUid: { not: null, notIn: [...present] },
+    },
+    data: { amsSlot: null },
+  });
+  return { inSlots: trays.length, proposed, unloaded: out.count };
 }

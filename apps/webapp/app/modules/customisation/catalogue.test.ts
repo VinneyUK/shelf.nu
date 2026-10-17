@@ -5,6 +5,7 @@ import {
   CUSTOMISE_PAGE,
   EMAIL_RECEIPTS_PAGE,
   AI_PAGE,
+  PRINTER_PAGE,
 } from "./apply-to-menu";
 import {
   assetStatusAllowed,
@@ -170,6 +171,7 @@ describe("applyCustomisationsToMenu", () => {
       CUSTOMISE_PAGE,
       EMAIL_RECEIPTS_PAGE,
       AI_PAGE,
+      PRINTER_PAGE,
     ]);
   });
 
@@ -190,6 +192,7 @@ describe("applyCustomisationsToMenu", () => {
       CUSTOMISE_PAGE,
       EMAIL_RECEIPTS_PAGE,
       AI_PAGE,
+      PRINTER_PAGE,
     ]);
   });
 
@@ -324,5 +327,12 @@ describe("the Filament switch", () => {
   });
   it("is on unless switched off", () => {
     expect(DEFAULT_CUSTOMISATIONS.filamentEnabled).toBe(true);
+  });
+  it("takes the Printer settings page with it when it's off", () => {
+    const out = applyCustomisationsToMenu(
+      menu(),
+      off({ filamentEnabled: false })
+    );
+    expect(settingsChildren(out.topMenuItems)).not.toContain(PRINTER_PAGE);
   });
 });

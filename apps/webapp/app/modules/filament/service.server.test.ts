@@ -45,6 +45,7 @@ import {
   openSpool,
   proposeSpool,
   retireSpool,
+  syncAmsTrays,
   updateFilament,
   updateSpool,
   updateSpoolDetails,
@@ -658,5 +659,72 @@ describe("codes Shelf knows", () => {
       { code: "10100", type: "PLA Basic", colourName: "Jade White" },
       { code: "10204", type: "PLA Basic", colourName: "Hot Pink" },
     ]);
+  });
+});
+
+describe("the AMS, brought into Filament", () => {
+  const tray = (
+    slot: number,
+    tagUid: string,
+    over: Record<string, unknown> = {}
+  ) => ({
+    slot,
+    tagUid,
+    type: "PLA Basic",
+    colourHex: "#C12E1F",
+    colourName: "Red",
+    remainingPercent: 93,
+    weightGrams: 1000,
+    ...over,
+  });
+  it("updates a known tag's slot and what's left, and opens it", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      openedOn: null,
+      status: "active",
+    });
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    const result = await syncAmsTrays("o1", [
+      tray(2, "TAG1", { remainingPercent: 46 }),
+    ]);
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      amsSlot: 2,
+      remainingPercent: 46,
+      status: "active",
+    });
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data.openedOn).toBeInstanceOf(
+      Date
+    );
+    expect(result).toEqual({ inSlots: 1, proposed: 0, unloaded: 0 });
+  });
+  it("sends a new tag to the inbox with its slot, line and colour", async () => {
+    m.spool.findFirst.mockResolvedValue(null);
+    m.spoolCandidate.findFirst.mockResolvedValue(null);
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    const result = await syncAmsTrays("o1", [tray(1, "TAGNEW")]);
+    expect(m.spoolCandidate.create.mock.calls.at(-1)?.[0].data).toMatchObject({
+      source: "ams",
+      type: "PLA Basic",
+      colourName: "Red",
+      colourHex: "#C12E1F",
+      amsSlot: 1,
+      tagUid: "TAGNEW",
+      remainingPercent: 93,
+    });
+    expect(result.proposed).toBe(1);
+  });
+  it("takes tagged filament out of the AMS when its tag has gone, leaving hand-placed and retired alone", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s9",
+      openedOn: new Date(),
+      status: "retired",
+    });
+    m.spool.update.mockClear();
+    m.spool.updateMany.mockResolvedValue({ count: 2 });
+    const result = await syncAmsTrays("o1", [tray(3, "RETIRED")]);
+    expect(m.spool.update).not.toHaveBeenCalled();
+    const where = m.spool.updateMany.mock.calls.at(-1)?.[0].where;
+    expect(where.tagUid).toEqual({ not: null, notIn: ["RETIRED"] });
+    expect(result.unloaded).toBe(2);
   });
 });

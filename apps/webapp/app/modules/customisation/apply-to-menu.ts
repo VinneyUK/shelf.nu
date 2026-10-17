@@ -16,6 +16,7 @@ export const LABELS_PAGE = "/labels";
 export const AI_PAGE = "/settings/ai";
 export const DRAFTS_PAGE = "/drafts";
 export const FILAMENT_PAGE = "/filament";
+export const PRINTER_PAGE = "/settings/printer";
 
 /**
  * labels feature: Labels goes after Reports, or at the end of the first
@@ -117,6 +118,14 @@ function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
         !children.some((child) => child.to === AI_PAGE)
       ) {
         children.push({ title: "AI", to: AI_PAGE });
+      }
+      // filament feature: the printer the AMS is read from
+      if (
+        item.title === "Workspace settings" &&
+        c.filamentEnabled &&
+        !children.some((child) => child.to === PRINTER_PAGE)
+      ) {
+        children.push({ title: "Printer", to: PRINTER_PAGE });
       }
       return { ...item, children };
     })

@@ -101,6 +101,7 @@
     "lucide-react": "^1.8.0",
     "luxon": "^3.7.2",
     "mailparser": "3.9.26",
+    "mqtt": "5.10.1",
     "nodemailer": "^8.0.9",
     "nprogress": "^0.2.0",
     "path-to-regexp": "^8.4.2",

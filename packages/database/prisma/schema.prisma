@@ -3032,3 +3032,20 @@ model FilamentCode {
 
   @@unique([organizationId, code])
 }
+
+/// The Bambu printer Shelf reads the AMS from (fork): on the local network, with its access code
+model Printer {
+  organizationId String   @id
+  /// Read the AMS, and keep in touch with the printer
+  enabled        Boolean  @default(false)
+  /// IP address or host name on the local network
+  host           String   @default("")
+  /// The printer's serial number, as on its screen under Device
+  serial         String   @default("")
+  /// The 8-character access code, encrypted at rest. Never sent to the browser.
+  accessCode     String   @default("")
+  /// When the printer last reported, and what went wrong if it didn't
+  lastSeenAt     DateTime?
+  lastError      String?
+  updatedAt      DateTime @updatedAt
+}

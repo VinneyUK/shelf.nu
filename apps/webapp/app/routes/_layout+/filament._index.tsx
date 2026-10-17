@@ -40,6 +40,7 @@ import { useViewportHeight } from "~/hooks/use-viewport-height";
 import {
   AMS_SLOTS,
   costPerKg,
+  daysAgo,
   filamentKey,
   filamentSlug,
   groupSpools,
@@ -61,6 +62,10 @@ import {
   priceStatuses,
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
+import {
+  ensureAmsWatcher,
+  getPrinterSettingsForPage,
+} from "~/modules/filament/printer.server";
 import {
   approveCandidate,
   createSpools,
@@ -132,6 +137,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     // store prices: what's kept, and a background check of anything over a day old
     const codes = await knownCodes(organizationId); // for finding a filament by its code
     void refreshCodesIfStale(organizationId); // Bambu's box codes, weekly, in the background
+    void ensureAmsWatcher(organizationId); // keep in touch with the printer
+    const printer = await getPrinterSettingsForPage(organizationId);
     const storePrices = await priceStatuses(organizationId);
     refreshStalePrices(organizationId);
     // filament with no price paid, where the store's price is already known
@@ -213,6 +220,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         candidates,
         images,
         codes,
+        printer: {
+          enabled: printer.enabled,
+          lastSeenAt: printer.lastSeenAt,
+          lastError: printer.lastError,
+        },
         missingPrices,
         prices,
         anyPrice: spools.some((s) => s.pricePaid !== null),
@@ -406,10 +418,12 @@ function Overview({
   spools,
   images,
   anyPrice,
+  printer,
 }: {
   spools: SpoolRow[];
   images: Images;
   anyPrice: boolean;
+  printer: PageData["printer"];
 }) {
   const money = useMoney();
   const summary = summarise(spools);
@@ -439,37 +453,43 @@ function Overview({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {AMS_SLOTS.map((n) => {
-          const s = spools.find(
-            (x) => x.amsSlot === n && x.status !== "retired"
-          );
-          return (
-            <div
-              key={n}
-              className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5"
-            >
-              {s ? (
-                <FilamentPicture {...s} images={images} size="size-8" />
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                  AMS {n}
-                </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+          <span>AMS</span>
+          <PrinterStatus printer={printer} />
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {AMS_SLOTS.map((n) => {
+            const s = spools.find(
+              (x) => x.amsSlot === n && x.status !== "retired"
+            );
+            return (
+              <div
+                key={n}
+                className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5"
+              >
                 {s ? (
-                  <div className="truncate text-xs text-gray-900">
-                    {s.colourName}{" "}
-                    <span className="tabular-nums text-gray-500">
-                      {s.remainingPercent}%
-                    </span>
+                  <FilamentPicture {...s} images={images} size="size-8" />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    AMS {n}
                   </div>
-                ) : (
-                  <div className="text-xs text-gray-400">Empty</div>
-                )}
+                  {s ? (
+                    <div className="truncate text-xs text-gray-900">
+                      {s.colourName}{" "}
+                      <span className="tabular-nums text-gray-500">
+                        {s.remainingPercent}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400">Empty</div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </Card>
   );
@@ -557,6 +577,31 @@ function FilterBar({
       </Form>
     </Card>
   );
+}
+
+/** How the printer is doing: live, a problem, or not set up yet. */
+function PrinterStatus({ printer }: { printer: PageData["printer"] }) {
+  if (!printer.enabled) {
+    return (
+      <Link to="/settings/printer" className="text-primary-600 hover:underline">
+        Read the AMS from your printer
+      </Link>
+    );
+  }
+  if (printer.lastError) {
+    return (
+      <Link
+        to="/settings/printer"
+        className="text-error-600 hover:underline"
+        title={printer.lastError}
+      >
+        Printer: problem, see settings
+      </Link>
+    );
+  }
+  if (!printer.lastSeenAt)
+    return <span>Waiting for the printer's first report…</span>;
+  return <span>Printer reported {daysAgo(printer.lastSeenAt)}</span>;
 }
 
 /** Fill in the price paid where it's missing, from the store prices Shelf holds. */
@@ -1124,6 +1169,7 @@ export default function FilamentPage() {
     images,
     codes,
     missingPrices,
+    printer,
     prices,
     view,
     items,
@@ -1160,7 +1206,12 @@ export default function FilamentPage() {
       <div className="mt-4 flex flex-col gap-4 pb-20">
         {adding ? <AddSpoolPanel codes={codes} /> : null}
 
-        <Overview spools={spools} images={images} anyPrice={anyPrice} />
+        <Overview
+          spools={spools}
+          images={images}
+          anyPrice={anyPrice}
+          printer={printer}
+        />
 
         {candidates.length > 0 ? (
           <div className="flex flex-col gap-3">
