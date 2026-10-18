@@ -1,9 +1,10 @@
 /**
- * Filament page view (fork): Tile or List, remembered in a cookie for a year.
+ * Filament page view (fork): Tile, List or Advanced, remembered in a cookie
+ * for a year.
  */
 import { createCookie } from "react-router";
 
-export type FilamentView = "tile" | "list";
+export type FilamentView = "tile" | "list" | "advanced";
 
 const filamentViewCookie = createCookie("filament-view", {
   maxAge: 60 * 60 * 24 * 365,
@@ -20,7 +21,7 @@ export async function resolveFilamentView(
     request.headers.get("Cookie")
   )) as string | null;
   const valid = (v: string | null): v is FilamentView =>
-    v === "tile" || v === "list";
+    v === "tile" || v === "list" || v === "advanced";
   if (valid(asked)) {
     return {
       view: asked,

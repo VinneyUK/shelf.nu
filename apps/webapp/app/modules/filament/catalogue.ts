@@ -53,7 +53,7 @@ export function cleanHex(value: string | null | undefined): string | null {
   return null;
 }
 
-type Weighable = {
+export type Weighable = {
   weightGrams: number;
   remainingPercent: number;
   pricePaid: number | null;

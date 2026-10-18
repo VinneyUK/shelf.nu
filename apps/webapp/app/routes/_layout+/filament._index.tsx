@@ -23,6 +23,10 @@ import {
 } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import {
+  AdvancedColumns,
+  AdvancedTable,
+} from "~/components/filament/advanced-table";
 import { FilterBuilder } from "~/components/filament/filter-builder";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
@@ -50,7 +54,14 @@ import { DateS } from "~/components/shared/date";
 import { useSearchParams } from "~/hooks/search-params";
 import { useViewportHeight } from "~/hooks/use-viewport-height";
 import {
+  advancedRow,
+  parseColumns,
+  parseSort,
+  sortRows,
+} from "~/modules/filament/advanced";
+import {
   AMS_SLOTS,
+  BAMBU_TYPES,
   costPerKg,
   daysAgo,
   filamentKey,
@@ -96,13 +107,17 @@ import {
   dismissCandidate,
   getFilament,
   keepSpool,
+  FILAMENT_FIELDS,
+  type FilamentField,
   knownCodes,
+  renameFilamentField,
   retireSpool,
+  updateFilamentField,
 } from "~/modules/filament/service.server";
 import { resolveFilamentView } from "~/modules/filament/view.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { updateCookieWithPerPage, userPrefs } from "~/utils/cookies.server";
-import { makeShelfError } from "~/utils/error";
+import { makeShelfError, ShelfError } from "~/utils/error";
 import { isFormProcessing } from "~/utils/form";
 import { error, parseData, payload } from "~/utils/http.server";
 import {
@@ -280,7 +295,29 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         ? storeBest.reduce((a, b) => a + b, 0) / storeBest.length
         : null,
     };
-    const totalItems = groups.length;
+    // the Advanced view: each filament's row, its chosen columns and sort
+    const advancedColumns = parseColumns(
+      /(?:^|;\s*)filament_adv_cols=([^;]*)/.exec(
+        request.headers.get("Cookie") ?? ""
+      )?.[1]
+    );
+    const advancedSort = parseSort(
+      url.searchParams.get("asort"),
+      url.searchParams.get("adir")
+    );
+    const withRows = groups.map((g) => ({
+      ...g,
+      adv: advancedRow(g, {
+        fil: g.fil?.label ?? null,
+        code: images[g.key]?.filamentCode ?? null,
+        store: prices[g.key]?.best ?? null,
+      }),
+    }));
+    const listed =
+      view === "advanced" && advancedSort
+        ? sortRows(withRows, advancedSort.by, advancedSort.dir)
+        : withRows;
+    const totalItems = listed.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
     const page = Math.min(pageParam, totalPages);
 
@@ -321,7 +358,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         },
         cols,
         totals,
-        items: groups.slice((page - 1) * perPage, page * perPage),
+        items: listed.slice((page - 1) * perPage, page * perPage),
+        advancedColumns,
+        advancedSort,
+        lineChoices: BAMBU_TYPES.map(([t]) => t),
         page,
         perPage,
         totalItems,
@@ -399,6 +439,44 @@ export async function action({ context, request }: ActionFunctionArgs) {
             : `${made.length} filaments added`,
           `${input.colourName} · ${input.type}`
         );
+      }
+      // the Advanced view's click-to-edit cells, for every item of a filament
+      case "filament-field": {
+        const field = String(form.get("field") ?? "");
+        if (!(FILAMENT_FIELDS as readonly string[]).includes(field))
+          throw new ShelfError({
+            cause: null,
+            message: "That can't be changed here.",
+            status: 400,
+            label: "Assets",
+            shouldBeCaptured: false,
+          });
+        const what = await updateFilamentField(
+          organizationId,
+          id,
+          field as FilamentField,
+          String(form.get("value") ?? "")
+        );
+        return done(userId, "Filament saved", what);
+      }
+      case "filament-name": {
+        const field = String(form.get("field") ?? "");
+        if (field !== "type" && field !== "colourName")
+          throw new ShelfError({
+            cause: null,
+            message: "That can't be changed here.",
+            status: 400,
+            label: "Assets",
+            shouldBeCaptured: false,
+          });
+        const { message } = await renameFilamentField(
+          organizationId,
+          id,
+          field,
+          String(form.get("value") ?? "")
+        );
+        fetchMissingImages(organizationId);
+        return done(userId, "Filament saved", message);
       }
       case "fill-prices": {
         const { filled, unpriced } = await fillMissingPrices(organizationId);
@@ -1315,7 +1393,7 @@ function FilamentBottomBar({
   view,
   cols,
 }: {
-  view: "tile" | "list";
+  view: "tile" | "list" | "advanced";
   cols: string;
 }) {
   const navigate = useNavigate();
@@ -1387,6 +1465,14 @@ function FilamentBottomBar({
           >
             List
           </Button>
+          <Button
+            to="?view=advanced"
+            variant="secondary"
+            className={tw("h-[34px]", view === "advanced" ? active : "")}
+            aria-label="Show the Advanced view"
+          >
+            Advanced
+          </Button>
         </ButtonGroup>
       </div>
     </div>
@@ -1415,6 +1501,9 @@ export default function FilamentPage() {
     anyPrice,
     filters,
     lines,
+    advancedColumns,
+    advancedSort,
+    lineChoices,
   } = useLoaderData<typeof loader>();
   const [params] = useSearchParams();
   const adding = params.get("add") === "1";
@@ -1544,6 +1633,18 @@ export default function FilamentPage() {
                 compact={cols !== "auto" && Number(cols) >= 6}
               />
             ))}
+          </div>
+        ) : view === "advanced" ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-end">
+              <AdvancedColumns columns={advancedColumns} />
+            </div>
+            <AdvancedTable
+              items={items}
+              columns={advancedColumns}
+              sort={advancedSort}
+              lineChoices={lineChoices}
+            />
           </div>
         ) : (
           <Card className="my-0 py-0">

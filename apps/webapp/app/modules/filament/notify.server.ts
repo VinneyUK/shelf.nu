@@ -43,6 +43,8 @@ const FAILED: Record<string, string> = {
   open: "Couldn't open the filament",
   state: "Couldn't change the status",
   field: "Couldn't save that",
+  "filament-field": "Couldn't save that",
+  "filament-name": "Couldn't save the filament",
   rename: "Couldn't save the filament",
   "image-url": "Couldn't use that picture",
   "store-page": "Couldn't link that store page",

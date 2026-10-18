@@ -44,8 +44,11 @@ export function FilamentCell({
 }: {
   /** The filament item's id (unused for a whole-filament field) */
   id: string;
-  /** "field" for one item; "filament-field" for every item of the filament */
-  intent?: "field" | "filament-field";
+  /**
+   * "field" for one item; "filament-field" (code, empty spool) or
+   * "filament-name" (line, colour) for every item of the filament
+   */
+  intent?: "field" | "filament-field" | "filament-name";
   field: string;
   /** What the cell is, for the editor's heading and screen readers */
   label: string;

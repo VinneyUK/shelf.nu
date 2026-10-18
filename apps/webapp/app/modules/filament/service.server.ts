@@ -1135,3 +1135,29 @@ export async function updateFilamentField(
     ? "Empty spool weight cleared: Bambu's figure is used."
     : `Empty spool ${g} g.`;
 }
+
+/**
+ * Changes a filament's line or colour name for every spool and refill of it,
+ * from the Advanced view (its other half and its colour stay as they are).
+ * Returns its new address and what was saved.
+ */
+export async function renameFilamentField(
+  organizationId: string,
+  slug: string,
+  field: "type" | "colourName",
+  raw: string
+): Promise<{ slug: string; message: string }> {
+  const spools = await getFilamentBySlug(organizationId, slug);
+  const first = spools[0];
+  if (!first) throw bad("That filament doesn't exist.", 404);
+  const next = await renameFilament(organizationId, slug, {
+    type: field === "type" ? raw : first.type,
+    colourName: field === "colourName" ? raw : first.colourName,
+    colourHex: first.colourHex,
+  });
+  return {
+    slug: next,
+    message:
+      field === "type" ? `Line: ${raw.trim()}.` : `Colour: ${raw.trim()}.`,
+  };
+}
