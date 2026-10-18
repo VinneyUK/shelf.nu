@@ -13,6 +13,12 @@ import {
 } from "~/utils/permissions/permission.data";
 import { userHasPermission } from "~/utils/permissions/permission.validator.client";
 import { tw } from "~/utils/tw";
+import {
+  parseTileCols,
+  setTileCols,
+  TILE_COLS_CHOICES,
+  useTileCols,
+} from "./tile-cols";
 import { Pagination } from "../../list/pagination";
 import { Button } from "../../shared/button";
 import { ButtonGroup } from "../../shared/button-group";
@@ -65,6 +71,11 @@ export function AssetIndexPagination() {
           >
             <ChevronRight className="chev -rotate-90" />
           </Button>
+
+          {/* fork: tiles per row, as on Filament */}
+          <When truthy={tileView}>
+            <TilesPerRow />
+          </When>
 
           <When
             truthy={userHasPermission({
@@ -129,5 +140,27 @@ export function AssetIndexPagination() {
         </div>
       </When>
     </div>
+  );
+}
+
+/** Tiles per row in the Tile view: Auto (250 px tiles) or 3 to 8. */
+function TilesPerRow() {
+  const cols = useTileCols();
+  return (
+    <label className="flex items-center gap-1.5 text-sm text-gray-600">
+      Per row
+      <select
+        value={cols}
+        onChange={(e) => setTileCols(parseTileCols(e.target.value))}
+        className="h-[34px] rounded-md border border-gray-300 py-0 pl-2 pr-7 text-sm"
+        aria-label="Tiles per row"
+      >
+        {TILE_COLS_CHOICES.map((c) => (
+          <option key={c} value={c}>
+            {c === "auto" ? "Auto" : c}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

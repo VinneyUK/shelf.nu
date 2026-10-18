@@ -7,7 +7,7 @@
  * chips (status, category, tags); then the facts in two columns with small
  * labels; and the row actions along the bottom.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link, useLoaderData } from "react-router";
 import {
   AttachmentsHover,
@@ -28,7 +28,9 @@ import { getPrimaryLocation } from "~/modules/asset/utils";
 import { formatCustodyList } from "~/modules/custody/utils";
 import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { formatCurrency } from "~/utils/currency";
+import { tw } from "~/utils/tw";
 import AssetQuickActions from "./asset-quick-actions";
+import { tileGridTemplate, useTileCols } from "./tile-cols";
 
 /** One fact: a small label over the value. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -202,11 +204,22 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
 /** The grid. Pagination is rendered by the caller, as for the list. */
 export function AssetTiles({ emptyState }: { emptyState?: ReactNode }) {
   const { items } = useLoaderData<{ items: AssetsFromViewItem[] }>();
+  const cols = useTileCols();
   if (items.length === 0) {
     return <>{emptyState ?? <EmptyState />}</>;
   }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    // 250 px tiles, as many as fit (Auto), or the number chosen in the bottom
+    // bar; a fixed number applies from large screens up, as on Filament
+    <div
+      className={tw(
+        "grid gap-4",
+        cols === "auto"
+          ? "[grid-template-columns:var(--tile-cols)]"
+          : "grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--tile-cols)]"
+      )}
+      style={{ "--tile-cols": tileGridTemplate(cols) } as CSSProperties}
+    >
       {items.map((item) => (
         <AssetTile key={item.id} item={item} />
       ))}
