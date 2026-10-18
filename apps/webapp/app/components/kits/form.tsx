@@ -11,7 +11,6 @@ import { useDisabled } from "~/hooks/use-disabled";
 import type { action as editKitAction } from "~/routes/_layout+/kits.$kitId_.edit";
 import type { action as createKitAction } from "~/routes/_layout+/kits.new";
 import { resolveCancelTo } from "~/utils/cancel-destination";
-import { ACCEPT_SUPPORTED_IMAGES } from "~/utils/constants";
 import { getValidationErrors } from "~/utils/http";
 import { useBarcodePermissions } from "~/utils/permissions/use-barcode-permissions";
 import { tw } from "~/utils/tw";
@@ -26,6 +25,7 @@ import ImageWithPreview from "../image-with-preview/image-with-preview";
 import InlineEntityCreationDialog from "../inline-entity-creation-dialog/inline-entity-creation-dialog";
 import { Button } from "../shared/button";
 import { Card } from "../shared/card";
+import { MainImageDropzone } from "../shared/file-dropzone/main-image-dropzone";
 import When from "../when/when";
 
 export const NewKitFormSchema = z.object({
@@ -165,7 +165,6 @@ export default function KitsForm({
           rowLabel="Description"
           subHeading={
             <p>
-              
               Briefly describe what is included and/or what is will be used for.
               It will be shown on the box’s overview page.
             </p>
@@ -191,7 +190,6 @@ export default function KitsForm({
           rowLabel="Category"
           subHeading={
             <p>
-              
               Make it unique. Each box can have 1 category. It will show on your
               index.{" "}
               <Button
@@ -245,16 +243,14 @@ export default function KitsForm({
           rowLabel="Place"
           subHeading={
             <p>
-              
-              A place is a place where an item is supposed to be located.
-              This is different than the last scanned place{" "}
+              A place is a place where an item is supposed to be located. This
+              is different than the last scanned place{" "}
               <Button
                 to="/locations/new"
                 className="text-gray-600 underline"
                 target="_blank"
                 variant="link-gray"
               >
-                
                 Create places
               </Button>
             </p>
@@ -309,24 +305,13 @@ export default function KitsForm({
 
         <FormRow rowLabel="Image" className="border-b-0 pt-[10px]">
           <div>
-            <p className="hidden lg:block">
-              Accepts PNG, JPG, JPEG, or WebP (max.8 MB)
-            </p>
-            <Input
-              disabled={disabled}
-              accept={ACCEPT_SUPPORTED_IMAGES}
+            {/* fork: drag and drop, and big photos shrunk before upload */}
+            <MainImageDropzone
               name="image"
-              type="file"
-              onChange={validateFile}
-              label="Image"
-              hideLabel
+              disabled={disabled}
               error={imageError}
-              className="mt-2"
-              inputClassName="border-0 shadow-none p-0 rounded-none"
+              onValidate={validateFile}
             />
-            <p className="mt-2 lg:hidden">
-              Accepts PNG, JPG, JPEG, or WebP (max.8 MB)
-            </p>
           </div>
         </FormRow>
 

@@ -32,7 +32,6 @@ import type {
   loader,
 } from "~/routes/_layout+/assets.$assetId_.edit";
 import { resolveCancelTo } from "~/utils/cancel-destination";
-import { ACCEPT_SUPPORTED_IMAGES } from "~/utils/constants";
 import type { CustomFieldZodSchema } from "~/utils/custom-fields";
 import { mergedSchema } from "~/utils/custom-fields";
 import { isFormProcessing } from "~/utils/form";
@@ -61,11 +60,7 @@ import { Button } from "../shared/button";
 import { ButtonGroup } from "../shared/button-group";
 import { Card } from "../shared/card";
 import { DisabledReasonHoverCard } from "../shared/disabled-reason-hover-card";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "../shared/hover-card";
+import { MainImageDropzone } from "../shared/file-dropzone/main-image-dropzone";
 import {
   Tooltip,
   TooltipContent,
@@ -1077,33 +1072,13 @@ export const AssetForm = ({
                   </Button>
                 </p>
               </When>
-              <p className="hidden lg:block">
-                <HoverCard openDelay={50} closeDelay={50}>
-                  <HoverCardTrigger className={tw("inline-flex w-full  ")}>
-                    Accepts PNG, JPG, JPEG, or WebP (max.8 MB)
-                  </HoverCardTrigger>
-                  <HoverCardContent side="left">
-                    Images will be automatically resized on upload. Width will
-                    be set at 1200px and height will be adjusted accordingly to
-                    keep the aspect ratio.
-                  </HoverCardContent>
-                </HoverCard>
-              </p>
-              <Input
-                disabled={disabled}
-                accept={ACCEPT_SUPPORTED_IMAGES}
+              {/* fork: drag and drop, and big photos shrunk before upload */}
+              <MainImageDropzone
                 name="mainImage"
-                type="file"
-                onChange={validateFile}
-                label={"Main image"}
-                hideLabel
+                disabled={disabled}
                 error={mainImageError}
-                className="mt-2"
-                inputClassName="border-0 shadow-none p-0 rounded-none"
+                onValidate={validateFile}
               />
-              <p className="mt-2 lg:hidden">
-                Accepts PNG, JPG, JPEG, or WebP (max.8 MB)
-              </p>
             </div>
           </div>
         </FormRow>
@@ -1237,16 +1212,14 @@ export const AssetForm = ({
             rowLabel="Place"
             subHeading={
               <p>
-                
-                A place is a place where an item is supposed to be located.
-                This is different than the last scanned place{" "}
+                A place is a place where an item is supposed to be located. This
+                is different than the last scanned place{" "}
                 <Button
                   to="/locations/new"
                   className="text-gray-600 underline"
                   target="_blank"
                   variant="link-gray"
                 >
-                  
                   Create places
                 </Button>
               </p>
@@ -1263,7 +1236,6 @@ export const AssetForm = ({
                 triggerClassName="disabled w-full cursor-not-allowed"
                 reason={
                   <>
-                    
                     This asset's place is managed by its parent box{" "}
                     <strong>"{kitMembership?.name}"</strong>. Update the box's
                     place instead.
