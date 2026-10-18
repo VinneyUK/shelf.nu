@@ -15,7 +15,6 @@ import {
   type KnownCode,
   PACKAGING,
   type Packaging,
-  remainingTone,
   searchFilaments,
   SPOOL_WEIGHTS,
 } from "~/modules/filament/catalogue";
@@ -135,21 +134,14 @@ export function FilamentPicture({
 }
 
 export function RemainingBar({ percent }: { percent: number }) {
-  const tone = remainingTone(percent);
   return (
     <div className="flex items-center gap-2">
-      <div className="h-2 w-24 rounded-full bg-gray-100" role="presentation">
-        <div
-          className={tw(
-            "h-2 rounded-full",
-            tone === "low" || tone === "empty"
-              ? "bg-error-500"
-              : tone === "full"
-              ? "bg-success-500"
-              : "bg-primary-500"
-          )}
-          style={barFill(percent)}
-        />
+      <div
+        className="h-2 w-24 rounded-full"
+        style={barTrack(percent)}
+        role="presentation"
+      >
+        <div className="h-2 rounded-full" style={barFill(percent)} />
       </div>
       <span className="w-10 text-right text-sm tabular-nums text-gray-700">
         {percent}%
@@ -632,15 +624,34 @@ export function SpoolFields({
 }
 
 /**
- * A bar's fill for what's left: its width, and a colour that moves smoothly
- * from green (full) through yellow and amber to red (nearly empty), so every
- * level looks different, not just full, low and in between.
+ * The colours of the levels, as Claude shows usage: blue with plenty left,
+ * amber when it's getting low (a quarter or less), red when nearly gone (a
+ * tenth or less). Each track is a faint wash of its bar's own colour.
  */
+export const LEVEL_COLOURS = {
+  plenty: "#4177d0",
+  low: "#f0b544",
+  nearlyGone: "#c04742",
+} as const;
+
+export function levelColour(percent: number) {
+  const p = Math.max(0, Math.min(100, percent));
+  return p <= 10
+    ? LEVEL_COLOURS.nearlyGone
+    : p <= 25
+    ? LEVEL_COLOURS.low
+    : LEVEL_COLOURS.plenty;
+}
+
+/** A bar's fill for what's left: its width and its level's colour. */
 export function barFill(percent: number): CSSProperties {
   const p = Math.max(0, Math.min(100, percent));
-  // hue 0 (red) at empty to 130 (green) at full, eased so the middle reads amber
-  const hue = Math.round(130 * Math.pow(p / 100, 1.15));
-  return { width: `${p}%`, backgroundColor: `hsl(${hue} 72% 44%)` };
+  return { width: `${p}%`, backgroundColor: levelColour(p) };
+}
+
+/** The track behind a bar: its level's colour, faint, in either theme. */
+export function barTrack(percent: number): CSSProperties {
+  return { backgroundColor: `${levelColour(percent)}2e` };
 }
 
 /** A spool or a refill, as a mark: a filled disc for a spool, a dashed ring for a refill. */
@@ -715,7 +726,7 @@ export function TypeRows({ items }: { items: Stocked[] }) {
               {r.kg.toFixed(2)} kg left
             </span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-gray-100">
+          <div className="h-1.5 w-full rounded-full" style={barTrack(r.pct)}>
             <div className={"h-1.5 rounded-full"} style={barFill(r.pct)} />
           </div>
         </div>

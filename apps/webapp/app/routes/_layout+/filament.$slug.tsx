@@ -10,7 +10,7 @@ import {
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import { MoreHorizontalIcon, ScaleIcon } from "lucide-react";
+import { ScaleIcon, Trash2Icon } from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -23,6 +23,7 @@ import { FilamentCell } from "~/components/filament/filament-cell";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barFill,
+  barTrack,
   CodeChip,
   DateField,
   FilamentPicture,
@@ -576,17 +577,39 @@ function DeleteSpool({
   label,
   disabled,
   onDelete,
+  icon = false,
 }: {
   label: string;
   disabled: boolean;
   onDelete: () => void;
+  /** As an icon button, like the Delete on asset rows */
+  icon?: boolean;
 }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button type="button" variant="secondary" size="sm" disabled={disabled}>
-          Delete
-        </Button>
+        {icon ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="p-2"
+            disabled={disabled}
+            aria-label={`Delete ${label}`}
+            tooltip="Delete"
+          >
+            <Trash2Icon className="size-4" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={disabled}
+          >
+            Delete
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -1012,7 +1035,10 @@ function StockRow({
           className="w-full"
         >
           <span className="flex w-48 items-center gap-2">
-            <span className="h-1.5 flex-1 rounded-full bg-gray-100">
+            <span
+              className="h-1.5 flex-1 rounded-full"
+              style={barTrack(spool.remainingPercent)}
+            >
               <span
                 className={"block h-1.5 rounded-full"}
                 style={barFill(spool.remainingPercent)}
@@ -1088,13 +1114,13 @@ function StockRow({
         </FilamentCell>
       </td>
       <td className={tw(cell, "pr-4 text-right")}>
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-2">
           <WeighButton
             spool={spool}
             number={number}
             tare={spool.spoolWeightGrams ?? tare}
           />
-          <RowMenu spool={spool} number={number} />
+          <RowDelete spool={spool} number={number} />
         </span>
       </td>
     </tr>
@@ -1123,13 +1149,11 @@ function WeighButton({
           type="button"
           variant="secondary"
           size="sm"
-          className="px-2 py-1 text-xs"
+          className="p-2"
           aria-label={`Weigh #${number}`}
+          tooltip="Weigh it"
         >
-          <span className="inline-flex items-center gap-1">
-            <ScaleIcon className="size-3.5" aria-hidden="true" />
-            Weigh
-          </span>
+          <ScaleIcon className="size-4" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverPortal>
@@ -1179,41 +1203,18 @@ function WeighButton({
   );
 }
 
-/** A row's "⋯" menu: delete it. */
-function RowMenu({ spool, number }: { spool: Spool; number: number }) {
+/** A row's Delete: the bin, asking first. */
+function RowDelete({ spool, number }: { spool: Spool; number: number }) {
   const act = useFetcher<Result>();
-  const [open, setOpen] = useState(false);
-  const busy = isFormProcessing(act.state);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`More for #${number}`}
-          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-        >
-          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
-        </button>
-      </PopoverTrigger>
-      <PopoverPortal>
-        <PopoverContent
-          align="end"
-          sideOffset={4}
-          className="z-[60] w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
-        >
-          <DeleteSpool
-            label={`#${number} of ${spool.colourName}`}
-            disabled={busy}
-            onDelete={() =>
-              void act.submit(
-                { intent: "delete", id: spool.id },
-                { method: "post" }
-              )
-            }
-          />
-        </PopoverContent>
-      </PopoverPortal>
-    </Popover>
+    <DeleteSpool
+      icon
+      label={`#${number} of ${spool.colourName}`}
+      disabled={isFormProcessing(act.state)}
+      onDelete={() =>
+        void act.submit({ intent: "delete", id: spool.id }, { method: "post" })
+      }
+    />
   );
 }
 

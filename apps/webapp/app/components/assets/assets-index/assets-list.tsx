@@ -474,12 +474,7 @@ export const ListAssetContent = ({
           assetId={item.id}
           current={{ field: "quantity", value: item.quantity ?? 1 }}
         >
-          <span>
-            {item.quantity ?? 1}
-            {isQuantityTracked(item) && item.unitOfMeasure
-              ? ` ${item.unitOfMeasure}`
-              : ""}
-          </span>
+          <span>{item.quantity ?? 1}</span>
         </InlineCell>
       </Td>
 

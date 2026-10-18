@@ -14,6 +14,7 @@ import { data, useFetcher, useLoaderData } from "react-router";
 import { ErrorContent } from "~/components/errors";
 import {
   barFill,
+  barTrack,
   FilamentPicture,
   type Images,
   type Result,
@@ -211,7 +212,7 @@ function StocktakeRow({
           </span>
         ) : percent !== null ? (
           <div className="flex items-center gap-2" role="status">
-            <div className="h-2 flex-1 rounded-full bg-gray-100">
+            <div className="h-2 flex-1 rounded-full" style={barTrack(percent)}>
               <div className={"h-2 rounded-full"} style={barFill(percent)} />
             </div>
             <span className="w-10 text-right text-sm tabular-nums text-gray-800">

@@ -5,7 +5,7 @@
  * line); the filaments as tiles or a list, each opening its own page; and
  * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { useEffect, useRef, type CSSProperties } from "react";
+import { type ReactNode, useEffect, useRef, type CSSProperties } from "react";
 import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
@@ -31,6 +31,7 @@ import { FilterBuilder } from "~/components/filament/filter-builder";
 import { useAmsLiveUpdates } from "~/components/filament/live-updates";
 import {
   barFill,
+  barTrack,
   CodeChip,
   FilamentPicture,
   type Images,
@@ -688,11 +689,14 @@ function FilterBar({
   lines,
   activeFilters,
   choices,
+  columns,
 }: {
   activeFilters: PageData["activeFilters"];
   choices: PageData["choices"];
   filters: PageData["filters"];
   lines: string[];
+  /** The Advanced view's column picker, at the end of the bar as on Assets */
+  columns?: ReactNode;
 }) {
   const searchTimer = useRef<number | undefined>(undefined);
   const submit = (e: { currentTarget: HTMLSelectElement }) =>
@@ -777,6 +781,7 @@ function FilterBar({
             </option>
           ))}
         </select>
+        {columns ? <div className="w-auto">{columns}</div> : null}
       </Form>
     </Card>
   );
@@ -1304,7 +1309,11 @@ function FilamentListRow({
           aria-label="Left on each one"
         >
           {group.spools.slice(0, 3).map((s) => (
-            <span key={s.id} className="block h-1.5 rounded-full bg-gray-100">
+            <span
+              key={s.id}
+              className="block h-1.5 rounded-full"
+              style={barTrack(s.remainingPercent)}
+            >
               <span
                 className={"block h-1.5 rounded-full"}
                 style={barFill(s.remainingPercent)}
@@ -1573,6 +1582,11 @@ export default function FilamentPage() {
           lines={lines}
           activeFilters={activeFilters}
           choices={choices}
+          columns={
+            view === "advanced" ? (
+              <AdvancedColumns columns={advancedColumns} />
+            ) : null
+          }
         />
         {filters.colour ? (
           <div className="flex">
@@ -1636,9 +1650,6 @@ export default function FilamentPage() {
           </div>
         ) : view === "advanced" ? (
           <div className="flex flex-col gap-2">
-            <div className="flex justify-end">
-              <AdvancedColumns columns={advancedColumns} />
-            </div>
             <AdvancedTable
               items={items}
               columns={advancedColumns}

@@ -64,7 +64,6 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
           locale: "en-GB",
         })
       : null;
-  const isQty = item.type === "QUANTITY_TRACKED";
   const sale = useSale(item.id); // sold feature
   const soldFor =
     sale && sale.price !== null
@@ -167,10 +166,7 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
             </Fact>
           ) : null}
           {/* fork: every asset has a quantity (none recorded counts as 1) */}
-          <Fact label="Quantity">
-            {item.quantity ?? 1}
-            {isQty && item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
-          </Fact>
+          <Fact label="Quantity">{item.quantity ?? 1}</Fact>
           {locationsEnabled && location ? (
             <Fact label="Place">{location.name}</Fact>
           ) : null}

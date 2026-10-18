@@ -1,34 +1,22 @@
 /**
  * Filament's Advanced view (fork), built like Assets' Advanced: one row per
- * filament, the columns you choose in your order (Columns, top right), the
+ * filament, the columns you choose in your order (the columns button, as on
+ * Assets), the
  * filament's own column staying put when you scroll sideways, a click on a
  * heading to sort by it, and click-to-edit cells for the line, colour and
  * code (for every spool and refill of it), each save confirmed by a pop-up.
  */
-import { useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverPortal,
-  PopoverTrigger,
-} from "@radix-ui/react-popover";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  Columns3Icon,
-} from "lucide-react";
+import { useMemo } from "react";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import { Link, useRevalidator } from "react-router";
 import { FilamentIdChip } from "~/components/labels/filament-id-chip";
-import { Button } from "~/components/shared/button";
+import { ColumnsPicker } from "~/components/list/columns-picker";
 import { useSearchParams } from "~/hooks/search-params";
 import {
   ADVANCED_COLUMNS,
   type AdvancedRow,
   type ColumnId,
   columnLabel,
-  DEFAULT_COLUMNS,
   FIXED_COLUMN,
 } from "~/modules/filament/advanced";
 import { tw } from "~/utils/tw";
@@ -245,116 +233,37 @@ function AdvancedCell({
   }
 }
 
-/** Choose and order the Advanced view's columns; kept in a cookie. */
+/**
+ * Choose and order the Advanced view's columns, with the same picker as
+ * Assets' Advanced view; kept in a cookie.
+ */
 export function AdvancedColumns({ columns }: { columns: ColumnId[] }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<ColumnId[]>(columns);
   const revalidator = useRevalidator();
-  const save = (next: ColumnId[]) => {
-    document.cookie = `${COOKIE}=${encodeURIComponent(
-      next.join(",")
-    )}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    void revalidator.revalidate();
-  };
-  const move = (id: ColumnId, by: -1 | 1) => {
-    const at = draft.indexOf(id);
-    const to = at + by;
-    if (at < 1 || to < 1 || to >= draft.length) return;
-    const next = [...draft];
-    [next[at], next[to]] = [next[to], next[at]];
-    setDraft(next);
-  };
-  const toggle = (id: ColumnId) =>
-    setDraft((d) => (d.includes(id) ? d.filter((c) => c !== id) : [...d, id]));
+  const pickerColumns = useMemo(
+    () =>
+      [
+        ...columns.filter((id) => id !== FIXED_COLUMN),
+        ...ADVANCED_COLUMNS.map((c) => c.id).filter(
+          (id) => id !== FIXED_COLUMN && !columns.includes(id)
+        ),
+      ].map((id) => ({
+        name: id,
+        label: columnLabel(id),
+        visible: columns.includes(id),
+      })),
+    [columns]
+  );
   return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (o) setDraft(columns);
+    <ColumnsPicker
+      fixedLabel={columnLabel(FIXED_COLUMN)}
+      columns={pickerColumns}
+      onApply={(picked) => {
+        const shown = picked.filter((c) => c.visible).map((c) => c.name);
+        document.cookie = `${COOKIE}=${encodeURIComponent(
+          [FIXED_COLUMN, ...shown].join(",")
+        )}; Path=/; Max-Age=31536000; SameSite=Lax`;
+        void revalidator.revalidate();
       }}
-    >
-      <PopoverTrigger asChild>
-        <Button type="button" variant="secondary" className="h-[34px]">
-          <span className="inline-flex items-center gap-1.5">
-            <Columns3Icon className="size-4" aria-hidden="true" />
-            Columns
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverPortal>
-        <PopoverContent
-          align="end"
-          sideOffset={4}
-          className="z-[60] w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
-        >
-          <p className="mb-2 text-sm font-medium text-gray-900">Columns</p>
-          <ul className="flex flex-col gap-1">
-            {[
-              ...draft,
-              ...ADVANCED_COLUMNS.map((c) => c.id).filter(
-                (c) => !draft.includes(c)
-              ),
-            ].map((id) => {
-              const on = draft.includes(id);
-              const fixed = id === FIXED_COLUMN;
-              return (
-                <li key={id} className="flex items-center gap-2 text-sm">
-                  <label className="flex flex-1 items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={fixed}
-                      onChange={() => toggle(id)}
-                    />
-                    {columnLabel(id)}
-                  </label>
-                  {on && !fixed ? (
-                    <span className="flex">
-                      <button
-                        type="button"
-                        className="rounded p-0.5 text-gray-500 hover:bg-gray-100"
-                        aria-label={`Move ${columnLabel(id)} left`}
-                        onClick={() => move(id, -1)}
-                      >
-                        <ChevronUpIcon className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded p-0.5 text-gray-500 hover:bg-gray-100"
-                        aria-label={`Move ${columnLabel(id)} right`}
-                        onClick={() => move(id, 1)}
-                      >
-                        <ChevronDownIcon className="size-4" />
-                      </button>
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-          <div className="mt-3 flex justify-between gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setDraft(DEFAULT_COLUMNS)}
-            >
-              Reset
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                save(draft);
-                setOpen(false);
-              }}
-            >
-              Show these
-            </Button>
-          </div>
-        </PopoverContent>
-      </PopoverPortal>
-    </Popover>
+    />
   );
 }

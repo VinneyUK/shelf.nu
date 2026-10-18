@@ -12,7 +12,7 @@ vi.mock("./bambu-store.server", async (original) => ({
   downloadImage: store.downloadImage,
 }));
 
-import { barFill } from "~/components/filament/parts";
+import { barFill, barTrack, LEVEL_COLOURS } from "~/components/filament/parts";
 import { productFromStoreUrl } from "./bambu-store.server";
 import type * as StoreModule from "./bambu-store.server";
 import { linkStorePage } from "./images.server";
@@ -115,14 +115,18 @@ describe("linking a filament to its store page", () => {
 });
 
 describe("the bar's colour", () => {
-  const hue = (p: number) =>
-    Number(/hsl\((\d+)/.exec(String(barFill(p).backgroundColor))?.[1]);
-  it("runs from red when empty to green when full, a different shade for each level", () => {
-    expect(hue(0)).toBe(0);
-    expect(hue(100)).toBe(130);
-    const levels = [5, 15, 30, 45, 60, 75, 90].map(hue);
-    expect(levels).toEqual([...levels].sort((a, b) => a - b));
-    expect(new Set(levels).size).toBe(levels.length);
+  it("is Claude's usage colours: blue with plenty, amber when low, red when nearly gone", () => {
+    expect(barFill(100).backgroundColor).toBe(LEVEL_COLOURS.plenty);
+    expect(barFill(26).backgroundColor).toBe(LEVEL_COLOURS.plenty);
+    expect(barFill(25).backgroundColor).toBe(LEVEL_COLOURS.low);
+    expect(barFill(11).backgroundColor).toBe(LEVEL_COLOURS.low);
+    expect(barFill(10).backgroundColor).toBe(LEVEL_COLOURS.nearlyGone);
+    expect(barFill(0).backgroundColor).toBe(LEVEL_COLOURS.nearlyGone);
     expect(barFill(140).width).toBe("100%");
+  });
+
+  it("puts a faint wash of the same colour behind it", () => {
+    expect(barTrack(60).backgroundColor).toBe(`${LEVEL_COLOURS.plenty}2e`);
+    expect(barTrack(5).backgroundColor).toBe(`${LEVEL_COLOURS.nearlyGone}2e`);
   });
 });

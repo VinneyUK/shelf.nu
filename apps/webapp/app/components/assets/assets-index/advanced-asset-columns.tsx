@@ -415,11 +415,7 @@ export function AdvancedIndexColumn({
             assetId={item.id}
             current={{ field: "quantity", value: item.quantity ?? 1 }}
           >
-            {`${item.quantity ?? 1}${
-              isQuantityTracked(item) && item.unitOfMeasure
-                ? ` ${item.unitOfMeasure}`
-                : ""
-            }`}
+            {item.quantity ?? 1}
           </InlineCell>
         </Td>
       );
