@@ -14,7 +14,6 @@ import {
 import { Reorder } from "framer-motion";
 import { Search } from "lucide-react";
 import { useLoaderData } from "react-router";
-import { FakeCheckbox } from "~/components/forms/fake-checkbox";
 import { Switch } from "~/components/forms/switch";
 import { ChevronRight, HandleIcon, PlusIcon } from "~/components/icons/library";
 import { Button } from "~/components/shared/button";
@@ -101,22 +100,6 @@ function AdvancedFilter() {
   // counts toward the trigger's active badge so it's visible when collapsed.
   const lowStockActive = searchParams.get("lowStockOnly") === "true";
   const activeFilterCount = initialFilters.length + (lowStockActive ? 1 : 0);
-
-  function toggleLowStock() {
-    // Preserve any in-progress (unapplied) column-filter edits: skip the
-    // URL-sync effect's reset, exactly as `applyFilters` / `clearAllFilters` do.
-    isApplyingInternally.current = true;
-    setSearchParams((prev) => {
-      if (prev.get("lowStockOnly") === "true") {
-        prev.delete("lowStockOnly");
-      } else {
-        prev.set("lowStockOnly", "true");
-      }
-      // Re-run pagination from the top when the filter changes.
-      prev.delete("page");
-      return prev;
-    });
-  }
 
   // Create a stable string from search params excluding getAll parameter
   // This prevents filter resets when dropdown "show all" actions modify the URL
@@ -372,28 +355,7 @@ function AdvancedFilter() {
               )}
             </div>
 
-            {/* Low-stock quick filter — deliberately small and de-emphasized so
-                it does not compete with the column filters above. Toggles the
-                `lowStockOnly` param immediately (independent of the Apply flow). */}
-            <button
-              type="button"
-              onClick={toggleLowStock}
-              aria-pressed={lowStockActive}
-              className="flex w-full items-center gap-2 border-b px-4 py-2 text-left text-[12px] font-normal text-gray-500 hover:bg-gray-50"
-            >
-              <FakeCheckbox
-                checked={lowStockActive}
-                className={tw(
-                  "size-[14px]",
-                  lowStockActive ? "text-primary" : "text-white"
-                )}
-              />
-              Low stock only
-              <span className="text-gray-500">
-                — at or below reorder threshold
-              </span>
-            </button>
-
+            {/* fork: no "Low stock only": there are no reorder thresholds */}
             <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <Button

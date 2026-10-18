@@ -23,7 +23,16 @@ const FIGURES = (value: string, quantity: string) => `
                     THEN s."price" - ${value} * ${quantity} END), 0)::float AS difference`;
 
 const ASSET_FIGURES = FIGURES('a."value"', 'COALESCE(a."quantity", 1)');
-const SLICE_FIGURES = (slice: string) => FIGURES('a."value"', slice);
+/**
+ * A place's or box's share of an asset. A quantity-tracked asset is split
+ * across places and boxes; an individually tracked one is wholly there, with
+ * its own quantity (none recorded counts as 1).
+ */
+const SLICE_FIGURES = (slice: string) =>
+  FIGURES(
+    'a."value"',
+    `CASE WHEN a."type" = 'QUANTITY_TRACKED' THEN ${slice} ELSE COALESCE(a."quantity", 1) END`
+  );
 
 /** Per category: every asset with that category. */
 export const CATEGORY_FIGURES_SQL = `

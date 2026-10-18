@@ -469,23 +469,18 @@ export const ListAssetContent = ({
 
       {/* Quantity (inline editing) */}
       <Td>
-        {isQuantityTracked(item) ? (
-          <InlineCell
-            assetId={item.id}
-            current={{ field: "quantity", value: item.quantity ?? null }}
-          >
-            {item.quantity != null ? (
-              <span>
-                {item.quantity}
-                {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
-              </span>
-            ) : (
-              <EmptyTableValue />
-            )}
-          </InlineCell>
-        ) : (
-          <EmptyTableValue />
-        )}
+        {/* fork: every asset has a quantity (none recorded counts as 1) */}
+        <InlineCell
+          assetId={item.id}
+          current={{ field: "quantity", value: item.quantity ?? 1 }}
+        >
+          <span>
+            {item.quantity ?? 1}
+            {isQuantityTracked(item) && item.unitOfMeasure
+              ? ` ${item.unitOfMeasure}`
+              : ""}
+          </span>
+        </InlineCell>
       </Td>
 
       {/* Quick Actions */}

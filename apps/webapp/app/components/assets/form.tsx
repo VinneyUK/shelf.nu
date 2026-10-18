@@ -1,12 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { Asset, Barcode, Qr } from "@prisma/client";
 import { AssetType, ConsumptionType } from "@prisma/client";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverPortal,
-  PopoverContent,
-} from "@radix-ui/react-popover";
 import { useAtom, useAtomValue } from "jotai";
 import {
   useActionData,
@@ -38,7 +32,6 @@ import { isFormProcessing } from "~/utils/form";
 import { getValidationErrors } from "~/utils/http";
 import type { DataOrErrorResponse } from "~/utils/http.server";
 import { useBarcodePermissions } from "~/utils/permissions/use-barcode-permissions";
-import { tw } from "~/utils/tw";
 import { AssetImage } from "./asset-image";
 import { AssetModelFormRow } from "./asset-model-form-row";
 import {
@@ -376,10 +369,8 @@ export const AssetForm = ({
   const isKitAsset = Boolean(kitMembership);
   const locationDisabled = disabled || isKitAsset;
 
-  /** Whether we are in edit mode (asset already exists). */
-  const isEditMode = Boolean(id);
   /** Track the selected asset type for conditional field rendering. */
-  const [selectedAssetType, setSelectedAssetType] = useState<AssetType>(
+  const [selectedAssetType] = useState<AssetType>(
     bulkMode ? AssetType.INDIVIDUAL : assetType ?? AssetType.INDIVIDUAL
   );
   const isQtyTracked = isQuantityTracked(selectedAssetType);
@@ -437,9 +428,6 @@ export const AssetForm = ({
    * so the shared NewAssetFormSchema (title.min(2)) still passes in
    * bulk mode. The server-side action ignores `title` when `bulk=1`. */
   const bulkFirstTitle = bulkPreviewTitles[0] || "";
-  const [consumptionTypeError, setConsumptionTypeError] = useState<
-    string | undefined
-  >();
   /** Live mirror of whether the user has picked an asset model.
    * Seeded from the initial prop (truthy when editing an existing
    * asset that already has a model). Used by the row's error-display
@@ -641,19 +629,6 @@ export const AssetForm = ({
           // Check for barcode validation errors
           const hasBarcodeErrors = barcodesInputRef.current?.hasErrors();
 
-          // Validate consumption type for quantity-tracked assets
-          if (isQtyTracked) {
-            const formData = new FormData(e.currentTarget);
-            if (!formData.get("consumptionType")) {
-              setConsumptionTypeError("Please select a consumption type");
-              e.preventDefault();
-              e.stopPropagation();
-              return false;
-            } else {
-              setConsumptionTypeError(undefined);
-            }
-          }
-
           // If there are barcode errors, prevent submission
           // Zorm will handle its own validation and prevent submission if needed
           if (hasBarcodeErrors) {
@@ -820,108 +795,26 @@ export const AssetForm = ({
           </FormRow>
         </When>
 
-        <When truthy={!bulkMode}>
-          <FormRow
-            rowLabel={"Tracking method"}
-            className="border-b-0 pb-[10px]"
-            subHeading={
-              isEditMode
-                ? "Tracking method cannot be changed after creation."
-                : "Choose how this asset is tracked. This cannot be changed later."
-            }
-            required={true}
-          >
-            <input type="hidden" name="type" value={selectedAssetType} />
-            <TrackingMethodCards
-              selectedAssetType={selectedAssetType}
-              onSelect={setSelectedAssetType}
-              disabled={disabled || isEditMode}
-              isEditMode={isEditMode}
-            />
-          </FormRow>
-        </When>
-
-        <When truthy={bulkMode}>
-          {/* Bulk-create assets are always INDIVIDUAL by design. */}
-          <input type="hidden" name="type" value={AssetType.INDIVIDUAL} />
-        </When>
-
+        {/* fork: no tracking method to choose. Every asset just has a
+            quantity (below, by Value). A new asset is individually tracked;
+            an existing one keeps its type and its quantity settings. */}
+        <input
+          type="hidden"
+          name="type"
+          value={bulkMode ? AssetType.INDIVIDUAL : selectedAssetType}
+        />
         <When truthy={isQtyTracked}>
-          <div className="flex flex-col gap-2">
-            <FormRow
-              rowLabel="Quantity"
-              className="border-b-0 pb-[10px]"
-              subHeading="Total number of items in this pool."
-              required={true}
-            >
-              <Input
-                type="number"
-                label="Quantity"
-                hideLabel
-                name="quantity"
-                disabled={disabled}
-                min={1}
-                step={1}
-                className="w-full"
-                defaultValue={quantity ?? ""}
-                required={true}
-                error={
-                  validationErrors?.quantity?.message ||
-                  zo.errors.quantity()?.message
-                }
-              />
-            </FormRow>
-
-            <FormRow
-              rowLabel="Unit of measure"
-              className="border-b-0 pb-[10px]"
-              subHeading="Label for the unit (e.g. pcs, boxes, liters)."
-            >
-              <Input
-                label="Unit of measure"
-                hideLabel
-                name="unitOfMeasure"
-                disabled={disabled}
-                className="w-full"
-                placeholder="e.g., pcs, boxes, liters"
-                defaultValue={unitOfMeasure ?? ""}
-              />
-            </FormRow>
-
-            <FormRow
-              rowLabel="Min quantity"
-              className="border-b-0 pb-[10px]"
-              subHeading="Low-stock alert threshold. You will be notified when available quantity falls to or below this number."
-            >
-              <Input
-                type="number"
-                label="Min quantity"
-                hideLabel
-                name="minQuantity"
-                disabled={disabled}
-                min={1}
-                step={1}
-                className="w-full"
-                defaultValue={minQuantity ?? ""}
-              />
-            </FormRow>
-
-            <FormRow
-              rowLabel="Consumption type"
-              className="border-b-0 pb-[10px]"
-              subHeading={
-                'Choose "Used up (one-way)" for items that are consumed and not returned, or "Returnable (two-way)" for items that are checked out and returned.'
-              }
-              required={true}
-            >
-              <ConsumptionTypeSelect
-                initialValue={consumptionType ?? undefined}
-                disabled={disabled}
-                error={consumptionTypeError}
-                onSelect={() => setConsumptionTypeError(undefined)}
-              />
-            </FormRow>
-          </div>
+          <input
+            type="hidden"
+            name="unitOfMeasure"
+            value={unitOfMeasure ?? ""}
+          />
+          <input type="hidden" name="minQuantity" value={minQuantity ?? ""} />
+          <input
+            type="hidden"
+            name="consumptionType"
+            value={consumptionType ?? ""}
+          />
         </When>
 
         {/* Sequential-ID preview shows one prefix-number pair, which is
@@ -1308,12 +1201,9 @@ export const AssetForm = ({
         ) : null}
 
         <FormRow
-          rowLabel={"Value"}
+          rowLabel={"Value (each)"}
           subHeading={
-            <p>
-              Specify the value of assets to get an idea of the total value of
-              your inventory.
-            </p>
+            <p>What one is worth. Totals multiply it by the quantity.</p>
           }
           className="border-b-0 py-[10px]"
         >
@@ -1335,6 +1225,32 @@ export const AssetForm = ({
             </span>
           </div>
         </FormRow>
+
+        {/* fork: how many you have, set whenever you like (none is 1) */}
+        <When truthy={!bulkMode}>
+          <FormRow
+            rowLabel="Quantity"
+            className="border-b-0 pb-[10px]"
+            subHeading="How many you have."
+          >
+            <Input
+              type="number"
+              label="Quantity"
+              hideLabel
+              name="quantity"
+              disabled={disabled}
+              min={1}
+              step={1}
+              className="w-full"
+              defaultValue={quantity ?? 1}
+              required={true}
+              error={
+                validationErrors?.quantity?.message ||
+                zo.errors.quantity()?.message
+              }
+            />
+          </FormRow>
+        </When>
 
         {/* sold feature: sold, date and price, saved with the form */}
         {id && !bulkMode ? <FormSoldRow assetId={id} /> : null}
@@ -1482,223 +1398,6 @@ function BulkCreatePreview({ titles }: { titles: string[] }) {
       {remaining > 0 ? (
         <span className="text-gray-500"> …and {remaining} more</span>
       ) : null}
-    </div>
-  );
-}
-
-/** Radio card options for the tracking method selector. */
-const TRACKING_OPTIONS = [
-  {
-    value: AssetType.INDIVIDUAL,
-    title: "Individually tracked",
-    description:
-      "Each item gets its own QR code, custody record, and booking entry. Best for unique or high-value items.",
-  },
-  {
-    value: AssetType.QUANTITY_TRACKED,
-    title: "Tracked by quantity",
-    description:
-      "A single record represents a pool of identical items. Custody and bookings are managed by numeric quantity.",
-  },
-] as const;
-
-/**
- * Styled radio-card selector for choosing the asset tracking method.
- * Renders two stacked cards with radio circle, title, and description.
- * When disabled (edit mode), wraps in a tooltip explaining the restriction.
- */
-function TrackingMethodCards({
-  selectedAssetType,
-  onSelect,
-  disabled,
-  isEditMode,
-}: {
-  selectedAssetType: AssetType;
-  onSelect: (type: AssetType) => void;
-  disabled: boolean;
-  isEditMode: boolean;
-}) {
-  const cards = (
-    <div className="flex flex-col gap-2">
-      {TRACKING_OPTIONS.map((option) => {
-        const isSelected = selectedAssetType === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelect(option.value)}
-            className={tw(
-              "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-              isSelected
-                ? "border-primary-500 bg-primary-25"
-                : "border-gray-200 bg-white hover:border-gray-300",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-          >
-            {/* Radio circle indicator */}
-            <span
-              className={tw(
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                isSelected ? "border-primary-500" : "border-gray-300"
-              )}
-            >
-              {isSelected && (
-                <span className="size-2 rounded-full bg-primary-500" />
-              )}
-            </span>
-            <div className="flex flex-col">
-              <span className="text-[14px] font-medium text-gray-900">
-                {option.title}
-              </span>
-              <span className="text-[13px] text-gray-600">
-                {option.description}
-              </span>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  /* In edit mode, wrap the cards in a tooltip explaining the restriction. */
-  if (isEditMode) {
-    return (
-      <TooltipProvider delayDuration={100}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>{cards}</div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p className="text-sm">
-              Tracking method cannot be changed after creation.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
-  return cards;
-}
-
-/** Label + description pairs for consumption type options. */
-const CONSUMPTION_OPTIONS = [
-  {
-    value: ConsumptionType.ONE_WAY,
-    label: "Used up (one-way) — consumed and not returned",
-  },
-  {
-    value: ConsumptionType.TWO_WAY,
-    label: "Returnable (two-way) — checked out and returned",
-  },
-] as const;
-
-/**
- * Popover-based select for picking the consumption type.
- * Follows the pattern from field-selector.tsx using @radix-ui/react-popover
- * instead of the deprecated DropdownMenu / Select components.
- */
-/** Popover-based select for consumption type, following the field-selector pattern.
- *
- * The `initialValue` prop seeds the local selection on mount (uncontrolled
- * after that). Named `initialValue` rather than `defaultValue` deliberately:
- * the prop is NOT a controlled-value default that should sync across
- * re-renders — once the user picks an option, local state owns it. This
- * also silences react-doctor's `no-derived-useState` heuristic (which
- * flags `defaultValue`-named props seeded into useState). */
-function ConsumptionTypeSelect({
-  initialValue,
-  disabled,
-  error,
-  onSelect,
-}: {
-  initialValue?: ConsumptionType;
-  disabled: boolean;
-  error?: string;
-  /** Called when a value is selected — used to clear external error state. */
-  onSelect?: () => void;
-}) {
-  const [selected, setSelected] = useState<ConsumptionType | undefined>(
-    initialValue
-  );
-  const [open, setOpen] = useState(false);
-
-  const selectedLabel =
-    CONSUMPTION_OPTIONS.find((o) => o.value === selected)?.label ??
-    "Select consumption type";
-
-  return (
-    <div className="w-full">
-      {selected ? (
-        <input type="hidden" name="consumptionType" value={selected} />
-      ) : null}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            disabled={disabled}
-            className={tw(
-              "flex w-full items-center justify-between rounded border bg-white px-3 py-2.5 text-left text-[14px]",
-              "focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-25",
-              selected ? "text-gray-900" : "text-gray-500",
-              error ? "border-error-300" : "border-gray-300",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-          >
-            <span className="truncate">{selectedLabel}</span>
-            <svg
-              className="size-4 shrink-0 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-        </PopoverTrigger>
-        <PopoverPortal>
-          <PopoverContent
-            align="start"
-            className="z-[999999] mt-1 w-[var(--radix-popover-trigger-width)] overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-md"
-          >
-            {CONSUMPTION_OPTIONS.map((option) => (
-              <div
-                key={option.value}
-                role="option"
-                aria-selected={selected === option.value}
-                tabIndex={0}
-                className={tw(
-                  "cursor-pointer px-3 py-2 text-[14px] text-gray-700 hover:bg-gray-50",
-                  selected === option.value &&
-                    "bg-gray-50 font-medium text-gray-900"
-                )}
-                onClick={() => {
-                  setSelected(option.value);
-                  setOpen(false);
-                  onSelect?.();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelected(option.value);
-                    setOpen(false);
-                    onSelect?.();
-                  }
-                }}
-              >
-                {option.label}
-              </div>
-            ))}
-          </PopoverContent>
-        </PopoverPortal>
-      </Popover>
-      {error ? <p className="mt-1 text-sm text-error-500">{error}</p> : null}
     </div>
   );
 }

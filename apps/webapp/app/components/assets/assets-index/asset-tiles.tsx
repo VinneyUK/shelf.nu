@@ -147,7 +147,14 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
           <Fact label="Added">
             <DateS date={item.createdAt} />
           </Fact>
-          {value ? <Fact label="Value">{value}</Fact> : null}
+          {value ? (
+            <Fact label="Value">
+              {value}
+              {(item.quantity ?? 1) > 1 ? (
+                <span className="text-gray-500"> × {item.quantity}</span>
+              ) : null}
+            </Fact>
+          ) : null}
           {sale ? (
             <Fact label="Sold for">
               {soldFor ?? "—"}
@@ -159,12 +166,11 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
               ) : null}
             </Fact>
           ) : null}
-          {isQty ? (
-            <Fact label="Quantity">
-              {item.quantity ?? 0}
-              {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
-            </Fact>
-          ) : null}
+          {/* fork: every asset has a quantity (none recorded counts as 1) */}
+          <Fact label="Quantity">
+            {item.quantity ?? 1}
+            {isQty && item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
+          </Fact>
           {locationsEnabled && location ? (
             <Fact label="Place">{location.name}</Fact>
           ) : null}

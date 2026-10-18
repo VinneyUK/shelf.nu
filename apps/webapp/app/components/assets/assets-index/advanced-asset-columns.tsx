@@ -408,24 +408,19 @@ export function AdvancedIndexColumn({
       );
 
     case "quantity":
+      // fork: every asset has a quantity (none recorded counts as 1)
       return (
         <Td className="w-full max-w-none whitespace-nowrap">
-          {isQuantityTracked(item) ? (
-            <InlineCell
-              assetId={item.id}
-              current={{ field: "quantity", value: item.quantity ?? null }}
-            >
-              {item.quantity != null ? (
-                `${item.quantity}${
-                  item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""
-                }`
-              ) : (
-                <EmptyTableValue />
-              )}
-            </InlineCell>
-          ) : (
-            <EmptyTableValue />
-          )}
+          <InlineCell
+            assetId={item.id}
+            current={{ field: "quantity", value: item.quantity ?? 1 }}
+          >
+            {`${item.quantity ?? 1}${
+              isQuantityTracked(item) && item.unitOfMeasure
+                ? ` ${item.unitOfMeasure}`
+                : ""
+            }`}
+          </InlineCell>
         </Td>
       );
 

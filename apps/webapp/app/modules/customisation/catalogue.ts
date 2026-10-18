@@ -246,6 +246,9 @@ const FEATURE_COLUMNS: Record<string, (c: FeatureFlags) => boolean> = {
   location: (c) => c.locationsEnabled,
   kit: (c) => c.kitsEnabled,
   assetModel: (c) => c.assetModelsEnabled,
+  // fork: no tracking methods, so no type or low-stock column
+  type: () => false,
+  minQuantity: () => false,
 };
 
 /**
