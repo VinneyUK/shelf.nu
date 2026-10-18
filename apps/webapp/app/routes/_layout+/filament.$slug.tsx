@@ -3,14 +3,14 @@
  * name; its spools (weigh, edit, retire, bring back, delete); its specs, edited
  * once for every spool; Bambu's catalogue facts; and Add spools of this.
  */
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Popover,
   PopoverContent,
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import { MoreHorizontalIcon } from "lucide-react";
+import { MoreHorizontalIcon, ScaleIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -63,10 +63,8 @@ import {
   catalogueEntry,
   coloursFor,
   costPerKg,
-  daysAgo,
   filamentKey,
   gramsLeft,
-  oldestNew,
   SPOOL_STATES,
   spoolState,
   stateLabel,
@@ -101,9 +99,12 @@ import {
   openSpool,
   renameFilament,
   retireSpool,
+  FILAMENT_FIELDS,
+  type FilamentField,
   SPOOL_FIELDS,
   type SpoolField,
   updateFilament,
+  updateFilamentField,
   updateSpoolDetails,
   updateSpoolField,
   weighSpool,
@@ -338,6 +339,24 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           organizationId,
           id,
           field as SpoolField,
+          String(form.get("value") ?? "")
+        );
+        return done(userId, "Filament saved", what);
+      }
+      case "filament-field": {
+        const field = String(form.get("field") ?? "");
+        if (!(FILAMENT_FIELDS as readonly string[]).includes(field)) {
+          throw new ShelfError({
+            cause: null,
+            message: "That can't be changed here.",
+            status: 400,
+            label: "Assets",
+          });
+        }
+        const what = await updateFilamentField(
+          organizationId,
+          slug,
+          field as FilamentField,
           String(form.get("value") ?? "")
         );
         return done(userId, "Filament saved", what);
@@ -804,10 +823,7 @@ function DateText({
   empty?: string;
 }) {
   return date ? (
-    <span className="flex flex-col leading-tight">
-      <DateS date={date} />
-      <span className="text-[11px] text-gray-400">{daysAgo(date)}</span>
-    </span>
+    <DateS date={date} />
   ) : (
     <span className="text-gray-400">{empty}</span>
   );
@@ -832,15 +848,12 @@ function StockTable({
   items,
   numbers,
   tare,
-  openFirstId,
 }: {
   items: Spool[];
   /** Each item's number, by the order it was added */
   numbers: Map<string, number>;
   /** The empty spool's weight from the catalogue, for items without their own */
   tare: number | null;
-  /** The new one to open next, when there's a choice */
-  openFirstId: string | null;
 }) {
   const [unit, setUnit] = useState<"percent" | "kg">("percent");
   const head =
@@ -884,9 +897,7 @@ function StockTable({
             <th className={head}>Paid</th>
             <th className={head}>Bought</th>
             <th className={head}>Opened</th>
-            <th className={head}>Code</th>
             <th className={head}>Size</th>
-            <th className={head}>Empty spool</th>
             <th className={tw(head, "w-10 pr-4")}>
               <span className="sr-only">More</span>
             </th>
@@ -900,7 +911,6 @@ function StockTable({
               number={numbers.get(s.id) ?? 0}
               unit={unit}
               tare={tare}
-              openFirst={s.id === openFirstId}
             />
           ))}
         </tbody>
@@ -914,13 +924,11 @@ function StockRow({
   number,
   unit,
   tare,
-  openFirst,
 }: {
   spool: Spool;
   number: number;
   unit: "percent" | "kg";
   tare: number | null;
-  openFirst: boolean;
 }) {
   const money = useMoney();
   const state = spoolState(spool);
@@ -928,17 +936,7 @@ function StockRow({
   const cell = "px-2 py-2 align-middle";
   return (
     <tr className={state === "retired" ? "bg-gray-25 text-gray-500" : ""}>
-      <td className={tw(cell, "pl-4 font-mono text-gray-400")}>
-        #{number}
-        {openFirst ? (
-          <span
-            className="mt-0.5 block whitespace-nowrap font-sans text-[10px] text-primary-600"
-            title="Bought first: open this one before the others"
-          >
-            open next
-          </span>
-        ) : null}
-      </td>
+      <td className={tw(cell, "pl-4 font-mono text-gray-400")}>#{number}</td>
       <td className={cell}>
         <FilamentCell
           id={spool.id}
@@ -1072,24 +1070,6 @@ function StockRow({
       <td className={cell}>
         <FilamentCell
           id={spool.id}
-          field="filamentCode"
-          label="Code on the box"
-          editor={{
-            kind: "text",
-            value: spool.filamentCode ?? "",
-            placeholder: "e.g. 10100",
-          }}
-        >
-          {spool.filamentCode ? (
-            <span className="font-mono text-xs">{spool.filamentCode}</span>
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
           field="weightGrams"
           label="Size (filament, g)"
           editor={{
@@ -1107,48 +1087,22 @@ function StockRow({
           </span>
         </FilamentCell>
       </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="spoolWeightGrams"
-          label="Empty spool (g)"
-          editor={{
-            kind: "number",
-            value: spool.spoolWeightGrams,
-            min: 0,
-            max: 2000,
-            suffix: "g",
-          }}
-        >
-          {spool.spoolWeightGrams !== null ? (
-            <span className="whitespace-nowrap tabular-nums">
-              {spool.spoolWeightGrams} g
-            </span>
-          ) : tare ? (
-            <span
-              className="whitespace-nowrap tabular-nums text-gray-400"
-              title="Bambu's figure; click to set this one's own"
-            >
-              {tare} g
-            </span>
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
-        </FilamentCell>
-      </td>
       <td className={tw(cell, "pr-4 text-right")}>
-        <RowMenu
-          spool={spool}
-          number={number}
-          tare={spool.spoolWeightGrams ?? tare}
-        />
+        <span className="inline-flex items-center gap-1">
+          <WeighButton
+            spool={spool}
+            number={number}
+            tare={spool.spoolWeightGrams ?? tare}
+          />
+          <RowMenu spool={spool} number={number} />
+        </span>
       </td>
     </tr>
   );
 }
 
-/** A row's "⋯" menu: weigh it on the scale, or delete it. */
-function RowMenu({
+/** Weigh it: the grams on the scale, less the empty spool, give what's left. */
+function WeighButton({
   spool,
   number,
   tare,
@@ -1161,16 +1115,22 @@ function RowMenu({
   const [open, setOpen] = useState(false);
   const [grams, setGrams] = useState("");
   const busy = isFormProcessing(act.state);
+  if (spool.status === "retired") return null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           type="button"
-          aria-label={`More for #${number}`}
-          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          variant="secondary"
+          size="sm"
+          className="px-2 py-1 text-xs"
+          aria-label={`Weigh #${number}`}
         >
-          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
-        </button>
+          <span className="inline-flex items-center gap-1">
+            <ScaleIcon className="size-3.5" aria-hidden="true" />
+            Weigh
+          </span>
+        </Button>
       </PopoverTrigger>
       <PopoverPortal>
         <PopoverContent
@@ -1186,6 +1146,7 @@ function RowMenu({
                 { intent: "weigh", id: spool.id, grossGrams: grams },
                 { method: "post" }
               );
+              setGrams("");
               setOpen(false);
             }}
           >
@@ -1206,24 +1167,50 @@ function RowMenu({
             <span className="text-xs text-gray-500">
               {tare
                 ? `Less the empty spool, ${tare} g.`
-                : "Set its empty spool weight first."}
+                : "Set the empty spool weight in the filament's details first."}
             </span>
             <Button type="submit" size="sm" disabled={busy || !tare || !grams}>
               Update what's left
             </Button>
           </form>
-          <div className="mt-3 border-t border-gray-100 pt-3">
-            <DeleteSpool
-              label={`#${number} of ${spool.colourName}`}
-              disabled={busy}
-              onDelete={() =>
-                void act.submit(
-                  { intent: "delete", id: spool.id },
-                  { method: "post" }
-                )
-              }
-            />
-          </div>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
+/** A row's "⋯" menu: delete it. */
+function RowMenu({ spool, number }: { spool: Spool; number: number }) {
+  const act = useFetcher<Result>();
+  const [open, setOpen] = useState(false);
+  const busy = isFormProcessing(act.state);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`More for #${number}`}
+          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        >
+          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          className="z-[60] w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
+        >
+          <DeleteSpool
+            label={`#${number} of ${spool.colourName}`}
+            disabled={busy}
+            onDelete={() =>
+              void act.submit(
+                { intent: "delete", id: spool.id },
+                { method: "post" }
+              )
+            }
+          />
         </PopoverContent>
       </PopoverPortal>
     </Popover>
@@ -1477,8 +1464,6 @@ export default function FilamentDetail() {
       )
       .map((s, i) => [s.id, i + 1])
   );
-  const firstToOpen = oldestNew(spools);
-  const newCount = spools.filter((s) => spoolState(s) === "new").length;
   const grams = onHand.reduce((n, s) => n + gramsLeft(s), 0);
   const priced = spools
     .map((s) => costPerKg(s))
@@ -1591,21 +1576,57 @@ export default function FilamentDetail() {
               All of this filament is finished.
             </p>
           ) : (
-            <StockTable
-              items={shown}
-              numbers={numbers}
-              tare={tare}
-              openFirstId={newCount > 1 ? firstToOpen?.id ?? null : null}
-            />
+            <StockTable items={shown} numbers={numbers} tare={tare} />
           )}
         </Card>
 
         <div className="grid items-start gap-4 lg:grid-cols-3">
           <Card className="my-0">
             <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              From Bambu's catalogue
+              Details
             </h3>
             <div className="mt-2">
+              <EditableFact
+                label="Code on the box"
+                field="filamentCode"
+                editor={{
+                  kind: "text",
+                  value: code ?? "",
+                  placeholder: "e.g. 10100",
+                }}
+              >
+                {code ? (
+                  <CodeChip code={code} />
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </EditableFact>
+              <EditableFact
+                label="Empty spool"
+                field="spoolWeightGrams"
+                editor={{
+                  kind: "number",
+                  value: filament.spoolWeightGrams,
+                  min: 0,
+                  max: 2000,
+                  suffix: "g",
+                }}
+              >
+                {filament.spoolWeightGrams !== null ? (
+                  <span className="tabular-nums">
+                    {filament.spoolWeightGrams} g
+                  </span>
+                ) : tare ? (
+                  <span
+                    className="tabular-nums text-gray-500"
+                    title="Bambu's figure; click to set your own"
+                  >
+                    {tare} g
+                  </span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </EditableFact>
               {fact("Material", filament.material)}
               {fact("Diameter", "1.75 mm")}
               {fact(
@@ -1659,6 +1680,36 @@ export default function FilamentDetail() {
         </div>
       </div>
     </>
+  );
+}
+
+/** A row of the Details card you can click to change, for the whole filament. */
+function EditableFact({
+  label,
+  field,
+  editor,
+  children,
+}: {
+  label: string;
+  field: FilamentField;
+  editor: Parameters<typeof FilamentCell>[0]["editor"];
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[7rem_1fr] items-center border-b border-gray-100 py-1.5 text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span>
+        <FilamentCell
+          id=""
+          intent="filament-field"
+          field={field}
+          label={label}
+          editor={editor}
+        >
+          {children}
+        </FilamentCell>
+      </span>
+    </div>
   );
 }
 

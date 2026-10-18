@@ -40,9 +40,12 @@ export function FilamentCell({
   editor,
   children,
   className,
+  intent = "field",
 }: {
-  /** The filament item's id */
+  /** The filament item's id (unused for a whole-filament field) */
   id: string;
+  /** "field" for one item; "filament-field" for every item of the filament */
+  intent?: "field" | "filament-field";
   field: string;
   /** What the cell is, for the editor's heading and screen readers */
   label: string;
@@ -79,10 +82,7 @@ export function FilamentCell({
   }, [open]);
   const busy = fetcher.state !== "idle";
   const save = (v: string) =>
-    void fetcher.submit(
-      { intent: "field", id, field, value: v },
-      { method: "post" }
-    );
+    void fetcher.submit({ intent, id, field, value: v }, { method: "post" });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

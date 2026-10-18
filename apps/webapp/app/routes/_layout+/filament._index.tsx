@@ -883,21 +883,21 @@ function FilamentTile({
           to={href}
           variant="secondary"
           size="sm"
-          className="p-1.5"
+          className="p-2"
           aria-label="Open"
           tooltip="Open"
         >
-          <PencilIcon className="size-3.5" />
+          <PencilIcon className="size-4" />
         </Button>
         <Button
           to={`${href}?add=1`}
           variant="secondary"
           size="sm"
-          className="p-1.5"
+          className="p-2"
           aria-label="Add more of this"
           tooltip="Add more of this"
         >
-          <PlusIcon className="size-3.5" />
+          <PlusIcon className="size-4" />
         </Button>
         {image?.productUrl ? (
           <Button
@@ -907,20 +907,18 @@ function FilamentTile({
             hideNewTabIcon
             variant="secondary"
             size="sm"
-            className="p-1.5"
+            className="p-2"
             aria-label="See it on the Bambu store"
             tooltip="See it on the Bambu store"
           >
-            <GlobeIcon className="size-3.5" />
+            <GlobeIcon className="size-4" />
           </Button>
         ) : null}
-        {group.fil && !compact ? (
-          <PrintLabelButton id={group.fil.id} kind="filament" small />
+        {group.fil ? (
+          // the same button as on asset tiles: green once the label's printed
+          <PrintLabelButton id={group.fil.id} kind="filament" />
         ) : null}
-        <span className="ml-auto flex items-center gap-1">
-          {code && !compact ? <CodeChip code={code} /> : null}
-          {!compact ? <FilamentIdChip fil={group.fil} className="h-7" /> : null}
-        </span>
+        {code && !compact ? <CodeChip code={code} className="ml-auto" /> : null}
       </div>
     </div>
   );

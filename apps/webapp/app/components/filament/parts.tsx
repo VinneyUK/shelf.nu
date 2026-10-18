@@ -3,7 +3,6 @@
  * share: the picture, swatch and remaining bar, the spool form, a spool's row.
  */
 import { useEffect, useId, useState, type CSSProperties } from "react";
-import { CheckIcon, CopyIcon } from "lucide-react";
 import { useFetcher } from "react-router";
 import { copyText } from "~/components/labels/asset-id-chip";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
@@ -726,12 +725,22 @@ export function TypeRows({ items }: { items: Stocked[] }) {
 }
 
 /** The code on the box, as a chip: click to copy it, as with the asset ID. */
-export function CodeChip({ code }: { code: string }) {
+/**
+ * The Bambu code from the box, styled as it prints on a filament label: white
+ * on black, square corners. Click to copy. Always black, in either theme.
+ */
+export function CodeChip({
+  code,
+  className,
+}: {
+  code: string;
+  className?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
-      title="Copy the code on the box"
+      title="The code on the box. Click to copy"
       aria-label={`Box code ${code}: copy`}
       onClick={() => {
         void copyText(code).then((ok) => {
@@ -740,19 +749,14 @@ export function CodeChip({ code }: { code: string }) {
           window.setTimeout(() => setCopied(false), 1500);
         });
       }}
-      className="ml-auto flex h-7 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 font-mono text-xs tabular-nums text-gray-700 hover:bg-gray-50"
-    >
-      {copied ? (
-        <>
-          <CheckIcon className="size-3.5 text-success-600" aria-hidden="true" />
-          <span className="font-sans">Copied</span>
-        </>
-      ) : (
-        <>
-          {code}
-          <CopyIcon className="size-3.5 text-gray-400" aria-hidden="true" />
-        </>
+      // inline colours: the dark theme never turns it light, like the label
+      style={{ backgroundColor: "#101828", color: "#ffffff" }}
+      className={tw(
+        "inline-flex h-6 items-center rounded px-1.5 text-xs font-bold tabular-nums tracking-wide hover:opacity-90",
+        className
       )}
+    >
+      {copied ? "Copied" : code}
     </button>
   );
 }

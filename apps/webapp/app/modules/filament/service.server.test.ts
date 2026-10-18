@@ -54,6 +54,7 @@ import {
   retireSpool,
   syncAmsTrays,
   updateFilament,
+  updateFilamentField,
   updateSpool,
   updateSpoolDetails,
   updateSpoolField,
@@ -1079,5 +1080,46 @@ describe("a spool's two tags", () => {
       },
     ]);
     expect(await linkUntaggedToTray("o1", tray())).toBeNull();
+  });
+});
+
+describe("a filament's own details, for all of it at once", () => {
+  const slug = filamentSlug("PLA Basic", "Jade White");
+  beforeEach(() => {
+    m.spool.findMany.mockResolvedValue([
+      { id: "a", type: "PLA Basic", colourName: "Jade White" },
+      { id: "b", type: "PLA Basic", colourName: "Jade White" },
+    ]);
+    m.spool.updateMany.mockResolvedValue({ count: 2 });
+  });
+
+  it("sets the code on the box on every spool and refill", async () => {
+    expect(
+      await updateFilamentField("o1", slug, "filamentCode", " 10-100 ")
+    ).toBe("Code 10100.");
+    expect(m.spool.updateMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { organizationId: "o1", id: { in: ["a", "b"] } },
+      data: { filamentCode: "10100" },
+    });
+  });
+
+  it("sets or clears the empty spool's weight", async () => {
+    expect(
+      await updateFilamentField("o1", slug, "spoolWeightGrams", "250")
+    ).toBe("Empty spool 250 g.");
+    expect(m.spool.updateMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      data: { spoolWeightGrams: 250 },
+    });
+    await updateFilamentField("o1", slug, "spoolWeightGrams", "");
+    expect(m.spool.updateMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      data: { spoolWeightGrams: null },
+    });
+  });
+
+  it("refuses a filament that isn't there", async () => {
+    m.spool.findMany.mockResolvedValue([]);
+    await expect(
+      updateFilamentField("o1", slug, "filamentCode", "1")
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

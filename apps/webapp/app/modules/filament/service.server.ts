@@ -1100,3 +1100,38 @@ export async function fillFilamentCode(
   });
   return result.count;
 }
+
+/** Fields of a filament itself, set on every spool and refill of it at once. */
+export const FILAMENT_FIELDS = ["filamentCode", "spoolWeightGrams"] as const;
+export type FilamentField = (typeof FILAMENT_FIELDS)[number];
+
+/**
+ * Sets the code on the box or the empty spool's weight for every spool and
+ * refill of a filament, from its page. Returns what was saved, for the pop-up.
+ */
+export async function updateFilamentField(
+  organizationId: string,
+  slug: string,
+  field: FilamentField,
+  raw: string
+): Promise<string> {
+  const spools = await getFilamentBySlug(organizationId, slug);
+  if (spools.length === 0) throw bad("That filament doesn't exist.", 404);
+  const where = { organizationId, id: { in: spools.map((s) => s.id) } };
+  if (field === "filamentCode") {
+    const code =
+      raw
+        .trim()
+        .replace(/[^A-Za-z0-9]/g, "")
+        .slice(0, 20) || null;
+    await db.spool.updateMany({ where, data: { filamentCode: code } });
+    return code ? `Code ${code}.` : "Code cleared.";
+  }
+  const g = raw.trim()
+    ? Math.round(numberIn(raw, "The empty spool (g)", 0, 2000))
+    : null;
+  await db.spool.updateMany({ where, data: { spoolWeightGrams: g } });
+  return g === null
+    ? "Empty spool weight cleared: Bambu's figure is used."
+    : `Empty spool ${g} g.`;
+}
