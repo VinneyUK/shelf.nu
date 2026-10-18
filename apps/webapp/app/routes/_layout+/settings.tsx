@@ -58,7 +58,8 @@ export const shouldRevalidate = () => false;
 
 export default function SettingsPage() {
   const { _isPersonalOrg } = useLoaderData<typeof loader>();
-  const { bookingsEnabled, assetModelsEnabled } = useCustomisations(); // customise feature
+  const { bookingsEnabled, assetModelsEnabled, filamentEnabled } =
+    useCustomisations(); // customise feature
   let items = [
     { to: "general", content: "General" },
     ...(!_isPersonalOrg && bookingsEnabled
@@ -73,6 +74,8 @@ export default function SettingsPage() {
     { to: "customise", content: "Customise" }, // customise feature
     { to: "email-receipts", content: "Email receipts" }, // email receipts feature
     { to: "ai", content: "AI" }, // AI feature
+    // filament feature: the 3D printer the AMS is read from
+    ...(filamentEnabled ? [{ to: "printer", content: "3D Printer" }] : []),
   ];
 
   const { isBaseOrSelfService } = useUserRoleHelper();

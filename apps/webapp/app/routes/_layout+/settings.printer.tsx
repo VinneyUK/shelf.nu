@@ -1,5 +1,5 @@
 /**
- * Settings > Printer (fork): the Bambu printer Shelf reads the AMS from. Its
+ * Settings > 3D Printer (fork): the Bambu printer Shelf reads the AMS from. Its
  * address, serial and access code (kept encrypted, never shown again), a
  * switch to read the AMS, a Test button that shows what the AMS holds, and
  * when the printer last reported.
@@ -13,7 +13,6 @@ import type {
 } from "react-router";
 import { z } from "zod";
 import { Switch } from "~/components/forms/switch";
-import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
 import { daysAgo } from "~/modules/filament/catalogue";
@@ -36,9 +35,9 @@ import {
 import { requirePermission } from "~/utils/roles.server";
 
 export const meta: MetaFunction<typeof loader> = () => [
-  { title: appendToMetaTitle("Printer") },
+  { title: appendToMetaTitle("3D Printer") },
 ];
-export const handle = { breadcrumb: () => "Printer" };
+export const handle = { breadcrumb: () => "3D Printer" };
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const { userId } = context.getSession();
@@ -51,7 +50,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     });
     const settings = await getPrinterSettingsForPage(organizationId);
     void ensureAmsWatcher(organizationId);
-    return payload({ header: { title: "Printer" }, settings });
+    return payload({ header: { title: "3D Printer" }, settings });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
     throw data(error(reason), { status: reason.status });
@@ -119,7 +118,7 @@ async function runAction({ context, request }: ActionFunctionArgs) {
 /** Every outcome as Shelf's pop-up (fork). */
 export const action = withPopups(runAction, {
   save: {
-    ok: "Printer settings saved",
+    ok: "3D printer settings saved",
     failed: "Couldn't save the printer settings",
   },
   test: { ok: "The printer answered", failed: "The printer didn't answer" },
@@ -148,7 +147,7 @@ export default function PrinterSettingsPage() {
     "rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900";
   return (
     <>
-      <Header />
+      {/* no Header of its own: Settings draws the page's header and tabs */}
       <div className="flex max-w-2xl flex-col gap-4">
         <Card className="my-0">
           <h3 className="text-text-md font-semibold text-gray-900">

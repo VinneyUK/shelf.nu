@@ -720,7 +720,7 @@ function PrinterStatus({ printer }: { printer: PageData["printer"] }) {
         className="text-error-600 hover:underline"
         title={printer.lastError}
       >
-        Printer: problem, see settings
+        3D printer: problem, see settings
       </Link>
     );
   }

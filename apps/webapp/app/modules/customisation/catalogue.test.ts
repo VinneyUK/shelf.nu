@@ -328,7 +328,12 @@ describe("the Filament switch", () => {
   it("is on unless switched off", () => {
     expect(DEFAULT_CUSTOMISATIONS.filamentEnabled).toBe(true);
   });
-  it("takes the Printer settings page with it when it's off", () => {
+  it("calls its settings page 3D Printer", () => {
+    const out = applyCustomisationsToMenu(menu(), DEFAULT_CUSTOMISATIONS);
+    const titles = JSON.stringify(out.topMenuItems);
+    expect(titles).toContain(`"title":"3D Printer","to":"${PRINTER_PAGE}"`);
+  });
+  it("takes the 3D Printer settings page with it when it's off", () => {
     const out = applyCustomisationsToMenu(
       menu(),
       off({ filamentEnabled: false })

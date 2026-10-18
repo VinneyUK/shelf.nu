@@ -125,7 +125,7 @@ function withoutHidden(items: NavItem[], c: Customisations): NavItem[] {
         c.filamentEnabled &&
         !children.some((child) => child.to === PRINTER_PAGE)
       ) {
-        children.push({ title: "Printer", to: PRINTER_PAGE });
+        children.push({ title: "3D Printer", to: PRINTER_PAGE });
       }
       return { ...item, children };
     })
