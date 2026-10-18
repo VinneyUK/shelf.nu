@@ -75,7 +75,8 @@ export const loader = async ({
 
   try {
     const qr = await getQr({ id: qrId });
-    if (qr?.assetId || qr?.kitId) {
+    // filament labels (fork): a filament's code counts as linked too
+    if (qr?.assetId || qr?.kitId || qr?.filamentId) {
       throw new ShelfError({
         message: "This QR code is already linked to an asset or a box.",
         title: "QR already linked",
@@ -288,9 +289,7 @@ export default function QrLinkExisting() {
             <DynamicDropdown
               trigger={
                 <div className="flex cursor-pointer items-center gap-2">
-                  
-                  Places{" "}
-                  <ChevronRight className="hidden rotate-90 md:inline" />
+                  Places <ChevronRight className="hidden rotate-90 md:inline" />
                 </div>
               }
               model={{ name: "location", queryKey: "name" }}

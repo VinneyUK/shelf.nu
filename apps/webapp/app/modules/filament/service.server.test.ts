@@ -21,6 +21,10 @@ const m = vi.hoisted(() => {
   };
   return { spool, spoolCandidate };
 });
+// filament labels: numbering has its own tests; here, only that it's told
+const carryFilamentNumber = vi.hoisted(() => vi.fn());
+vi.mock("./numbers.server", () => ({ carryFilamentNumber }));
+
 vi.mock("./codes.server", () => ({
   storeCodes: vi.fn().mockResolvedValue([]),
 }));
@@ -869,6 +873,12 @@ describe("the line and colour of a filament", () => {
         colourHex: "#FFFFFF",
       },
     });
+    // its label number goes with it
+    expect(carryFilamentNumber).toHaveBeenLastCalledWith(
+      "o1",
+      expect.objectContaining({ type: "PLA Basic", colourName: "Jade White" }),
+      { type: "PLA Matte", colourName: "Ivory White" }
+    );
   });
 });
 

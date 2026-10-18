@@ -61,10 +61,14 @@ export function sendReportEmails({
   }>;
 }) {
   const { item, type, normalizedName } = normalizeQrData(qr);
-  const isUnlinked = !qr.assetId && !qr.kitId;
+  // filament labels (fork): a filament's code is linked, to its filament
+  const isFilament = Boolean(qr.filamentId);
+  const isUnlinked = !qr.assetId && !qr.kitId && !isFilament;
 
   const subject = isUnlinked
     ? "Reported unlinked qr found"
+    : isFilament
+    ? "Reported filament label found"
     : `Reported ${type} found`;
 
   try {

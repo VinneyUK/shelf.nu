@@ -259,7 +259,14 @@ export async function resolveMobileScannedCode({
   const qr = await db.qr.findUnique({
     // eslint-disable-next-line local-rules/require-org-scope-on-id-queries -- idor-safe: mobile QR scan resolves code->org before any org context exists; org membership is enforced immediately below before any linked data is returned
     where: { id: qrId },
-    select: { id: true, assetId: true, kitId: true, organizationId: true },
+    select: {
+      id: true,
+      assetId: true,
+      kitId: true,
+      organizationId: true,
+      // filament labels (fork): never offered for claiming or linking
+      filamentId: true,
+    },
   });
 
   if (!qr) {
@@ -272,7 +279,7 @@ export async function resolveMobileScannedCode({
     // loader enforces `assetId: null, kitId: null`, so an orgless-but-linked
     // row (corrupted state) must not advertise the claim flow. It falls back
     // to the plain 404 (companion dead-ends, matching web's refusal).
-    const claimable = !qr.assetId && !qr.kitId;
+    const claimable = !qr.assetId && !qr.kitId && !qr.filamentId;
     return {
       ok: false,
       status: 404,

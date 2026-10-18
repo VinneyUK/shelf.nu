@@ -12,7 +12,6 @@ import { db } from "~/database/db.server";
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 import { ShelfError } from "~/utils/error";
 import type { Tray } from "./ams";
-import { storeCodes } from "./codes.server";
 import {
   catalogueEntry,
   clampPercent,
@@ -25,6 +24,8 @@ import {
   type Packaging,
   weighedPercent,
 } from "./catalogue";
+import { storeCodes } from "./codes.server";
+import { carryFilamentNumber } from "./numbers.server";
 
 const label = "Assets" as const;
 const bad = (message: string, status: 400 | 404 = 400) =>
@@ -268,13 +269,16 @@ export async function updateSpool(
       : data.remainingPercent === 0
       ? "empty"
       : "active";
-  return db.$transaction(async (tx) => {
+  const updated = await db.$transaction(async (tx) => {
     await freeSlot(tx, organizationId, data.amsSlot, id);
     return tx.spool.update({
       where: { id, organizationId },
       data: { ...data, status },
     });
   });
+  // its label number follows it if it was the filament's only item
+  await carryFilamentNumber(organizationId, existing, updated);
+  return updated;
 }
 
 /** Retires a spool that has run out (or that you've finished with). */
@@ -518,6 +522,7 @@ export async function updateFilament(
           : catalogueEntry(type)?.spoolWeight ?? null,
     },
   });
+  await carryFilamentNumber(organizationId, spools[0], { type, colourName });
   return filamentSlug(type, colourName);
 }
 
@@ -977,6 +982,7 @@ export async function renameFilament(
     where: { organizationId, id: { in: spools.map((s) => s.id) } },
     data: { type, material: materialOf(type), colourName, colourHex },
   });
+  await carryFilamentNumber(organizationId, spools[0], { type, colourName });
   return filamentSlug(type, colourName);
 }
 

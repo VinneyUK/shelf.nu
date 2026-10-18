@@ -15,7 +15,7 @@ import {
 import { tw } from "~/utils/tw";
 
 /** One SVG path for the dark modules, plus the grid size including a 1-module border. */
-function qrPath(data: string) {
+export function qrPath(data: string) {
   const code = QRCode(0, "L");
   code.addData(data);
   code.make();

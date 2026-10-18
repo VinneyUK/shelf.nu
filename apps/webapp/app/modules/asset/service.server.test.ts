@@ -417,6 +417,25 @@ describe("relinkAssetQrCode (asset)", () => {
     });
   });
 
+  it("throws when the QR is a filament's label (filament labels, fork)", async () => {
+    //@ts-expect-error mock setup
+    getQr.mockResolvedValue({
+      id: "qr-1",
+      organizationId: "org-1",
+      assetId: null,
+      kitId: null,
+      filamentId: "fil-1",
+    });
+    //@ts-expect-error mock setup
+    db.asset.findFirst.mockResolvedValue({ qrCodes: [] });
+
+    await expect(relinkAssetQrCode(args)).rejects.toMatchObject({
+      status: 403,
+      title: "QR already linked.",
+    });
+    expect(db.qr.update).not.toHaveBeenCalled();
+  });
+
   it("throws 403 when the QR is already linked to a different asset", async () => {
     //@ts-expect-error mock setup
     getQr.mockResolvedValue({
@@ -452,7 +471,14 @@ describe("relinkAssetQrCode (asset)", () => {
     await relinkAssetQrCode(args);
 
     expect(db.qr.update).toHaveBeenCalledWith({
-      where: { id: "qr-1", organizationId: null, kitId: null, assetId: null },
+      where: {
+        id: "qr-1",
+        organizationId: null,
+        kitId: null,
+        assetId: null,
+        // filament labels (fork): a filament's code is never taken
+        filamentId: null,
+      },
       data: { organizationId: "org-1", userId: "user-1" },
     });
   });
@@ -478,6 +504,7 @@ describe("relinkAssetQrCode (asset)", () => {
         organizationId: "org-1",
         kitId: null,
         assetId: null,
+        filamentId: null,
       },
       data: { organizationId: "org-1", userId: "user-1" },
     });

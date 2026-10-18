@@ -165,17 +165,27 @@ export async function saveCustomisePageSettings(
 
 /**
  * For background jobs: is this feature switched off for the workspace? Used
- * to stop reminder and booking emails while their feature is off.
+ * to stop reminder and booking emails while their feature is off, and to
+ * leave filament labels out of the filament page.
  */
 export async function isFeatureSwitchedOff(
   organizationId: string,
-  feature: "bookingsEnabled" | "remindersEnabled"
+  feature:
+    | "bookingsEnabled"
+    | "remindersEnabled"
+    | "labelsEnabled"
+    | "filamentEnabled"
 ) {
   // A failed check must never stop a job, so when unsure, say "not switched off"
   try {
     const row = await db.workspaceCustomisation.findUnique({
       where: { organizationId },
-      select: { bookingsEnabled: true, remindersEnabled: true },
+      select: {
+        bookingsEnabled: true,
+        remindersEnabled: true,
+        labelsEnabled: true,
+        filamentEnabled: true,
+      },
     });
     return row ? !row[feature] : false;
   } catch {

@@ -73,7 +73,8 @@ export const loader = async ({
 
   try {
     const qr = await getQr({ id: qrId });
-    if (qr?.assetId || qr?.kitId) {
+    // filament labels (fork): a filament's code counts as linked too
+    if (qr?.assetId || qr?.kitId || qr?.filamentId) {
       throw new ShelfError({
         message: "This QR code is already linked to an asset or a box.",
         title: "QR already linked",
@@ -397,7 +398,6 @@ export const ConfirmLinkingKitModal = ({
             Link QR code with ‘{kit.name}’
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
-            
             Are you sure that you want to do this? The current QR code that is
             linked to this box will be unlinked. You can always re-link it with
             the old QR code.

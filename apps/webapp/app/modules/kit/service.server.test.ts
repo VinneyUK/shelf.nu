@@ -1620,6 +1620,25 @@ describe("relinkKitQrCode", () => {
     userId: "user-1",
   };
 
+  it("refuses a filament's label (filament labels, fork)", async () => {
+    //@ts-expect-error missing vitest type
+    getQr.mockResolvedValue({
+      id: "qr-1",
+      organizationId: "org-1",
+      assetId: null,
+      kitId: null,
+      filamentId: "fil-1",
+    });
+    //@ts-expect-error missing vitest type
+    db.kit.findFirst.mockResolvedValue({ qrCodes: [] });
+
+    await expect(relinkKitQrCode(args)).rejects.toMatchObject({
+      status: 403,
+      title: "QR already linked.",
+    });
+    expect(db.qr.update).not.toHaveBeenCalled();
+  });
+
   it("should relink qr code to box", async () => {
     expect.assertions(3);
     //@ts-expect-error missing vitest type
@@ -1644,6 +1663,8 @@ describe("relinkKitQrCode", () => {
         organizationId: "org-1",
         assetId: null,
         kitId: null,
+        // filament labels (fork): a filament's code is never taken
+        filamentId: null,
       },
       data: { organizationId: "org-1", userId: "user-1" },
     });
@@ -1743,7 +1764,13 @@ describe("relinkKitQrCode", () => {
     await relinkKitQrCode(args);
 
     expect(db.qr.update).toHaveBeenCalledWith({
-      where: { id: "qr-1", organizationId: null, assetId: null, kitId: null },
+      where: {
+        id: "qr-1",
+        organizationId: null,
+        assetId: null,
+        kitId: null,
+        filamentId: null,
+      },
       data: { organizationId: "org-1", userId: "user-1" },
     });
   });

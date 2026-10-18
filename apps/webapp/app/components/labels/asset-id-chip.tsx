@@ -16,6 +16,13 @@ import { useCustomisations } from "~/modules/customisation/use-customisations";
 import { tw } from "~/utils/tw";
 import { refreshLabelledSoon, useLabelledAt } from "./labelled-badge";
 
+/** Which list of ids the print route reads, for each kind of thing labelled. */
+const FIELD_FOR = {
+  asset: "assetIds[0]",
+  box: "kitIds[0]",
+  filament: "filamentIds[0]",
+} as const;
+
 /** Gap within which two clicks count as a double-click. */
 const DOUBLE_CLICK_MS = 250;
 
@@ -50,11 +57,11 @@ export function AssetIdChip({
   className,
   kind = "asset",
 }: {
-  /** The asset's id, or the box's (kit's) id */
+  /** The asset's id, the box's (kit's) id, or the filament number's id */
   assetId: string;
   sequentialId: string;
   className?: string;
-  kind?: "asset" | "box";
+  kind?: "asset" | "box" | "filament";
 }) {
   const { labelsEnabled } = useCustomisations();
   const labelledAt = useLabelledAt(assetId);
@@ -84,9 +91,9 @@ export function AssetIdChip({
   const act = (intent: "print" | "remove") =>
     void fetcher.submit(
       {
-        [kind === "box" ? "kitIds[0]" : "assetIds[0]"]: assetId,
+        [FIELD_FOR[kind]]: assetId,
         intent,
-        source: "asset",
+        source: kind === "filament" ? "filament" : "asset",
       },
       { method: "post", action: "/api/labels/print" }
     );

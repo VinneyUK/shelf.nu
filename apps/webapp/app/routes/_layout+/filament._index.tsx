@@ -38,6 +38,8 @@ import {
   useMoney,
 } from "~/components/filament/parts";
 import { ChevronRight } from "~/components/icons/library";
+import { FilamentIdChip } from "~/components/labels/filament-id-chip";
+import { PrintLabelButton } from "~/components/labels/print-label-button";
 import Header from "~/components/layout/header";
 import { useSidebar } from "~/components/layout/sidebar/sidebar";
 import { Pagination } from "~/components/list/pagination";
@@ -72,6 +74,11 @@ import {
   imageStatuses,
 } from "~/modules/filament/images.server";
 import { done, failed } from "~/modules/filament/notify.server";
+import {
+  formatFilamentId,
+  parseFilamentNumber,
+} from "~/modules/filament/numbers";
+import { getFilamentNumbers } from "~/modules/filament/numbers.server";
 import { priceSummary, type PriceSummary } from "~/modules/filament/prices";
 import {
   fillMissingPrices,
@@ -159,11 +166,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const prefs = await updateCookieWithPerPage(request, perPageParam);
     const perPage = Number(prefs.perPage) || 20;
 
-    const [{ spools, candidates }, images, { view, setCookie }] =
+    const [{ spools, candidates }, images, { view, setCookie }, numbers] =
       await Promise.all([
         getFilament(organizationId),
         imageStatuses(organizationId),
         resolveFilamentView(request),
+        // FIL-0001: each filament's label number, numbering any new ones
+        getFilamentNumbers(organizationId),
       ]);
     // store prices: what's kept, and a background check of anything over a day old
     const codes = await knownCodes(organizationId); // for finding a filament by its code
@@ -193,6 +202,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     // spools on hand (active, or run out and waiting), then the filters
     const q = search.toLowerCase();
+    // "FIL-0007" or "fil-7" finds that filament
+    const filNumber = parseFilamentNumber(search);
+    const filLabel =
+      filNumber !== null ? formatFilamentId(filNumber).toLowerCase() : null;
     const onHand = spools.filter((s) => s.status !== "retired");
     const matched = onHand.filter(
       (s) =>
@@ -205,14 +218,27 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
             Boolean(prices[filamentKey(s.type, s.colourName)]?.onOffer))) &&
         matchesItem(s, active) &&
         (!q ||
-          `${s.type} ${s.material} ${s.colourName} ${s.filamentCode ?? ""}`
-            .toLowerCase()
-            .includes(q))
+          (filLabel !== null
+            ? numbers[
+                filamentKey(s.type, s.colourName)
+              ]?.label.toLowerCase() === filLabel
+            : `${s.type} ${s.material} ${s.colourName} ${
+                s.filamentCode ?? ""
+              } ${numbers[filamentKey(s.type, s.colourName)]?.label ?? ""}`
+                .toLowerCase()
+                .includes(q)))
     );
     const newest = (g: { spools: { createdAt: Date | string }[] }) =>
       Math.max(...g.spools.map((s) => new Date(s.createdAt).getTime()));
     const groups = groupSpools(matched)
-      .map((g) => ({ ...g, slug: filamentSlug(g.type, g.colourName) }))
+      .map((g) => ({
+        ...g,
+        slug: filamentSlug(g.type, g.colourName),
+        // the label number: its id (what labels point at) and FIL-0001
+        fil: numbers[g.key]
+          ? { id: numbers[g.key].id, label: numbers[g.key].label }
+          : null,
+      }))
       .filter((g) => matchesGroup(g, prices[g.key], active))
       .sort((a, b) => {
         switch (sort) {
@@ -888,7 +914,13 @@ function FilamentTile({
             <GlobeIcon className="size-3.5" />
           </Button>
         ) : null}
-        {code && !compact ? <CodeChip code={code} /> : null}
+        {group.fil && !compact ? (
+          <PrintLabelButton id={group.fil.id} kind="filament" small />
+        ) : null}
+        <span className="ml-auto flex items-center gap-1">
+          {code && !compact ? <CodeChip code={code} /> : null}
+          {!compact ? <FilamentIdChip fil={group.fil} className="h-7" /> : null}
+        </span>
       </div>
     </div>
   );
@@ -1162,8 +1194,9 @@ function FilamentListRow({
           >
             {group.type}
           </Link>
-          {slots.length ? (
-            <span className="mt-0.5 flex gap-1">
+          {slots.length || group.fil ? (
+            <span className="mt-0.5 flex flex-wrap items-center gap-1">
+              <FilamentIdChip fil={group.fil} className="py-0 text-[11px]" />
               {slots.map((n) => (
                 <span
                   key={n}

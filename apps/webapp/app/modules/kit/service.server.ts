@@ -3878,6 +3878,18 @@ export async function relinkKitQrCode({
     });
   }
 
+  // filament labels (fork): a filament's code stays with its filament
+  if (qr.filamentId) {
+    throw new ShelfError({
+      cause: null,
+      title: "QR already linked.",
+      message: "You cannot link to this code because it's a filament's label.",
+      label,
+      status: 403,
+      shouldBeCaptured: false,
+    });
+  }
+
   if (qr.kitId && qr.kitId !== kitId) {
     throw new ShelfError({
       cause: null,
@@ -3907,6 +3919,7 @@ export async function relinkKitQrCode({
           organizationId: qr.organizationId,
           assetId: null,
           kitId: qr.kitId,
+          filamentId: null,
         },
         data: { organizationId, userId },
       });

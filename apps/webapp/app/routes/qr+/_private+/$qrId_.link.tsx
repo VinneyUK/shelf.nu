@@ -74,6 +74,11 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       });
     }
 
+    // filament labels (fork): a filament's code isn't free to link; open it
+    if (qr.filamentId) {
+      return redirect(`/qr/${qrId}`);
+    }
+
     return payload({
       header: {
         title: "Link QR with asset",

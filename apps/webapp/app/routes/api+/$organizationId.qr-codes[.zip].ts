@@ -28,7 +28,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         where: {
           organizationId,
           ...(onlyOrphaned
-            ? { assetId: null, kitId: null }
+            ? { assetId: null, kitId: null, filamentId: null }
             : {
                 OR: [
                   {

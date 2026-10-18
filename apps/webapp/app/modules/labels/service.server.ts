@@ -12,6 +12,11 @@
 import { db } from "~/database/db.server";
 import { addAssetActivity } from "~/modules/activity/service.server";
 import { getBoxIds } from "~/modules/box-numbers/service.server";
+import { filamentKey } from "~/modules/filament/catalogue";
+import {
+  ensureFilamentQr,
+  getFilamentNumbers,
+} from "~/modules/filament/numbers.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { SERVER_URL } from "~/utils/env";
 import { ShelfError } from "~/utils/error";
@@ -184,7 +189,7 @@ export async function getPrinterStatus(
 
 // --------------------------------------------------------------- the queue
 
-export type PrintSource = "asset" | "bulk" | "tag" | "labels-page";
+export type PrintSource = "asset" | "bulk" | "tag" | "labels-page" | "filament";
 
 /**
  * Queues a label for each asset. Assets already waiting or printing are
@@ -312,6 +317,99 @@ export async function queueBoxLabels({
   };
 }
 
+/**
+ * Queues a label for each filament: QR code, FIL-0001, the Bambu code, the
+ * colour and the line. Takes the filaments' numbers (FilamentNumber ids).
+ * Filament already waiting or printing is skipped.
+ */
+export async function queueFilamentLabels({
+  organizationId,
+  filamentIds,
+  source,
+  userId,
+}: {
+  organizationId: string;
+  filamentIds: string[];
+  source: PrintSource;
+  userId: string | null;
+}) {
+  const unique = [...new Set(filamentIds)];
+  if (unique.length === 0)
+    return { queued: 0, alreadyQueued: 0, noQrCode: 0, labels: [] as string[] };
+  const [numbers, spools, images] = await Promise.all([
+    getFilamentNumbers(organizationId),
+    db.spool.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        type: true,
+        colourName: true,
+        filamentCode: true,
+      },
+    }),
+    db.filamentImage.findMany({
+      where: { organizationId },
+      select: { key: true, filamentCode: true },
+    }),
+  ]);
+  const byId = new Map(
+    Object.entries(numbers).map(([key, n]) => [n.id, { ...n, key }])
+  );
+  const wanted = unique
+    .map((id) => byId.get(id))
+    .filter((n): n is NonNullable<typeof n> => Boolean(n));
+  const pending = await db.labelPrintJob.findMany({
+    where: {
+      organizationId,
+      filamentId: { in: wanted.map((n) => n.id) },
+      status: { in: ["queued", "printing"] },
+    },
+    select: { filamentId: true },
+  });
+  const pendingIds = new Set(pending.map((p) => p.filamentId));
+  // the line and colour as you wrote them, and the code from a spool or the store
+  const shown = new Map<string, { type: string; colourName: string }>();
+  const codes = new Map<string, string>();
+  for (const s of spools) {
+    const key = filamentKey(s.type, s.colourName);
+    if (!shown.has(key)) shown.set(key, s);
+    if (s.filamentCode && !codes.has(key)) codes.set(key, s.filamentCode);
+  }
+  for (const i of images)
+    if (i.filamentCode && !codes.has(i.key)) codes.set(i.key, i.filamentCode);
+
+  const toQueue = wanted.filter(
+    (n) => !pendingIds.has(n.id) && shown.has(n.key)
+  );
+  for (const n of toQueue) {
+    const names = shown.get(n.key)!;
+    await db.labelPrintJob.create({
+      data: {
+        organizationId,
+        filamentId: n.id,
+        layout: "filament",
+        sequentialId: n.label,
+        title: names.colourName,
+        subtitle: names.type,
+        boxCode: codes.get(n.key) ?? null,
+        qrId: await ensureFilamentQr(organizationId, n.id),
+        source,
+        requestedById: userId,
+      },
+    });
+  }
+  if (toQueue.length > 0) nudgeLabelPrinter();
+  return {
+    queued: toQueue.length,
+    alreadyQueued: wanted.filter((n) => pendingIds.has(n.id)).length,
+    // filament with no stock left has nothing to name it by
+    noQrCode: wanted.filter((n) => !pendingIds.has(n.id) && !shown.has(n.key))
+      .length,
+    /** FIL-0001… for the pop-up */
+    labels: wanted.map((n) => n.label),
+  };
+}
+
 /** Everything the Labels page shows. */
 export async function getLabelQueue(organizationId: string) {
   const [active, history] = await Promise.all([
@@ -383,6 +481,21 @@ export async function getLabelledAssets(organizationId: string) {
     if (row.kitId && row._max.printedAt)
       labelled[row.kitId] = row._max.printedAt.toISOString();
   }
+  // Filament too, by its number's id
+  const filamentRows = await db.labelPrintJob.groupBy({
+    by: ["filamentId"],
+    where: {
+      organizationId,
+      status: "printed",
+      filamentId: { not: null },
+      labelRemovedAt: null,
+    },
+    _max: { printedAt: true },
+  });
+  for (const row of filamentRows) {
+    if (row.filamentId && row._max.printedAt)
+      labelled[row.filamentId] = row._max.printedAt.toISOString();
+  }
   return labelled;
 }
 
@@ -399,7 +512,11 @@ export async function removeLabels({
   const { count } = await db.labelPrintJob.updateMany({
     where: {
       organizationId,
-      OR: [{ assetId: { in: assetIds } }, { kitId: { in: assetIds } }],
+      OR: [
+        { assetId: { in: assetIds } },
+        { kitId: { in: assetIds } },
+        { filamentId: { in: assetIds } },
+      ],
       status: "printed",
       labelRemovedAt: null,
     },
@@ -479,6 +596,9 @@ type ClaimedJob = {
   sequentialId: string;
   title: string;
   qrId: string;
+  layout: string;
+  subtitle: string | null;
+  boxCode: string | null;
   attempts: number;
   source: string;
   requestedById: string | null;
@@ -495,7 +615,7 @@ async function claimNextJob(): Promise<ClaimedJob | null> {
       FOR UPDATE SKIP LOCKED
       LIMIT 1
     )
-    RETURNING id, "organizationId", "assetId", "sequentialId", title, "qrId", attempts, source, "requestedById"`;
+    RETURNING id, "organizationId", "assetId", "sequentialId", title, "qrId", layout, subtitle, "boxCode", attempts, source, "requestedById"`;
   return rows[0] ?? null;
 }
 
@@ -510,13 +630,18 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
         shouldBeCaptured: false,
       });
     }
+    // Same link Shelf's own QR codes use (honours URL_SHORTENER)
+    const qrUrl = qrUrlFor(job.qrId);
     const body = printRequestBody(
-      {
-        sequentialId: job.sequentialId,
-        title: job.title,
-        // Same link Shelf's own QR codes use (honours URL_SHORTENER)
-        qrUrl: qrUrlFor(job.qrId),
-      },
+      job.layout === "filament"
+        ? {
+            filamentId: job.sequentialId,
+            colour: job.title,
+            line: job.subtitle ?? "",
+            boxCode: job.boxCode,
+            qrUrl,
+          }
+        : { sequentialId: job.sequentialId, title: job.title, qrUrl },
       s
     );
     await callHomeAssistant(s, "/api/services/niimbot/print", body, 120_000);

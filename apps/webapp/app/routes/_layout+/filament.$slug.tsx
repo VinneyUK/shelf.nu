@@ -38,6 +38,10 @@ import {
   useMoney,
 } from "~/components/filament/parts";
 import { TrashIcon } from "~/components/icons/library";
+import { FilamentIdChip } from "~/components/labels/filament-id-chip";
+import { FilamentLabelPreview } from "~/components/labels/filament-label-preview";
+import { useLabelledAt } from "~/components/labels/labelled-badge";
+import { PrintLabelButton } from "~/components/labels/print-label-button";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -53,6 +57,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/shared/modal";
 import { useSearchParams } from "~/hooks/search-params";
+import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
 import {
   BAMBU_TYPES,
   catalogueEntry,
@@ -75,6 +80,10 @@ import {
   setFilamentImageFromUrl,
 } from "~/modules/filament/images.server";
 import { done, failed, notify } from "~/modules/filament/notify.server";
+import {
+  ensureFilamentQr,
+  getFilamentNumber,
+} from "~/modules/filament/numbers.server";
 import { priceSummary } from "~/modules/filament/prices";
 import {
   priceStatuses,
@@ -99,6 +108,7 @@ import {
   updateSpoolField,
   weighSpool,
 } from "~/modules/filament/service.server";
+import { getLabelSettings, qrUrlFor } from "~/modules/labels/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { makeShelfError, ShelfError } from "~/utils/error";
 import { isFormProcessing } from "~/utils/form";
@@ -137,7 +147,28 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     refreshStalePrices(organizationId); // anything over a day old, in the background
     const codes = await knownCodes(organizationId);
     const entry = catalogueEntry(first.type);
+    // its label: FIL-0001 and what the printed label looks like
+    const labelsOff = await isFeatureSwitchedOff(
+      organizationId,
+      "labelsEnabled"
+    );
+    const fil = !labelsOff
+      ? await getFilamentNumber(organizationId, first.type, first.colourName)
+      : null;
+    const labelSettings = fil ? await getLabelSettings(organizationId) : null;
+    const label =
+      fil && labelSettings
+        ? {
+            qrUrl: qrUrlFor(await ensureFilamentQr(organizationId, fil.id)),
+            settings: {
+              labelWidth: labelSettings.labelWidth,
+              leftMargin: labelSettings.leftMargin,
+            },
+          }
+        : null;
     return payload({
+      fil: fil ? { id: fil.id, label: fil.label } : null,
+      label,
       header: { title: first.colourName },
       slug,
       filament: {
@@ -1428,7 +1459,7 @@ function PicturePopover({
 
 export default function FilamentDetail() {
   useAmsLiveUpdates(); // the page follows the AMS
-  const { filament, catalogue, spools, images, price, codes } =
+  const { filament, catalogue, spools, images, price, codes, fil, label } =
     useLoaderData<typeof loader>();
   const money = useMoney();
   const picture = useFetcher<Result>();
@@ -1491,10 +1522,14 @@ export default function FilamentDetail() {
             <span aria-hidden="true">·</span>
             <span>1.75 mm</span>
             {code ? <CodeChip code={code} /> : null}
+            <FilamentIdChip fil={fil} className="h-7" />
           </div>
         }
       >
         <div className="flex items-center gap-2">
+          {fil ? (
+            <PrintLabelButton id={fil.id} kind="filament" withText />
+          ) : null}
           {image?.productUrl ? (
             <Button
               to={image.productUrl}
@@ -1611,9 +1646,65 @@ export default function FilamentDetail() {
             paidPerKg={perKg}
             productUrl={price?.productUrl ?? image?.productUrl ?? null}
           />
+          {fil && label ? (
+            <LabelCard
+              fil={fil}
+              qrUrl={label.qrUrl}
+              settings={label.settings}
+              colour={filament.colourName}
+              line={filament.type}
+              boxCode={code}
+            />
+          ) : null}
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * The filament's label as it prints: FIL-0001, the Bambu code, the colour and
+ * the line, at the label size set in Labels → Settings. Filament labels (fork).
+ */
+function LabelCard({
+  fil,
+  qrUrl,
+  settings,
+  colour,
+  line,
+  boxCode,
+}: {
+  fil: { id: string; label: string };
+  qrUrl: string;
+  settings: { labelWidth: number; leftMargin: number };
+  colour: string;
+  line: string;
+  boxCode: string | null;
+}) {
+  const labelledAt = useLabelledAt(fil.id);
+  return (
+    <Card className="my-0">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+        Label
+      </h3>
+      <div className="mt-3 flex flex-col gap-2">
+        <FilamentLabelPreview
+          content={{ filamentId: fil.label, colour, line, boxCode, qrUrl }}
+          settings={settings}
+          scale={1.1}
+          className="max-w-full"
+        />
+        <p className="text-xs text-gray-500">
+          {labelledAt ? (
+            <>
+              Printed <DateS date={labelledAt} />
+            </>
+          ) : (
+            "Not printed yet. Every spool and refill of this filament shares this label."
+          )}
+        </p>
+      </div>
+    </Card>
   );
 }
 

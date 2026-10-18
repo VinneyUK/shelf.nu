@@ -647,6 +647,10 @@ model Qr {
   kit   Kit?    @relation(fields: [kitId], references: [id], onDelete: SetNull)
   kitId String?
 
+  /// A filament's label (filament labels; fork)
+  filament   FilamentNumber? @relation(fields: [filamentId], references: [id], onDelete: SetNull)
+  filamentId String?
+
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   userId String?
 
@@ -665,6 +669,7 @@ model Qr {
   @@index([assetId], name: "Qr_assetId_idx")
   // Indexes for foreign keys
   @@index([kitId])
+  @@index([filamentId])
   @@index([userId])
   @@index([organizationId])
   @@index([batchId])
@@ -2746,6 +2751,15 @@ model LabelPrintJob {
   /// A box (kit) label instead of an asset label
   kit            Kit?      @relation(fields: [kitId], references: [id], onDelete: SetNull)
   kitId          String?
+  /// A filament label instead (FIL-0001, the Bambu code, the colour and line)
+  filament       FilamentNumber? @relation(fields: [filamentId], references: [id], onDelete: SetNull)
+  filamentId     String?
+  /// asset (the ID and the name) | filament (FIL-0001, the Bambu code, the colour and line)
+  layout         String    @default("asset")
+  /// Filament labels: the line, e.g. "PLA Basic", captured when queued
+  subtitle       String?
+  /// Filament labels: the Bambu code from the box, e.g. "10100"
+  boxCode        String?
   /// What the label shows, captured when queued
   sequentialId   String    @default("")
   title          String
@@ -2767,6 +2781,7 @@ model LabelPrintJob {
   @@index([organizationId, status, createdAt])
   @@index([assetId, status])
   @@index([kitId, status])
+  @@index([filamentId, status])
 }
 
 // ---------------------------------------------------------------------------
@@ -2982,6 +2997,23 @@ model SpoolCandidate {
   updatedAt        DateTime  @updatedAt
 
   @@index([organizationId, status])
+}
+
+/// A filament's number, FIL-0001, for its QR label (fork): one per line and
+/// colour, shared by every spool and refill of it. Numbered in the order the
+/// filaments were first added and never reused; it follows a rename.
+model FilamentNumber {
+  id             String          @id @default(cuid())
+  organizationId String
+  /// "pla matte|charcoal": the line and colour, lower case
+  key            String
+  number         Int
+  createdAt      DateTime        @default(now())
+  qrCodes        Qr[]
+  labelJobs      LabelPrintJob[]
+
+  @@unique([organizationId, key])
+  @@unique([organizationId, number])
 }
 
 /// A filament's picture from the Bambu store, shared by every spool of that line and colour

@@ -17,3 +17,13 @@ input[type="radio"] {
   color: #ef6820;
   accent-color: #ef6820;
 }
+
+/* The label printer's font (the Niimbot integration prints in Poppins Bold),
+   so label previews match the printed label. SIL Open Font License 1.1. */
+@font-face {
+  font-family: "Shelf Label";
+  src: url("/static/fonts/poppins/Poppins-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

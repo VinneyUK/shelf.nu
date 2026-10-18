@@ -3,6 +3,7 @@ import { redirect, data } from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
+import { filamentScanTarget } from "~/modules/filament/numbers.server";
 import { setSelectedOrganizationIdCookie } from "~/modules/organization/context.server";
 import { getUserOrganizations } from "~/modules/organization/service.server";
 import { getQr } from "~/modules/qr/service.server";
@@ -108,6 +109,21 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
      * When there is no assetId or qrId that means that the asset or kit was deleted or the Qr was generated as unlinked.
      * Here we redirect to a page where the user has the option to link to existing asset or kit create a new one.
      */
+    /** Filament labels (fork): a filament's code opens that filament */
+    if (qr.filamentId) {
+      const to = await filamentScanTarget({
+        organizationId: qr.organizationId,
+        filamentId: qr.filamentId,
+        userId,
+      });
+      return redirect(
+        to.slug
+          ? `/filament/${to.slug}?ref=qr&scanId=${scan.id}&qrId=${qr.id}`
+          : "/filament",
+        { headers }
+      );
+    }
+
     if (!qr.assetId && !qr.kitId) {
       return redirect(`link?scanId=${scan.id}`, {
         headers,

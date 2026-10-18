@@ -46,6 +46,8 @@ export const QR_SELECT_FOR_REPORT = {
   userId: true,
   assetId: true,
   kitId: true,
+  /** filament labels (fork) */
+  filamentId: true,
   asset: {
     select: {
       id: true,

@@ -14,6 +14,7 @@ import {
 } from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
+import { FilamentLabelPreview } from "~/components/labels/filament-label-preview";
 import { LabelPreview } from "~/components/labels/label-preview";
 import { LabelledBadge } from "~/components/labels/labelled-badge";
 import { Button } from "~/components/shared/button";
@@ -27,6 +28,10 @@ import {
   getBoxIds,
   parseBoxNumber,
 } from "~/modules/box-numbers/service.server";
+import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
+import { filamentKey, filamentSlug } from "~/modules/filament/catalogue";
+import { parseFilamentNumber } from "~/modules/filament/numbers";
+import { getFilamentNumbers } from "~/modules/filament/numbers.server";
 import {
   cancelLabelJob,
   getLabelledAssets,
@@ -35,6 +40,7 @@ import {
   getPrinterStatus,
   qrUrlFor,
   queueBoxLabels,
+  queueFilamentLabels,
   queueLabels,
   retryLabelJobsNow,
   type PrinterEntity,
@@ -124,22 +130,107 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       }
     }
 
+    // filament labels (fork): filament in the search, by colour, line, Bambu
+    // code or FIL-0007, and where each filament's page is
+    const filamentOn = !(await isFeatureSwitchedOff(
+      organizationId,
+      "filamentEnabled"
+    ));
+    const filamentPages = new Map<string, string>(); // number id → page
+    const filament: {
+      id: string;
+      href: string;
+      label: string;
+      colour: string;
+      line: string;
+      boxCode: string | null;
+    }[] = [];
+    if (filamentOn) {
+      const [numbers, spools] = await Promise.all([
+        getFilamentNumbers(organizationId),
+        db.spool.findMany({
+          where: { organizationId },
+          orderBy: { createdAt: "asc" },
+          select: { type: true, colourName: true, filamentCode: true },
+        }),
+      ]);
+      const seen = new Map<
+        string,
+        { type: string; colourName: string; code: string | null }
+      >();
+      for (const s of spools) {
+        const key = filamentKey(s.type, s.colourName);
+        const known = seen.get(key);
+        if (!known)
+          seen.set(key, {
+            type: s.type,
+            colourName: s.colourName,
+            code: s.filamentCode,
+          });
+        else if (!known.code && s.filamentCode) known.code = s.filamentCode;
+      }
+      const wanted = q ? parseFilamentNumber(q) : null;
+      const needle = q.toLowerCase();
+      for (const [key, f] of seen) {
+        const n = numbers[key];
+        if (!n) continue;
+        filamentPages.set(
+          n.id,
+          `/filament/${filamentSlug(f.type, f.colourName)}`
+        );
+        const hit =
+          q &&
+          (wanted !== null
+            ? n.number === wanted
+            : `${f.colourName} ${f.type} ${f.code ?? ""} ${n.label}`
+                .toLowerCase()
+                .includes(needle));
+        if (hit)
+          filament.push({
+            id: n.id,
+            href: `/filament/${filamentSlug(f.type, f.colourName)}`,
+            label: n.label,
+            colour: f.colourName,
+            line: f.type,
+            boxCode: f.code,
+          });
+      }
+      filament.sort((a, b) => a.label.localeCompare(b.label));
+    }
+
     const withQr = <T extends { qrId: string }>(job: T) => ({
       ...job,
       qrUrl: qrUrlFor(job.qrId),
     });
+    // where a printed label's thing lives now; null once it's gone
+    const hrefFor = (job: {
+      assetId: string | null;
+      kitId: string | null;
+      filamentId: string | null;
+    }) =>
+      job.assetId
+        ? `/assets/${job.assetId}`
+        : job.kitId
+        ? `/kits/${job.kitId}`
+        : job.filamentId
+        ? filamentPages.get(job.filamentId) ?? null
+        : null;
     return payload({
       settings,
       printer,
       printing: queue.printing ? withQr(queue.printing) : null,
       waiting: queue.waiting.map(withQr),
-      history: queue.history,
+      history: queue.history.map((job) => ({ ...job, href: hrefFor(job) })),
       q,
       results: results.map((a) => ({
         ...a,
         labelledAt: labelled[a.id] ?? null,
       })),
       boxes: boxes.map((b) => ({ ...b, labelledAt: labelled[b.id] ?? null })),
+      filament: filament.map((f) => ({
+        ...f,
+        labelledAt: labelled[f.id] ?? null,
+      })),
     });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
@@ -152,6 +243,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
     intent: z.literal("print"),
     assetIds: z.array(z.string()).default([]),
     kitIds: z.array(z.string()).default([]),
+    filamentIds: z.array(z.string()).default([]),
   }),
   z.object({ intent: z.literal("cancel"), jobId: z.string().min(1) }),
   z.object({ intent: z.literal("retry") }),
@@ -183,9 +275,16 @@ export async function action({ context, request }: ActionFunctionArgs) {
         source: "labels-page",
         userId,
       });
-      const queued = assets.queued + boxes.queued;
-      const already = assets.alreadyQueued + boxes.alreadyQueued;
-      const noQr = assets.noQrCode + boxes.noQrCode;
+      const filament = await queueFilamentLabels({
+        organizationId,
+        filamentIds: input.filamentIds,
+        source: "labels-page",
+        userId,
+      });
+      const queued = assets.queued + boxes.queued + filament.queued;
+      const already =
+        assets.alreadyQueued + boxes.alreadyQueued + filament.alreadyQueued;
+      const noQr = assets.noQrCode + boxes.noQrCode + filament.noQrCode;
       const notes = [
         already ? `${already} already in the queue.` : "",
         noQr ? `${noQr} skipped: no QR code.` : "",
@@ -225,11 +324,52 @@ export async function action({ context, request }: ActionFunctionArgs) {
   }
 }
 
+/** A queued job's label as it will print: an asset or box label, or a filament one. */
+function JobPreview({
+  job,
+  settings,
+  scale,
+}: {
+  job: {
+    layout: string;
+    sequentialId: string;
+    title: string;
+    subtitle: string | null;
+    boxCode: string | null;
+    qrUrl: string;
+  };
+  settings: { labelWidth: number; leftMargin: number };
+  scale?: number;
+}) {
+  return job.layout === "filament" ? (
+    <FilamentLabelPreview
+      content={{
+        filamentId: job.sequentialId,
+        colour: job.title,
+        line: job.subtitle ?? "",
+        boxCode: job.boxCode,
+        qrUrl: job.qrUrl,
+      }}
+      settings={settings}
+      scale={scale}
+    />
+  ) : (
+    <LabelPreview
+      sequentialId={job.sequentialId}
+      title={job.title}
+      qrUrl={job.qrUrl}
+      settings={settings}
+      scale={scale}
+    />
+  );
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   asset: "Asset page",
   bulk: "Assets list",
   tag: "Tag",
   "labels-page": "Labels page",
+  filament: "Filament",
 };
 
 /** Battery, connection and labels left, from the printer's sensors. */
@@ -263,8 +403,17 @@ function printerSummary(entities: PrinterEntity[] | null) {
 }
 
 export default function LabelsQueue() {
-  const { settings, printer, printing, waiting, history, q, results, boxes } =
-    useLoaderData<typeof loader>();
+  const {
+    settings,
+    printer,
+    printing,
+    waiting,
+    history,
+    q,
+    results,
+    boxes,
+    filament,
+  } = useLoaderData<typeof loader>();
   const { isAdministratorOrOwner } = useUserRoleHelper();
   const revalidator = useRevalidator();
   const busy = Boolean(printing) || waiting.length > 0;
@@ -344,12 +493,7 @@ export default function LabelsQueue() {
         </h3>
         {printing ? (
           <div className="flex flex-wrap items-center gap-4">
-            <LabelPreview
-              sequentialId={printing.sequentialId}
-              title={printing.title}
-              qrUrl={printing.qrUrl}
-              settings={settings}
-            />
+            <JobPreview job={printing} settings={settings} />
             <p className="text-sm font-medium text-primary-700">
               Printing {printing.sequentialId || printing.title}…
             </p>
@@ -368,8 +512,8 @@ export default function LabelsQueue() {
         </div>
         {waiting.length === 0 ? (
           <p className="text-sm text-gray-500">
-            Nothing waiting. Print from an asset's menu, the assets list, the
-            search below
+            Nothing waiting. Print from an asset's menu, the assets list, a
+            filament, the search below
             {settings.queueTagName ? (
               <>
                 , or by giving an asset the{" "}
@@ -385,13 +529,7 @@ export default function LabelsQueue() {
                 key={job.id}
                 className="flex flex-wrap items-center gap-4 py-3"
               >
-                <LabelPreview
-                  sequentialId={job.sequentialId}
-                  title={job.title}
-                  qrUrl={job.qrUrl}
-                  settings={settings}
-                  scale={0.8}
-                />
+                <JobPreview job={job} settings={settings} scale={0.8} />
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-medium text-gray-900">
                     {job.sequentialId} {job.title}
@@ -419,7 +557,12 @@ export default function LabelsQueue() {
         )}
       </Card>
 
-      <SearchAndPrint q={q} results={results} boxes={boxes} />
+      <SearchAndPrint
+        q={q}
+        results={results}
+        boxes={boxes}
+        filament={filament}
+      />
 
       <Card className="my-0">
         <h3 className="mb-3 text-text-md font-semibold text-gray-900">
@@ -433,7 +576,7 @@ export default function LabelsQueue() {
               <thead className="text-gray-500">
                 <tr className="border-b">
                   <th className="py-2 pr-4 font-medium">When</th>
-                  <th className="py-2 pr-4 font-medium">Asset</th>
+                  <th className="py-2 pr-4 font-medium">Label</th>
                   <th className="py-2 pr-4 font-medium">From</th>
                   <th className="py-2 font-medium">Result</th>
                 </tr>
@@ -449,9 +592,9 @@ export default function LabelsQueue() {
                       />
                     </td>
                     <td className="py-2 pr-4">
-                      {job.assetId ? (
+                      {job.href ? (
                         <Link
-                          to={`/assets/${job.assetId}`}
+                          to={job.href}
                           className="font-medium text-gray-900 hover:underline"
                         >
                           {job.sequentialId} {job.title}
@@ -518,8 +661,18 @@ function SearchAndPrint({
   q,
   results,
   boxes,
+  filament,
 }: {
   q: string;
+  filament: {
+    id: string;
+    href: string;
+    label: string;
+    colour: string;
+    line: string;
+    boxCode: string | null;
+    labelledAt: string | null;
+  }[];
   boxes: {
     id: string;
     name: string;
@@ -550,16 +703,50 @@ function SearchAndPrint({
           type="search"
           name="q"
           defaultValue={q || searchParams.get("q") || ""}
-          placeholder="Asset name or ID"
-          aria-label="Search assets"
+          placeholder="Name or ID: an asset, box or filament"
+          aria-label="Search assets, boxes and filament"
           className="w-full max-w-md rounded border border-gray-300 px-3 py-2 text-sm"
         />
         <Button type="submit" variant="secondary">
           Search
         </Button>
       </Form>
-      {q && results.length === 0 && boxes.length === 0 ? (
+      {q &&
+      results.length === 0 &&
+      boxes.length === 0 &&
+      filament.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">Nothing matches "{q}".</p>
+      ) : null}
+      {filament.length > 0 ? (
+        <ul className="mt-3 divide-y">
+          {filament.map((f) => (
+            <li key={f.id} className="flex flex-wrap items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <Link
+                  to={f.href}
+                  className="font-medium text-gray-900 hover:underline"
+                >
+                  {f.colour}
+                </Link>{" "}
+                <span className="text-sm text-gray-500">
+                  {f.label} · {f.line} · Filament
+                </span>{" "}
+                <LabelledBadge labelledAt={f.labelledAt} />
+              </div>
+              <fetcher.Form method="post">
+                <input type="hidden" name="intent" value="print" />
+                <input type="hidden" name="filamentIds[0]" value={f.id} />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isFormProcessing(fetcher.state)}
+                >
+                  Print
+                </Button>
+              </fetcher.Form>
+            </li>
+          ))}
+        </ul>
       ) : null}
       {boxes.length > 0 ? (
         <ul className="mt-3 divide-y">
