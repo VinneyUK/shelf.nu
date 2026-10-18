@@ -46,6 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/shared/tooltip";
+import { PartSalesCard } from "~/components/sold/part-sales-card"; // quantities (fork)
 import { SoldValueNote } from "~/components/sold/sold-value-note"; // sold feature
 import When from "~/components/when/when";
 import { db } from "~/database/db.server";
@@ -1882,6 +1883,10 @@ export default function AssetOverview() {
             />
           ) : null}
 
+          {/* quantities (fork): some of it sold, with Undo */}
+          {asset ? (
+            <PartSalesCard assetId={asset.id} quantity={asset.quantity} />
+          ) : null}
           {/* labels feature: the printed label, when there is one, in place of Shelf's QR section */}
           {asset ? <PrintedLabelCard assetId={asset.id} /> : null}
           {SHOW_SHELF_QR_SECTION && asset && (

@@ -2,7 +2,7 @@
  * "Mark as sold" dialog: date sold and sale price, for one asset or a bulk
  * selection. Part of the sold feature; not in upstream Shelf.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/shared/button";
 import {
@@ -25,6 +25,7 @@ export function MarkSoldDialog({
   assetIds,
   currentSearchParams,
   countLabel,
+  available,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,7 +34,18 @@ export function MarkSoldDialog({
   currentSearchParams?: string;
   /** e.g. "this asset" or "3 assets" */
   countLabel: string;
+  /** Quantities (fork): how many one asset has; above 1, it asks how many */
+  available?: number;
 }) {
+  const many = assetIds.length === 1 && (available ?? 1) > 1;
+  const [howMany, setHowMany] = useState(available ?? 1);
+  const [priceFor, setPriceFor] = useState<"each" | "total">("each");
+  useEffect(() => {
+    if (open) {
+      setHowMany(available ?? 1);
+      setPriceFor("each");
+    }
+  }, [open, available]);
   const fetcher = useFetcher<{
     error?: { message: string };
     success?: boolean;
@@ -59,8 +71,11 @@ export function MarkSoldDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as sold</AlertDialogTitle>
             <AlertDialogDescription>
-              Record the sale of {countLabel}. It stays in Shelf, shown as Sold,
-              and appears in the Sold assets report.
+              {many && howMany < (available ?? 1)
+                ? `Record the sale of ${howMany} of ${available}. The other ${
+                    (available ?? 1) - howMany
+                  } stay as they are; the sale appears in the Sold assets report.`
+                : `Record the sale of ${countLabel}. It stays in Shelf, shown as Sold, and appears in the Sold assets report.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <input type="hidden" name="intent" value="mark" />
@@ -85,8 +100,64 @@ export function MarkSoldDialog({
               className="rounded border border-gray-300 px-3 py-2 font-normal"
             />
           </label>
+          {many ? (
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+              How many
+              <span className="flex items-center gap-2 font-normal text-gray-600">
+                <input
+                  type="number"
+                  name="quantity"
+                  min={1}
+                  max={available}
+                  step={1}
+                  required
+                  value={howMany}
+                  onChange={(e) =>
+                    setHowMany(
+                      Math.max(
+                        1,
+                        Math.min(
+                          available ?? 1,
+                          Math.round(Number(e.target.value)) || 1
+                        )
+                      )
+                    )
+                  }
+                  className="w-24 rounded border border-gray-300 px-3 py-2"
+                />
+                of {available}
+              </span>
+            </label>
+          ) : null}
+          {many && howMany > 1 ? (
+            <div
+              className="flex gap-4 text-sm text-gray-900"
+              role="radiogroup"
+              aria-label="The price is"
+            >
+              {(["each", "total"] as const).map((v) => (
+                <label key={v} className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    name="priceFor"
+                    value={v}
+                    checked={priceFor === v}
+                    onChange={() => setPriceFor(v)}
+                  />
+                  {v === "each" ? "Price each" : "Total price"}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <input type="hidden" name="priceFor" value="each" />
+          )}
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-            Sale price{assetIds.length > 1 ? " (each)" : ""}
+            Sale price
+            {assetIds.length > 1 || (many && howMany > 1 && priceFor === "each")
+              ? " (each)"
+              : many && howMany > 1
+              ? ` (for all ${howMany})`
+              : ""}
             <input
               type="number"
               name="price"
@@ -109,7 +180,11 @@ export function MarkSoldDialog({
               </Button>
             </AlertDialogCancel>
             <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : "Mark as sold"}
+              {busy
+                ? "Saving…"
+                : many && howMany < (available ?? 1)
+                ? `Mark ${howMany} as sold`
+                : "Mark as sold"}
             </Button>
           </AlertDialogFooter>
         </fetcher.Form>

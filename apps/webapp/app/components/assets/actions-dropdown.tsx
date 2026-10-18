@@ -307,9 +307,7 @@ const ConditionalActionsDropdown = () => {
                         ? {
                             reason: (
                               <>
-                                
-                                This asset's place is managed by its parent
-                                box{" "}
+                                This asset's place is managed by its parent box{" "}
                                 <strong>"{assetKitMembership?.name}"</strong>.
                                 Update the box's place instead.
                               </>
@@ -519,7 +517,6 @@ const ConditionalActionsDropdown = () => {
                 ) : null}
                 {assetIsPartOfUnavailableKit ? (
                   <div className=" border-t p-2 text-left text-xs">
-                    
                     Some actions are disabled due to the asset being part of a
                     box.
                   </div>
@@ -544,6 +541,7 @@ const ConditionalActionsDropdown = () => {
         onOpenChange={setIsMarkSoldOpen}
         assetIds={[asset.id]}
         countLabel="this asset"
+        available={asset.quantity ?? 1}
       />
       <When truthy={isSetReminderDialogOpen && isAdministratorOrOwner}>
         <SetOrEditReminderDialog

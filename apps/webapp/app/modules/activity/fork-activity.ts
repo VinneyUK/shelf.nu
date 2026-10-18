@@ -31,6 +31,9 @@ export const FORK_ACTIVITY: { type: ForkActivityType; phrases: string[] }[] = [
     phrases: [
       "marked this asset as **sold**",
       "marked this asset as **not sold**",
+      // quantities: some of it sold, or such a sale undone
+      "sold **",
+      "undid the sale of **",
     ],
   },
   { type: "LABEL", phrases: ["printed a **label**", "removed the **label**"] },

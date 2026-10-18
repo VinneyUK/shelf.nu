@@ -176,6 +176,13 @@ function ConditionalDropdown() {
             ? "this asset"
             : "the selected assets"
         }
+        // quantities (fork): one asset ticked asks how many of it
+        available={
+          soldSelection.assetIds.length === 1
+            ? (selectedAssets.find((a) => a.id === soldSelection.assetIds[0])
+                ?.quantity as number | null | undefined) ?? 1
+            : undefined
+        }
       />
       <When
         truthy={userHasPermission({

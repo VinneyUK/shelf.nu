@@ -15,12 +15,28 @@
  * Part of the fork; not in upstream Shelf.
  */
 
-/** Like for like: a sold asset's price against the value recorded for the same quantity. */
+/**
+ * Like for like: a sold asset's price against the value recorded for the same
+ * quantity. Part sales (quantities, fork) count too: what they sold for, and
+ * against the value of that many; "ps" is each asset's part sales together.
+ */
 const FIGURES = (value: string, quantity: string) => `
   COALESCE(SUM(COALESCE(${value}, 0) * ${quantity}), 0)::float AS recorded,
-  COALESCE(SUM(s."price"), 0)::float AS sold_for,
-  COALESCE(SUM(CASE WHEN s."price" IS NOT NULL AND ${value} IS NOT NULL
-                    THEN s."price" - ${value} * ${quantity} END), 0)::float AS difference`;
+  COALESCE(SUM(COALESCE(s."price", 0) + COALESCE(ps."price", 0)), 0)::float AS sold_for,
+  COALESCE(SUM(
+    COALESCE(CASE WHEN s."price" IS NOT NULL AND ${value} IS NOT NULL
+                  THEN s."price" - ${value} * ${quantity} END, 0) +
+    COALESCE(CASE WHEN ps."price" IS NOT NULL AND ${value} IS NOT NULL
+                  THEN ps."price" - ${value} * ps."pricedQuantity" END, 0)
+  ), 0)::float AS difference`;
+
+/** Each asset's part sales, together: what they sold for, and how many of those had a price. */
+const PART_SALES = `
+  LEFT JOIN (
+    SELECT "assetId", SUM("price") AS "price",
+           SUM(CASE WHEN "price" IS NOT NULL THEN "quantity" ELSE 0 END) AS "pricedQuantity"
+    FROM "AssetPartSale" GROUP BY "assetId"
+  ) ps ON ps."assetId" = a."id"`;
 
 const ASSET_FIGURES = FIGURES('a."value"', 'COALESCE(a."quantity", 1)');
 /**
@@ -38,7 +54,7 @@ const SLICE_FIGURES = (slice: string) =>
 export const CATEGORY_FIGURES_SQL = `
   SELECT a."categoryId" AS id, COUNT(*)::int AS assets, ${ASSET_FIGURES}
   FROM "Asset" a
-  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"
+  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"${PART_SALES}
   WHERE a."organizationId" = $1 AND a."categoryId" IS NOT NULL
   GROUP BY a."categoryId"`;
 
@@ -46,7 +62,7 @@ export const CATEGORY_FIGURES_SQL = `
 export const UNCATEGORISED_FIGURES_SQL = `
   SELECT NULL::text AS id, COUNT(*)::int AS assets, ${ASSET_FIGURES}
   FROM "Asset" a
-  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"
+  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"${PART_SALES}
   WHERE a."organizationId" = $1 AND a."categoryId" IS NULL`;
 
 /** Per place: each asset's share held there (a quantity-tracked asset can be in several places). */
@@ -56,7 +72,7 @@ export const PLACE_FIGURES_SQL = `
   )}
   FROM "AssetLocation" al
   JOIN "Asset" a ON a."id" = al."assetId"
-  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"
+  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"${PART_SALES}
   WHERE al."organizationId" = $1
   GROUP BY al."locationId"`;
 
@@ -67,6 +83,6 @@ export const BOX_FIGURES_SQL = `
   )}
   FROM "AssetKit" ak
   JOIN "Asset" a ON a."id" = ak."assetId"
-  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"
+  LEFT JOIN "AssetSale" s ON s."assetId" = a."id"${PART_SALES}
   WHERE ak."organizationId" = $1 AND ak."kitId" = ANY($2::text[])
   GROUP BY ak."kitId"`;

@@ -132,7 +132,7 @@ export default function SoldAssetsReport() {
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
-            { label: "Sold", value: String(totals.count) },
+            { label: "Sold", value: String(totals.quantity) },
             { label: "Sale prices", value: money(totals.price) },
             { label: "Recorded value", value: money(totals.value) },
             {
@@ -178,6 +178,7 @@ export default function SoldAssetsReport() {
                   <tr className="border-b">
                     <th className="py-2 pr-4 font-medium">Sold</th>
                     <th className="py-2 pr-4 font-medium">Asset</th>
+                    <th className="py-2 pr-4 text-right font-medium">Qty</th>
                     <th className="py-2 pr-4 text-right font-medium">
                       Sale price
                     </th>
@@ -188,8 +189,9 @@ export default function SoldAssetsReport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {rows.map((row) => (
-                    <tr key={row.assetId}>
+                  {rows.map((row, i) => (
+                    // an asset can have several sales (quantities, fork)
+                    <tr key={`${row.assetId}-${row.soldOn}-${i}`}>
                       <td className="whitespace-nowrap py-2 pr-4 text-gray-600">
                         {day(row.soldOn)}
                       </td>
@@ -203,6 +205,14 @@ export default function SoldAssetsReport() {
                         <span className="text-gray-500">
                           {row.sequentialId}
                         </span>
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {row.quantity}
+                        {row.part ? (
+                          <span className="ml-1 text-xs text-gray-500">
+                            (part)
+                          </span>
+                        ) : null}
                       </td>
                       <td className="py-2 pr-4 text-right">
                         {money(row.price)}
