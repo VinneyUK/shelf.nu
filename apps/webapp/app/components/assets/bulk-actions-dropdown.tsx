@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { BadgePoundSterlingIcon } from "lucide-react"; // sold feature
+import { BadgePoundSterlingIcon, ImageIcon } from "lucide-react"; // sold feature; find pictures
 import { useNavigation } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { selectedBulkItemsAtom } from "~/atoms/list";
@@ -16,6 +16,7 @@ import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { getPrimaryCustody } from "~/modules/custody/utils";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { isFormProcessing } from "~/utils/form";
+import { ALL_SELECTED_KEY } from "~/utils/list";
 import { isSelectingAllItems } from "~/utils/list";
 import {
   PermissionAction,
@@ -23,7 +24,6 @@ import {
 } from "~/utils/permissions/permission.data";
 import { userHasPermission } from "~/utils/permissions/permission.validator.client";
 import { tw } from "~/utils/tw";
-import BulkAddToAuditDialog from "./bulk-add-to-audit-dialog";
 import BulkAddToKitDialog from "./bulk-add-to-kit-dialog";
 import BulkAssetModelRemoveDialog from "./bulk-asset-model-remove-dialog";
 import BulkAssetModelUpdateDialog from "./bulk-asset-model-update-dialog";
@@ -49,7 +49,9 @@ import {
 import { MobileDropdownStyles } from "../shared/mobile-dropdown-styles";
 import When from "../when/when";
 import BookSelectedAssetsDropdown from "./assets-index/book-selected-assets-dropdown";
+import BulkAddToAuditDialog from "./bulk-add-to-audit-dialog";
 import BulkDownloadQrDialog from "./bulk-download-qr-dialog";
+import { FindPicturesDialog } from "./find-pictures-dialog"; // find pictures (fork)
 import Icon from "../icons/icon";
 
 export default function BulkActionsDropdown() {
@@ -103,12 +105,14 @@ function ConditionalDropdown() {
     assetModelsEnabled,
     bookingsEnabled,
     qrDownloadsEnabled,
+    aiEnabled,
   } = useCustomisations(); // customise feature
   const printSelectedLabels = usePrintSelectedLabels(); // labels feature
   // sold feature
   const soldSelection = useSelectedAssets();
   const markNotSold = useMarkNotSold();
   const [isMarkSoldOpen, setIsMarkSoldOpen] = useState(false);
+  const [isFindPicturesOpen, setIsFindPicturesOpen] = useState(false); // find pictures (fork)
   const user = useUserData();
 
   /**
@@ -153,6 +157,14 @@ function ConditionalDropdown() {
           )}
         />
       )}
+      {/* find new pictures (fork): the ticked assets on this page */}
+      <FindPicturesDialog
+        open={isFindPicturesOpen}
+        onOpenChange={setIsFindPicturesOpen}
+        assets={selectedAssets
+          .filter((a) => a.id !== ALL_SELECTED_KEY)
+          .map((a) => ({ id: a.id, title: a.title ?? "" }))}
+      />
       {/* sold feature */}
       <MarkSoldDialog
         open={isMarkSoldOpen}
@@ -329,6 +341,31 @@ function ConditionalDropdown() {
                   </DropdownMenuItem>
                 ))
               : null}
+            {/* find new pictures (fork), through the Claude API key */}
+            {aiEnabled ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMenu();
+                  setIsFindPicturesOpen(true);
+                }}
+                className="border-b py-1 lg:p-0"
+                disabled={
+                  selectedAssets.filter((a) => a.id !== ALL_SELECTED_KEY)
+                    .length === 0
+                }
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full justify-start px-4  py-3 text-gray-700 hover:text-gray-700"
+                  width="full"
+                >
+                  <span className="flex items-center gap-2">
+                    <ImageIcon className="size-4" /> Find new pictures
+                  </span>
+                </Button>
+              </DropdownMenuItem>
+            ) : null}
             {/* sold feature */}
             <DropdownMenuItem
               onClick={() => {

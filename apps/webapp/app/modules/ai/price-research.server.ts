@@ -67,10 +67,16 @@ export function explainSearchError(code: string): string {
 }
 
 /** The failure to show for a request Anthropic refused outright; web search not being enabled is the likely one. */
-function explainRefusal(status: number, apiMessage: string): ClaudeError {
+function explainRefusal(
+  status: number,
+  apiMessage: string,
+  forPrices = true
+): ClaudeError {
   if ((status === 400 || status === 403) && /web.?search/i.test(apiMessage)) {
     return new ClaudeError(
-      "Web search isn't switched on for this Anthropic account. An admin of the Anthropic organisation can enable it in the Claude Console; or turn off “Look up prices on the web” here.",
+      `Web search isn't switched on for this Anthropic account. An admin of the Anthropic organisation can enable it in the Claude Console${
+        forPrices ? "; or turn off “Look up prices on the web” here" : ""
+      }.`,
       status
     );
   }
@@ -84,6 +90,10 @@ export type ResearchArgs = {
   content: ContentBlock[];
   workspaceId?: string;
   maxTokens?: number;
+  /** What the search is, for its messages: "price lookup" unless said */
+  what?: string;
+  /** Searches allowed in this request */
+  maxSearches?: number;
   /** Injected in tests */
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
@@ -97,6 +107,8 @@ export async function researchPrice({
   content,
   workspaceId,
   maxTokens = 2048,
+  what = "price lookup",
+  maxSearches = MAX_SEARCHES,
   fetchImpl = fetch,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }: ResearchArgs): Promise<ResearchResult> {
@@ -133,7 +145,7 @@ export async function researchPrice({
             model,
             max_tokens: maxTokens,
             system,
-            tools: [WEB_SEARCH_TOOL],
+            tools: [{ ...WEB_SEARCH_TOOL, max_uses: maxSearches }],
             messages,
           }),
           signal: AbortSignal.timeout(RESEARCH_TIMEOUT_MS),
@@ -141,7 +153,7 @@ export async function researchPrice({
       } catch (cause) {
         if (isTimeout(cause)) {
           failure = new ClaudeError(
-            "The price lookup took too long.",
+            `The ${what} took too long.`,
             undefined,
             false
           );
@@ -159,7 +171,11 @@ export async function researchPrice({
         } catch {
           /* no body */
         }
-        failure = explainRefusal(response.status, apiMessage);
+        failure = explainRefusal(
+          response.status,
+          apiMessage,
+          what === "price lookup"
+        );
         if (!failure.retryable) break;
         continue;
       }
@@ -174,7 +190,7 @@ export async function researchPrice({
       return {
         text: null,
         searches,
-        error: failure?.message ?? "The price lookup failed.",
+        error: failure?.message ?? `The ${what} failed.`,
       };
 
     for (const b of blocks) {
@@ -205,8 +221,8 @@ export async function researchPrice({
     return {
       text: text || null,
       searches,
-      error: text ? toolError : toolError ?? "The price lookup found nothing.",
+      error: text ? toolError : toolError ?? `The ${what} found nothing.`,
     };
   }
-  return { text: null, searches, error: "The price lookup took too long." };
+  return { text: null, searches, error: `The ${what} took too long.` };
 }
