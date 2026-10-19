@@ -716,6 +716,11 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
   let proposed = 0;
   /** What changed, in words, for the pop-up on an open Filament page */
   const events: string[] = [];
+  /** Each known spool's level and slot now, for open pages to show live */
+  const levels: { id: string; remainingPercent: number; amsSlot: number }[] =
+    [];
+  /** Something an open page can't just update in place (a status changed) */
+  let reshaped = false;
   const name = (t: Tray) => `${t.colourName ?? t.colourHex} ${t.type}`;
   for (const t of trays) {
     present.add(t.tagUid);
@@ -741,6 +746,17 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
       });
       if (known.amsSlot !== t.slot)
         events.push(`${name(t)} is in AMS slot ${t.slot}.`);
+      // its status changed, or it's just been opened: more than a level moves
+      if (
+        known.status !== (t.remainingPercent === 0 ? "empty" : "active") ||
+        known.openedOn === null
+      )
+        reshaped = true;
+      levels.push({
+        id: known.id,
+        remainingPercent: t.remainingPercent,
+        amsSlot: t.slot,
+      });
       continue;
     }
     // Not a tag Shelf knows: is it filament you added by hand (no tag yet)?
@@ -803,7 +819,15 @@ export async function syncAmsTrays(organizationId: string, trays: Tray[]) {
     },
     data: { amsSlot: null },
   });
-  return { inSlots: trays.length, proposed, unloaded: out.count, events };
+  return {
+    inSlots: trays.length,
+    proposed,
+    unloaded: out.count,
+    events,
+    levels,
+    /** Whether an open page needs its data again, or can update in place */
+    refresh: reshaped || events.length > 0,
+  };
 }
 
 /** The cells of a filament's row you can change one at a time. */

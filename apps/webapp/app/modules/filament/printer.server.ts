@@ -10,6 +10,8 @@
  */
 import mqtt, { type MqttClient } from "mqtt";
 import { db } from "~/database/db.server";
+import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
+import { emitter } from "~/utils/emitter/emitter.server";
 import { Logger } from "~/utils/logger";
 import { decryptSecret, encryptSecret } from "~/utils/secret-box.server";
 import { sameTrays, traysInReport, type Tray } from "./ams";
@@ -155,6 +157,59 @@ function plainError(cause: unknown) {
 
 // --------------------------------------------- what changed, for open pages
 
+/** One AMS report, as open Filament pages get it the moment it arrives */
+export type AmsLive = {
+  organizationId: string;
+  trays: Tray[];
+  /** Known spools' level and slot now */
+  levels: { id: string; remainingPercent: number; amsSlot: number }[];
+  /** What changed, in words, for a pop-up */
+  events: string[];
+  /** Whether the page needs its data again, or can update in place */
+  refresh: boolean;
+};
+
+/** Sends an AMS report to every open Filament page of the workspace. */
+export function publishAms(live: AmsLive) {
+  emitter.emit("ams", JSON.stringify(live));
+}
+
+declare global {
+  // One boot start per process, even when the dev server reloads
+  var shelfAmsWatchersStarted: boolean | undefined;
+}
+
+/**
+ * Starts reading the AMS when Shelf starts (fork), for every workspace with
+ * its 3D printer set up and Filament switched on, so nothing the printer
+ * reports is missed until someone opens the Filament page. Checked again
+ * every 5 minutes, which also picks up a database that wasn't ready at boot.
+ * The connection itself reconnects on its own if the printer or cloud drops.
+ */
+export function startAmsWatchers() {
+  if (global.shelfAmsWatchersStarted) return;
+  global.shelfAmsWatchersStarted = true;
+  const run = async () => {
+    try {
+      const printers = await db.printer.findMany({
+        where: { enabled: true },
+        select: { organizationId: true },
+      });
+      for (const { organizationId } of printers) {
+        if (await isFeatureSwitchedOff(organizationId, "filamentEnabled"))
+          continue;
+        await ensureAmsWatcher(organizationId).catch((cause) =>
+          Logger.error(cause)
+        );
+      }
+    } catch (cause) {
+      Logger.error(cause);
+    }
+  };
+  void run();
+  setInterval(() => void run(), 5 * 60 * 1000);
+}
+
 type AmsEvent = { id: number; text: string };
 /** Per workspace: a version that goes up on every AMS change, and the last few events */
 const updates = new Map<string, { version: number; events: AmsEvent[] }>();
@@ -261,6 +316,14 @@ async function handleReport(
   try {
     const result = await syncAmsTrays(organizationId, trays);
     recordChange(organizationId, result.events);
+    // straight to any open Filament page (live, over Shelf's event stream)
+    publishAms({
+      organizationId,
+      trays,
+      levels: result.levels,
+      events: result.events,
+      refresh: result.refresh,
+    });
     await note(organizationId, { lastSeenAt: new Date(), lastError: null });
   } catch (cause) {
     Logger.error(cause);

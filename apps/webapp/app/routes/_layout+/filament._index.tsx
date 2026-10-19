@@ -5,7 +5,13 @@
  * line); the filaments as tiles or a list, each opening its own page; and
  * Shelf's own bottom bar (pages, per page, back to the top, Tile or List).
  */
-import { type ReactNode, useEffect, useRef, type CSSProperties } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+} from "react";
 import { GlobeIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import type {
   ActionFunctionArgs,
@@ -28,7 +34,7 @@ import {
   AdvancedTable,
 } from "~/components/filament/advanced-table";
 import { FilterBuilder } from "~/components/filament/filter-builder";
-import { useAmsLiveUpdates } from "~/components/filament/live-updates";
+import { useAmsLive } from "~/components/filament/live-updates";
 import {
   barFill,
   barTrack,
@@ -1489,15 +1495,20 @@ function FilamentBottomBar({
 }
 
 export default function FilamentPage() {
-  useAmsLiveUpdates(); // the page follows the AMS
   const location = useLocation();
+  const data = useLoaderData<typeof loader>();
+  // the page follows the AMS live: levels and slots update in place
+  const { trays: amsTrays, live } = useAmsLive(data.amsTrays, data);
+  const spools = useMemo(() => live(data.spools), [live, data.spools]);
+  const items = useMemo(
+    () => data.items.map((g) => ({ ...g, spools: live(g.spools) })),
+    [live, data.items]
+  );
   const {
-    amsTrays,
     activeFilters,
     choices,
     cols,
     totals,
-    spools,
     candidates,
     images,
     codes,
@@ -1505,7 +1516,6 @@ export default function FilamentPage() {
     printer,
     prices,
     view,
-    items,
     totalItems,
     anyPrice,
     filters,
@@ -1513,7 +1523,7 @@ export default function FilamentPage() {
     advancedColumns,
     advancedSort,
     lineChoices,
-  } = useLoaderData<typeof loader>();
+  } = data;
   const [params] = useSearchParams();
   const adding = params.get("add") === "1";
   const empty = spools.filter((s) => s.status === "empty");

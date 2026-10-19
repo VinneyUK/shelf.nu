@@ -1,55 +1,142 @@
 /**
- * Live AMS updates for an open Filament page (fork): asks every 5 seconds
- * while the page is visible whether the AMS has changed; if it has, the page
- * refreshes itself, and anything to tell (new filament, filament moved or
- * taken out) shows as Shelf's pop-up.
+ * Live AMS for an open Filament page (fork). The printer's reports arrive
+ * the moment Shelf has them, over an event stream (/api/sse/ams):
+ *
+ * - levels and slots change in place: the bars and percentages move, and
+ *   nothing else on the page reloads;
+ * - when something can't be shown in place (filament in or out, something
+ *   new to add, a spool run out), the page fetches its data again, but only
+ *   once you've finished whatever you're editing;
+ * - anything to tell shows as Shelf's pop-up.
  */
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom } from "jotai";
-import { useFetcher, useRevalidator } from "react-router";
+import { useRevalidator } from "react-router";
 import { showNotificationAtom } from "~/atoms/notifications";
+import type { Tray } from "~/modules/filament/ams";
 
-type Updates = { version: number; lastEventId: number; events: string[] };
+type Level = { remainingPercent: number; amsSlot: number };
+type Live = {
+  trays: Tray[];
+  levels: ({ id: string } & Level)[];
+  events: string[];
+  refresh: boolean;
+};
 
-export function useAmsLiveUpdates() {
-  const fetcher = useFetcher<Updates>();
+/** Whether you're in the middle of something a refresh would get in the way of. */
+export function isBusy(doc: Document = document) {
+  const el = doc.activeElement as HTMLElement | null;
+  const typing =
+    !!el &&
+    (el.tagName === "INPUT" ||
+      el.tagName === "TEXTAREA" ||
+      el.tagName === "SELECT" ||
+      el.isContentEditable);
+  // an open picker, menu or dialog
+  const open = !!doc.querySelector(
+    "[data-radix-popper-content-wrapper], [role='dialog'], [role='alertdialog']"
+  );
+  return typing || open;
+}
+
+/** A spool with the AMS's latest level and slot, when the AMS has reported it. */
+export function withLevel<
+  S extends { id: string; remainingPercent: number; amsSlot: number | null },
+>(spool: S, levels: Map<string, Level>): S {
+  const live = levels.get(spool.id);
+  return live
+    ? {
+        ...spool,
+        remainingPercent: live.remainingPercent,
+        amsSlot: live.amsSlot,
+      }
+    : spool;
+}
+
+/**
+ * Follows the AMS live. Give it the trays the page loaded with and something
+ * that changes whenever the page's data is fetched again (the loader data);
+ * it returns the trays now and a function that brings spools up to date.
+ */
+export function useAmsLive(initialTrays: Tray[] | null, data: unknown) {
   const revalidator = useRevalidator();
   const [, notify] = useAtom(showNotificationAtom);
-  const seen = useRef<{ version: number; lastEventId: number } | null>(null);
+  const [trays, setTrays] = useState(initialTrays);
+  const [levels, setLevels] = useState(() => new Map<string, Level>());
+  const pending = useRef(false);
+
+  // fresh data from the server replaces whatever was shown in place
+  useEffect(() => {
+    setTrays(initialTrays);
+    setLevels(new Map());
+    pending.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   useEffect(() => {
-    const ask = () => {
-      if (document.visibilityState !== "visible" || fetcher.state !== "idle")
+    const source = new EventSource("/api/sse/ams");
+    const onAms = (event: MessageEvent<string>) => {
+      let live: Live;
+      try {
+        live = JSON.parse(event.data) as Live;
+      } catch {
         return;
-      const since = seen.current ? `?since=${seen.current.lastEventId}` : "";
-      void fetcher.load(`/api/filament/ams-updates${since}`);
+      }
+      setTrays(live.trays);
+      setLevels((prev) => {
+        const next = new Map(prev);
+        for (const l of live.levels)
+          next.set(l.id, {
+            remainingPercent: l.remainingPercent,
+            amsSlot: l.amsSlot,
+          });
+        return next;
+      });
+      if (live.events.length) {
+        notify({
+          title:
+            live.events.length === 1
+              ? "AMS"
+              : `AMS: ${live.events.length} changes`,
+          message: live.events.join(" "),
+          icon: { name: "success", variant: "success" },
+          senderId: null,
+        });
+      }
+      if (live.refresh) pending.current = true;
     };
-    ask();
-    const timer = window.setInterval(ask, 5000);
-    document.addEventListener("visibilitychange", ask);
+    source.addEventListener("ams", onAms as EventListener);
     return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", ask);
+      source.removeEventListener("ams", onAms as EventListener);
+      source.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify]);
+
+  // a refresh that's due waits until you've finished what you're doing
+  const revalidatorRef = useRef(revalidator);
+  revalidatorRef.current = revalidator;
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const r = revalidatorRef.current;
+      if (!pending.current || r.state !== "idle" || isBusy()) return;
+      pending.current = false;
+      void r.revalidate();
+    }, 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const u = fetcher.data;
-    if (!u || typeof u.version !== "number") return;
-    const before = seen.current;
-    seen.current = { version: u.version, lastEventId: u.lastEventId };
-    if (!before) return; // the first answer only sets where we are
-    if (u.events.length) {
-      notify({
-        title:
-          u.events.length === 1 ? "AMS" : `AMS: ${u.events.length} changes`,
-        message: u.events.join(" "),
-        icon: { name: "success", variant: "success" },
-        senderId: null,
-      });
-    }
-    if (u.version !== before.version && revalidator.state === "idle")
-      void revalidator.revalidate();
-  }, [fetcher.data, notify, revalidator]);
+  const live = useCallback(
+    <
+      S extends {
+        id: string;
+        remainingPercent: number;
+        amsSlot: number | null;
+      },
+    >(
+      spools: S[]
+    ): S[] => (levels.size ? spools.map((s) => withLevel(s, levels)) : spools),
+    [levels]
+  );
+
+  return { trays, live };
 }

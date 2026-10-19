@@ -710,6 +710,42 @@ describe("the AMS, brought into Filament", () => {
     );
     expect(result).toMatchObject({ inSlots: 1, proposed: 0, unloaded: 0 });
   });
+  it("tells an open page just the new level when only that changed (live, fork)", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      openedOn: new Date("2026-10-01"),
+      status: "active",
+      amsSlot: 2,
+    });
+    m.spool.findMany.mockResolvedValue([]);
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    const result = await syncAmsTrays("o1", [
+      tray(2, "TAG1", { remainingPercent: 45 }),
+    ]);
+    expect(result.levels).toEqual([
+      { id: "s1", remainingPercent: 45, amsSlot: 2 },
+    ]);
+    expect(result.refresh).toBe(false);
+  });
+  it("asks an open page to refresh when a spool is opened, moved or runs out (live, fork)", async () => {
+    m.spool.findMany.mockResolvedValue([]);
+    m.spool.updateMany.mockResolvedValue({ count: 0 });
+    const opened = {
+      id: "s1",
+      openedOn: new Date("2026-10-01"),
+      status: "active",
+      amsSlot: 2,
+    };
+    m.spool.findFirst.mockResolvedValue({ ...opened, openedOn: null });
+    expect((await syncAmsTrays("o1", [tray(2, "TAG1")])).refresh).toBe(true);
+    m.spool.findFirst.mockResolvedValue({ ...opened, amsSlot: 1 });
+    expect((await syncAmsTrays("o1", [tray(2, "TAG1")])).refresh).toBe(true);
+    m.spool.findFirst.mockResolvedValue(opened);
+    expect(
+      (await syncAmsTrays("o1", [tray(2, "TAG1", { remainingPercent: 0 })]))
+        .refresh
+    ).toBe(true);
+  });
   it("sends a new tag to the inbox with its slot, line and colour", async () => {
     m.spool.findFirst.mockResolvedValue(null);
     m.spoolCandidate.findFirst.mockResolvedValue(null);

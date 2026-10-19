@@ -3,7 +3,7 @@
  * name; its spools (weigh, edit, retire, bring back, delete); its specs, edited
  * once for every spool; Bambu's catalogue facts; and Add spools of this.
  */
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -20,7 +20,7 @@ import { data, redirect, useFetcher, useLoaderData } from "react-router";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import { FilamentCell } from "~/components/filament/filament-cell";
-import { useAmsLiveUpdates } from "~/components/filament/live-updates";
+import { useAmsLive } from "~/components/filament/live-updates";
 import {
   barFill,
   barTrack,
@@ -1446,9 +1446,11 @@ function PicturePopover({
 }
 
 export default function FilamentDetail() {
-  useAmsLiveUpdates(); // the page follows the AMS
-  const { filament, catalogue, spools, images, price, codes, fil, label } =
-    useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
+  const { filament, catalogue, images, price, codes, fil, label } = data;
+  // the page follows the AMS live: levels and slots update in place
+  const { live } = useAmsLive(null, data);
+  const spools = useMemo(() => live(data.spools), [live, data.spools]);
   const money = useMoney();
   const picture = useFetcher<Result>();
   const [params] = useSearchParams();
