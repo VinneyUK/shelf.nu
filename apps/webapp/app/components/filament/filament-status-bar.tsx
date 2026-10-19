@@ -566,7 +566,8 @@ function SlotItem({
             aria-hidden
             className={cx(
               "relative h-16 w-full shrink-0 overflow-hidden rounded-lg sm:h-14 sm:w-11",
-              "shadow-[inset_0_0_0_1px_rgba(16,24,40,0.16)]",
+              // an outline that shows in both themes (black filament on a dark page)
+              "ams-slot-outline",
               stale && "opacity-50"
             )}
             style={{

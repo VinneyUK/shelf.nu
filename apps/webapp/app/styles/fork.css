@@ -35,3 +35,12 @@ input[type="radio"] {
 html.dark {
   --level-track: #262d36;
 }
+
+/* The status bar's AMS slot tiles: an outline that shows in both themes,
+   so black filament still reads on the dark page */
+.ams-slot-outline {
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.16);
+}
+html.dark .ams-slot-outline {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
