@@ -14,13 +14,16 @@ import { useAtom } from "jotai";
 import { useRevalidator } from "react-router";
 import { showNotificationAtom } from "~/atoms/notifications";
 import type { Tray } from "~/modules/filament/ams";
+import type { PrinterStatusView } from "~/modules/filament/printer.server";
 
 type Level = { remainingPercent: number; amsSlot: number };
 type Live = {
-  trays: Tray[];
-  levels: ({ id: string } & Level)[];
-  events: string[];
-  refresh: boolean;
+  trays?: Tray[];
+  levels?: ({ id: string } & Level)[];
+  events?: string[];
+  refresh?: boolean;
+  /** The printer's status, for the status bar */
+  status?: PrinterStatusView;
 };
 
 /** Whether you're in the middle of something a refresh would get in the way of. */
@@ -58,16 +61,22 @@ export function withLevel<
  * that changes whenever the page's data is fetched again (the loader data);
  * it returns the trays now and a function that brings spools up to date.
  */
-export function useAmsLive(initialTrays: Tray[] | null, data: unknown) {
+export function useAmsLive(
+  initialTrays: Tray[] | null,
+  data: unknown,
+  initialStatus: PrinterStatusView | null = null
+) {
   const revalidator = useRevalidator();
   const [, notify] = useAtom(showNotificationAtom);
   const [trays, setTrays] = useState(initialTrays);
+  const [status, setStatus] = useState(initialStatus);
   const [levels, setLevels] = useState(() => new Map<string, Level>());
   const pending = useRef(false);
 
   // fresh data from the server replaces whatever was shown in place
   useEffect(() => {
     setTrays(initialTrays);
+    setStatus(initialStatus);
     setLevels(new Map());
     pending.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,23 +91,24 @@ export function useAmsLive(initialTrays: Tray[] | null, data: unknown) {
       } catch {
         return;
       }
-      setTrays(live.trays);
-      setLevels((prev) => {
-        const next = new Map(prev);
-        for (const l of live.levels)
-          next.set(l.id, {
-            remainingPercent: l.remainingPercent,
-            amsSlot: l.amsSlot,
-          });
-        return next;
-      });
-      if (live.events.length) {
+      if (live.status) setStatus(live.status);
+      if (live.trays) setTrays(live.trays);
+      const levels = live.levels ?? [];
+      if (levels.length)
+        setLevels((prev) => {
+          const next = new Map(prev);
+          for (const l of levels)
+            next.set(l.id, {
+              remainingPercent: l.remainingPercent,
+              amsSlot: l.amsSlot,
+            });
+          return next;
+        });
+      const events = live.events ?? [];
+      if (events.length) {
         notify({
-          title:
-            live.events.length === 1
-              ? "AMS"
-              : `AMS: ${live.events.length} changes`,
-          message: live.events.join(" "),
+          title: events.length === 1 ? "AMS" : `AMS: ${events.length} changes`,
+          message: events.join(" "),
           icon: { name: "success", variant: "success" },
           senderId: null,
         });
@@ -138,5 +148,5 @@ export function useAmsLive(initialTrays: Tray[] | null, data: unknown) {
     [levels]
   );
 
-  return { trays, live };
+  return { trays, status, live };
 }

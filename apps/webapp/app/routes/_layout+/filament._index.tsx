@@ -33,6 +33,12 @@ import {
   AdvancedColumns,
   AdvancedTable,
 } from "~/components/filament/advanced-table";
+import {
+  type AmsSlot,
+  FilamentStatusBar,
+  type PrinterIssue,
+  type SlotIndex,
+} from "~/components/filament/filament-status-bar";
 import { FilterBuilder } from "~/components/filament/filter-builder";
 import { useAmsLive } from "~/components/filament/live-updates";
 import {
@@ -59,6 +65,7 @@ import { ButtonGroup } from "~/components/shared/button-group";
 import { Card } from "~/components/shared/card";
 import { DateS } from "~/components/shared/date";
 import { useSearchParams } from "~/hooks/search-params";
+import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useViewportHeight } from "~/hooks/use-viewport-height";
 import {
   advancedRow,
@@ -67,10 +74,8 @@ import {
   sortRows,
 } from "~/modules/filament/advanced";
 import {
-  AMS_SLOTS,
   BAMBU_TYPES,
   costPerKg,
-  daysAgo,
   filamentKey,
   filamentSlug,
   groupSpools,
@@ -107,6 +112,7 @@ import {
   currentTrays,
   ensureAmsWatcher,
   getPrinterSettingsForPage,
+  printerStatus,
 } from "~/modules/filament/printer.server";
 import {
   approveCandidate,
@@ -347,6 +353,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         images,
         codes,
         amsTrays: currentTrays(organizationId),
+        // the status bar: state, slots, health, the connection
+        printerStatus: await printerStatus(organizationId),
         printer: {
           enabled: printer.enabled,
           lastSeenAt: printer.lastSeenAt,
@@ -485,6 +493,15 @@ export async function action({ context, request }: ActionFunctionArgs) {
         fetchMissingImages(organizationId);
         return done(userId, "Filament saved", message);
       }
+      // the status bar's "Retry now": connect to the printer again
+      case "retry-printer": {
+        await ensureAmsWatcher(organizationId, true);
+        return done(
+          userId,
+          "Reconnecting to the printer",
+          "The AMS updates here as soon as the printer answers."
+        );
+      }
       case "fill-prices": {
         const { filled, unpriced } = await fillMissingPrices(organizationId);
         return done(
@@ -589,103 +606,87 @@ function AddSpoolPanel({ codes }: { codes: KnownCode[] }) {
   );
 }
 
-/** The figures and the AMS, in one compact strip. "—" for money nobody has recorded. */
-function Overview({
+/**
+ * The status bar at the top (Ant's design, components/filament/
+ * filament-status-bar): what's on hand, its value, and the printer and AMS
+ * live. Slots show Shelf's own names for filament it knows, linking to it.
+ */
+function StatusBar({
   spools,
-  images,
+  status,
   anyPrice,
-  printer,
-  amsTrays,
 }: {
-  amsTrays: PageData["amsTrays"];
   spools: SpoolRow[];
-  images: Images;
+  status: PageData["printerStatus"] | null;
   anyPrice: boolean;
-  printer: PageData["printer"];
 }) {
-  const money = useMoney();
+  const organization = useCurrentOrganization();
+  const retry = useFetcher();
   const summary = summarise(spools);
-  const newSpools = spools.filter((s) => spoolState(s) === "new").length;
-  const figures: [string, string][] = [
-    ["In stock", `${summary.spools}${newSpools ? ` (${newSpools} new)` : ""}`],
-    ["Filament left", `${(summary.gramsLeft / 1000).toFixed(1)} kg`],
-    ["Worth", anyPrice ? money(summary.valueLeft) : "—"],
-    ["Spent", anyPrice ? money(summary.spent) : "—"],
-    // the value of filament printed through: what was paid, less what's still on the shelf
-    [
-      "Used",
-      anyPrice ? money(Math.max(0, summary.spent - summary.valueLeft)) : "—",
-    ],
-  ];
+  const unopened = spools.filter((s) => spoolState(s) === "new").length;
+  const slots: AmsSlot[] = [1, 2, 3, 4].map((n) => {
+    const report = status?.slots.find((x) => x.slot === n) ?? null;
+    const known =
+      spools.find((s) => s.amsSlot === n && s.status !== "retired") ?? null;
+    // the printer's word for what's there, Shelf's for what it is
+    const loaded = report ? report.colourHex !== null : known !== null;
+    if (!loaded)
+      return { slot: n as SlotIndex, color: null, name: null, percent: null };
+    return {
+      slot: n as SlotIndex,
+      color: report?.colourHex ?? known?.colourHex ?? null,
+      name: known?.colourName ?? report?.type ?? "Unknown filament",
+      material: known?.type ?? report?.type ?? null,
+      percent: report
+        ? report.remainingPercent
+        : known?.remainingPercent ?? null,
+      active: status?.activeSlot === n,
+      href: known
+        ? `/filament/${filamentSlug(known.type, known.colourName)}`
+        : undefined,
+    };
+  });
+  const issue: PrinterIssue | null = !status?.setUp
+    ? { kind: "setup" }
+    : status.problem
+    ? { kind: status.problem }
+    : status.hms.length
+    ? {
+        kind: "other",
+        code: status.hms[0],
+        message:
+          "The printer is showing a health message: check its screen or Bambu Handy for what to do.",
+      }
+    : null;
   return (
-    <Card className="my-0 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-        {figures.map(([k, v]) => (
-          <div key={k}>
-            <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              {k}
-            </div>
-            <div className="mt-0.5 text-lg font-semibold tabular-nums text-gray-900">
-              {v}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div>
-        <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-          <span>AMS</span>
-          <PrinterStatus printer={printer} />
-        </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {AMS_SLOTS.map((n) => {
-            const s = spools.find(
-              (x) => x.amsSlot === n && x.status !== "retired"
-            );
-            const tray = s ? null : amsTrays?.find((t) => t.slot === n) ?? null;
-            return (
-              <div
-                key={n}
-                className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5"
-              >
-                {s ? (
-                  <FilamentPicture {...s} images={images} size="size-8" />
-                ) : tray ? (
-                  <Swatch hex={tray.colourHex} size="size-8" />
-                ) : null}
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                    AMS {n}
-                  </div>
-                  {s ? (
-                    <div className="truncate text-xs text-gray-900">
-                      {s.colourName}{" "}
-                      <span className="tabular-nums text-gray-500">
-                        {s.remainingPercent}%
-                      </span>
-                    </div>
-                  ) : tray ? (
-                    <div
-                      className="truncate text-xs text-gray-900"
-                      title="In the AMS, not added to Shelf yet"
-                    >
-                      {tray.colourName ?? tray.colourHex}{" "}
-                      <span className="tabular-nums text-gray-500">
-                        {tray.remainingPercent}%
-                      </span>
-                      <span className="block text-[11px] text-primary-600">
-                        Not added yet
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-400">Empty</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </Card>
+    <FilamentStatusBar
+      stock={{
+        spools: summary.spools,
+        unopened,
+        kgRemaining: summary.gramsLeft / 1000,
+      }}
+      money={{
+        spent: anyPrice ? summary.spent : 0,
+        used: anyPrice ? Math.max(0, summary.spent - summary.valueLeft) : 0,
+        currency: organization?.currency ?? "GBP",
+      }}
+      ams={{
+        slots: status?.setUp ? slots : [],
+        online: !!status?.online,
+        lastUpdate: status?.lastUpdate ?? null,
+      }}
+      printer={{ state: status?.state ?? "offline", issue }}
+      links={{
+        printerSettings: "/settings/printer",
+        findInStock: (s) =>
+          `/filament?s=${encodeURIComponent(s.name ?? "")}${
+            s.material ? `&line=${encodeURIComponent(s.material)}` : ""
+          }`,
+      }}
+      onRetry={() =>
+        void retry.submit({ intent: "retry-printer" }, { method: "post" })
+      }
+    />
   );
 }
 
@@ -791,31 +792,6 @@ function FilterBar({
       </Form>
     </Card>
   );
-}
-
-/** How the printer is doing: live, a problem, or not set up yet. */
-function PrinterStatus({ printer }: { printer: PageData["printer"] }) {
-  if (!printer.enabled) {
-    return (
-      <Link to="/settings/printer" className="text-primary-600 hover:underline">
-        Read the AMS from your printer
-      </Link>
-    );
-  }
-  if (printer.lastError) {
-    return (
-      <Link
-        to="/settings/printer"
-        className="text-error-600 hover:underline"
-        title={printer.lastError}
-      >
-        3D printer: problem, see settings
-      </Link>
-    );
-  }
-  if (!printer.lastSeenAt)
-    return <span>Waiting for the printer's first report…</span>;
-  return <span>Printer reported {daysAgo(printer.lastSeenAt)}</span>;
 }
 
 /** Fill in the price paid where it's missing, from the store prices Shelf holds. */
@@ -1498,7 +1474,11 @@ export default function FilamentPage() {
   const location = useLocation();
   const data = useLoaderData<typeof loader>();
   // the page follows the AMS live: levels and slots update in place
-  const { trays: amsTrays, live } = useAmsLive(data.amsTrays, data);
+  const { status: printerLive, live } = useAmsLive(
+    data.amsTrays,
+    data,
+    data.printerStatus
+  );
   const spools = useMemo(() => live(data.spools), [live, data.spools]);
   const items = useMemo(
     () => data.items.map((g) => ({ ...g, spools: live(g.spools) })),
@@ -1513,7 +1493,6 @@ export default function FilamentPage() {
     images,
     codes,
     missingPrices,
-    printer,
     prices,
     view,
     totalItems,
@@ -1552,13 +1531,7 @@ export default function FilamentPage() {
       <div className="mt-4 flex flex-col gap-4 pb-20">
         {adding ? <AddSpoolPanel codes={codes} /> : null}
 
-        <Overview
-          spools={spools}
-          images={images}
-          anyPrice={anyPrice}
-          printer={printer}
-          amsTrays={amsTrays}
-        />
+        <StatusBar spools={spools} status={printerLive} anyPrice={anyPrice} />
 
         {candidates.length > 0 ? (
           <div className="flex flex-col gap-3">

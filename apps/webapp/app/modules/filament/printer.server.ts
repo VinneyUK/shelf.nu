@@ -14,7 +14,16 @@ import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
 import { emitter } from "~/utils/emitter/emitter.server";
 import { Logger } from "~/utils/logger";
 import { decryptSecret, encryptSecret } from "~/utils/secret-box.server";
-import { sameTrays, traysInReport, type Tray } from "./ams";
+import {
+  connectionProblem,
+  sameTrays,
+  statusInReport,
+  traysInReport,
+  type PrinterState,
+  type SlotReport,
+  type StatusReport,
+  type Tray,
+} from "./ams";
 import { syncAmsTrays } from "./service.server";
 
 export type PrinterSettings = {
@@ -174,6 +183,84 @@ export function publishAms(live: AmsLive) {
   emitter.emit("ams", JSON.stringify(live));
 }
 
+/** The printer as the Filament page's status bar shows it. */
+export type PrinterStatusView = {
+  /** Whether reading the AMS is set up and on */
+  setUp: boolean;
+  online: boolean;
+  /** When the last report arrived (ISO), null if none yet */
+  lastUpdate: string | null;
+  state: PrinterState;
+  activeSlot: number | null;
+  slots: SlotReport[];
+  /** Bambu health codes the printer is showing */
+  hms: string[];
+  /** The connection's problem, if it's down */
+  problem: "auth" | "connection" | null;
+  /** The connection's error in its own words, for anything else */
+  error: string | null;
+};
+
+function viewOf(
+  watch: Watch | undefined,
+  lastSeenAt: Date | null
+): PrinterStatusView {
+  const recent = watch && watch.lastReportAt > 0;
+  const error = watch?.error ?? null;
+  return {
+    setUp: true,
+    online: !!watch?.connected && !!recent,
+    lastUpdate: recent
+      ? new Date(watch!.lastReportAt).toISOString()
+      : lastSeenAt?.toISOString() ?? null,
+    state: watch?.connected ? watch.status.state ?? "idle" : "offline",
+    activeSlot: watch?.status.activeSlot ?? null,
+    slots: watch?.status.slots ?? [],
+    hms: watch?.status.hms ?? [],
+    problem: watch?.connected ? null : connectionProblem(error),
+    error: watch?.connected ? null : error,
+  };
+}
+
+/** The printer's status now, for the Filament page. */
+export async function printerStatus(
+  organizationId: string
+): Promise<PrinterStatusView> {
+  const s = await getPrinterSettings(organizationId);
+  if (!s.enabled || !s.host || !s.serial || !s.accessCode)
+    return {
+      setUp: false,
+      online: false,
+      lastUpdate: null,
+      state: "offline",
+      activeSlot: null,
+      slots: [],
+      hms: [],
+      problem: null,
+      error: null,
+    };
+  return viewOf(watchers.get(organizationId), s.lastSeenAt);
+}
+
+/**
+ * Sends the printer's status to open pages: when it changes, or every 30 s
+ * so a page can tell the connection is still alive.
+ */
+function publishStatus(organizationId: string, watch: Watch, force = false) {
+  const view = viewOf(watch, null);
+  const { lastUpdate: _, ...shape } = view;
+  const key = JSON.stringify(shape);
+  if (
+    !force &&
+    key === watch.published &&
+    Date.now() - watch.lastPublished < 30_000
+  )
+    return;
+  watch.published = key;
+  watch.lastPublished = Date.now();
+  emitter.emit("ams", JSON.stringify({ organizationId, status: view }));
+}
+
 declare global {
   // One boot start per process, even when the dev server reloads
   var shelfAmsWatchersStarted: boolean | undefined;
@@ -244,6 +331,17 @@ type Watch = {
   client: MqttClient;
   last: Tray[] | null;
   lastSync: number;
+  /** The printer's state, slots and health, merged from its reports */
+  status: StatusReport;
+  /** When the last report arrived (ms), 0 before the first */
+  lastReportAt: number;
+  connected: boolean;
+  /** The connection's last error, until it connects again */
+  error: string | null;
+  /** When the status was last sent to open pages (ms) */
+  lastPublished: number;
+  /** The status as last sent, to send again only when it changes */
+  published: string;
 };
 const watchers = new Map<string, Watch>();
 
@@ -278,17 +376,38 @@ export async function ensureAmsWatcher(
     s,
     `shelf-ams-${organizationId.slice(0, 8)}-${Date.now()}`
   );
-  const watch: Watch = { key, client, last: null, lastSync: 0 };
+  const watch: Watch = {
+    key,
+    client,
+    last: null,
+    lastSync: 0,
+    status: {},
+    lastReportAt: 0,
+    connected: false,
+    error: null,
+    lastPublished: 0,
+    published: "",
+  };
   watchers.set(organizationId, watch);
   client.on("connect", () => {
+    watch.connected = true;
+    watch.error = null;
     client.subscribe(reportTopic(s.serial));
     client.publish(requestTopic(s.serial), PUSHALL);
+    publishStatus(organizationId, watch, true);
   });
   client.on("message", (_topic, payload) => {
     void handleReport(organizationId, watch, payload);
   });
   client.on("error", (cause) => {
-    void note(organizationId, { lastError: plainError(cause) });
+    watch.error = plainError(cause);
+    void note(organizationId, { lastError: watch.error });
+    publishStatus(organizationId, watch, true);
+  });
+  client.on("close", () => {
+    if (!watch.connected) return;
+    watch.connected = false;
+    publishStatus(organizationId, watch, true);
   });
   return true;
 }
@@ -304,6 +423,11 @@ async function handleReport(
   } catch {
     return;
   }
+  // the status bar: state, slot in use, slots and health, from any report
+  const status = statusInReport(report);
+  watch.status = { ...watch.status, ...status };
+  watch.lastReportAt = Date.now();
+  publishStatus(organizationId, watch);
   if (!(report as { print?: { ams?: unknown } })?.print?.ams) return;
   const trays = traysInReport(report);
   const stale = Date.now() - watch.lastSync > 10 * 60 * 1000;

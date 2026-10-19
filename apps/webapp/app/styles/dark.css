@@ -15,6 +15,7 @@ html.dark .bg-blue-200\/20 { background-color: rgb(26 45 76 / 0.2); }
 html.dark .bg-blue-200\/50 { background-color: rgb(26 45 76 / 0.5); }
 html.dark .bg-blue-50 { background-color: #131d2c; }
 html.dark .bg-blue-50\/50 { background-color: rgb(19 29 44 / 0.5); }
+html.dark .bg-current { background-color: currentColor; }
 html.dark .bg-error-100 { background-color: #331a1b; }
 html.dark .bg-error-25 { background-color: #1d1518; }
 html.dark .bg-error-50 { background-color: #261719; }

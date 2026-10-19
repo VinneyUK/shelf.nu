@@ -95,3 +95,117 @@ export function colourNameFor(type: string, hex: string): string | null {
 export function sameTrays(a: Tray[], b: Tray[]) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
+
+// ------------------------------------------------- the printer's status (fork)
+
+export type PrinterState = "idle" | "printing" | "paused" | "error" | "offline";
+
+/** What's in an AMS slot, tagged or not: the status bar shows both. */
+export type SlotReport = {
+  /** 1 to 4 */
+  slot: number;
+  /** "#RRGGBB", or null when the slot is empty */
+  colourHex: string | null;
+  /** Bambu's line or material, e.g. "PLA Basic" */
+  type: string | null;
+  /** 0 to 100, or null when the AMS can't tell (no RFID tag) */
+  remainingPercent: number | null;
+};
+
+/** The parts of a report the status bar uses; anything a report leaves out is unchanged. */
+export type StatusReport = {
+  state?: PrinterState;
+  /** The slot feeding the extruder (1 to 4), null for none or the external spool */
+  activeSlot?: number | null;
+  slots?: SlotReport[];
+  /** Health messages, as Bambu's codes ("0700_2000_0002_0001") */
+  hms?: string[];
+};
+
+const STATES: Record<string, PrinterState> = {
+  IDLE: "idle",
+  FINISH: "idle",
+  PREPARE: "printing",
+  SLICING: "printing",
+  RUNNING: "printing",
+  PAUSE: "paused",
+  FAILED: "error",
+};
+
+const hex4 = (n: number) =>
+  (n >>> 0).toString(16).toUpperCase().padStart(8, "0");
+
+/**
+ * The printer's state, the slot in use, every slot's filament and its health
+ * messages from one report. Printers send the whole picture once, then only
+ * what changed, so a field that isn't in this report is left out.
+ */
+export function statusInReport(report: unknown): StatusReport {
+  const print = (report as { print?: Record<string, unknown> })?.print;
+  if (!print || typeof print !== "object") return {};
+  const out: StatusReport = {};
+  const gcode = print.gcode_state;
+  if (typeof gcode === "string" && STATES[gcode.toUpperCase()])
+    out.state = STATES[gcode.toUpperCase()];
+  const ams = print.ams as
+    | { tray_now?: string | number; ams?: { tray?: RawTray[] }[] }
+    | undefined;
+  if (ams && ams.tray_now !== undefined) {
+    const now = Number(ams.tray_now);
+    // 255: nothing loaded; 254: the external spool
+    out.activeSlot = now >= 0 && now <= 3 ? now + 1 : null;
+  }
+  const unit = Array.isArray(ams?.ams) ? ams?.ams?.[0] : undefined;
+  if (unit && Array.isArray(unit.tray)) {
+    const slots: SlotReport[] = [];
+    for (let i = 0; i < 4; i++) {
+      const t = unit.tray.find((x) => Number(x.id) === i);
+      const type = (t?.tray_sub_brands || t?.tray_type || "").trim();
+      const hex = t?.tray_color
+        ? cleanHex(`#${t.tray_color.slice(0, 6)}`)
+        : null;
+      const remain = Number(t?.remain);
+      slots.push({
+        slot: i + 1,
+        colourHex: type && hex ? hex : null,
+        type: type || null,
+        remainingPercent:
+          type && Number.isFinite(remain) && remain >= 0
+            ? Math.min(100, Math.round(remain))
+            : null,
+      });
+    }
+    out.slots = slots;
+  }
+  if (Array.isArray(print.hms)) {
+    out.hms = (print.hms as { attr?: number; code?: number }[])
+      .filter((h) => typeof h.attr === "number" && typeof h.code === "number")
+      .map((h) => {
+        const s = `${hex4(h.attr!)}${hex4(h.code!)}`;
+        return `${s.slice(0, 4)}_${s.slice(4, 8)}_${s.slice(8, 12)}_${s.slice(
+          12
+        )}`;
+      });
+  }
+  return out;
+}
+
+/** Why the connection to the printer failed, in the status bar's terms. */
+export function connectionProblem(
+  message: string | null | undefined
+): "auth" | "connection" | null {
+  if (!message) return null;
+  if (
+    /not authori[sz]ed|bad user ?name or password|connack.*(4|5)\b/i.test(
+      message
+    )
+  )
+    return "auth";
+  if (
+    /ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|ENOTFOUND|EAI_AGAIN|connack timeout|timed? ?out|offline|closed/i.test(
+      message
+    )
+  )
+    return "connection";
+  return null;
+}

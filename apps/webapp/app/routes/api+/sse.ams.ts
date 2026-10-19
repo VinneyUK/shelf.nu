@@ -5,7 +5,6 @@
  */
 import type { LoaderFunctionArgs } from "react-router";
 import { eventStream } from "remix-utils/sse/server";
-import type { AmsLive } from "~/modules/filament/printer.server";
 import { emitter } from "~/utils/emitter/emitter.server";
 import {
   PermissionAction,
@@ -24,7 +23,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
   return eventStream(request.signal, function setup(send) {
     function handle(message: string) {
-      const live = JSON.parse(message) as AmsLive;
+      // an AMS report, or the printer's status
+      const live = JSON.parse(message) as { organizationId: string };
       if (live.organizationId !== organizationId) return;
       try {
         // the workspace id stays on the server
