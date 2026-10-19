@@ -27,3 +27,11 @@ input[type="radio"] {
   font-style: normal;
   font-display: swap;
 }
+
+/* Filament level bars: the grey track behind the orange (or red) bar */
+:root {
+  --level-track: #f2f4f7;
+}
+html.dark {
+  --level-track: #262d36;
+}

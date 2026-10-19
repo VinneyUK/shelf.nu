@@ -115,18 +115,17 @@ describe("linking a filament to its store page", () => {
 });
 
 describe("the bar's colour", () => {
-  it("is Claude's usage colours: blue with plenty, amber when low, red when nearly gone", () => {
+  it("is Shelf's orange, and red at a tenth or less", () => {
+    expect(LEVEL_COLOURS.plenty).toBe("#EF6820");
     expect(barFill(100).backgroundColor).toBe(LEVEL_COLOURS.plenty);
-    expect(barFill(26).backgroundColor).toBe(LEVEL_COLOURS.plenty);
-    expect(barFill(25).backgroundColor).toBe(LEVEL_COLOURS.low);
-    expect(barFill(11).backgroundColor).toBe(LEVEL_COLOURS.low);
+    expect(barFill(11).backgroundColor).toBe(LEVEL_COLOURS.plenty);
     expect(barFill(10).backgroundColor).toBe(LEVEL_COLOURS.nearlyGone);
     expect(barFill(0).backgroundColor).toBe(LEVEL_COLOURS.nearlyGone);
     expect(barFill(140).width).toBe("100%");
   });
 
-  it("puts a faint wash of the same colour behind it", () => {
-    expect(barTrack(60).backgroundColor).toBe(`${LEVEL_COLOURS.plenty}2e`);
-    expect(barTrack(5).backgroundColor).toBe(`${LEVEL_COLOURS.nearlyGone}2e`);
+  it("sits on the theme's grey track", () => {
+    expect(barTrack(60).backgroundColor).toBe("var(--level-track)");
+    expect(barTrack(5).backgroundColor).toBe("var(--level-track)");
   });
 });

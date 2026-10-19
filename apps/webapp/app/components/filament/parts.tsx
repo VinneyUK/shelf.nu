@@ -624,23 +624,18 @@ export function SpoolFields({
 }
 
 /**
- * The colours of the levels, as Claude shows usage: blue with plenty left,
- * amber when it's getting low (a quarter or less), red when nearly gone (a
- * tenth or less). Each track is a faint wash of its bar's own colour.
+ * The colours of the levels: Shelf's own orange (#EF6820), and Shelf's red
+ * when a spool or refill is down to a tenth or less. Tracks are the theme's
+ * grey (--level-track in fork.css), so they suit light and dark alike.
  */
 export const LEVEL_COLOURS = {
-  plenty: "#4177d0",
-  low: "#f0b544",
-  nearlyGone: "#c04742",
+  plenty: "#EF6820",
+  nearlyGone: "#F04438",
 } as const;
 
 export function levelColour(percent: number) {
   const p = Math.max(0, Math.min(100, percent));
-  return p <= 10
-    ? LEVEL_COLOURS.nearlyGone
-    : p <= 25
-    ? LEVEL_COLOURS.low
-    : LEVEL_COLOURS.plenty;
+  return p <= 10 ? LEVEL_COLOURS.nearlyGone : LEVEL_COLOURS.plenty;
 }
 
 /** A bar's fill for what's left: its width and its level's colour. */
@@ -649,9 +644,9 @@ export function barFill(percent: number): CSSProperties {
   return { width: `${p}%`, backgroundColor: levelColour(p) };
 }
 
-/** The track behind a bar: its level's colour, faint, in either theme. */
-export function barTrack(percent: number): CSSProperties {
-  return { backgroundColor: `${levelColour(percent)}2e` };
+/** The track behind a bar: the theme's grey. */
+export function barTrack(_percent?: number): CSSProperties {
+  return { backgroundColor: "var(--level-track)" };
 }
 
 /** A spool or a refill, as a mark: a filled disc for a spool, a dashed ring for a refill. */
