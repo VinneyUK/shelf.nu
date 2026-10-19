@@ -119,10 +119,11 @@ export function FilamentPicture({
       )}
     >
       <img
-        src={`/api/filament/image/${encodeURIComponent(key)}`}
+        src={`/api/filament/image/${encodeURIComponent(key)}?size=thumb`}
         alt={`${colourName} ${type}`}
         className="size-full object-contain"
         loading="lazy"
+        decoding="async"
       />
       <span
         aria-hidden="true"

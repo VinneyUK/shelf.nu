@@ -3046,6 +3046,8 @@ model FilamentImage {
   /// found | missing (no match in the store) | error (try again later)
   status         String
   bytes          Bytes?
+  /// A small copy (480 px WebP) for tiles and lists, made from bytes when first asked for
+  thumb          Bytes?
   contentType    String?
   sourceUrl      String?
   productUrl     String?

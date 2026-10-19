@@ -1,8 +1,12 @@
 /**
- * A filament's picture from the Bambu store, as kept in Shelf (fork).
+ * A filament's picture from the Bambu store, as kept in Shelf (fork); with
+ * ?size=thumb, its small copy.
  */
 import { type LoaderFunctionArgs } from "react-router";
-import { getFilamentImage } from "~/modules/filament/images.server";
+import {
+  getFilamentImage,
+  getFilamentThumb,
+} from "~/modules/filament/images.server";
 import {
   PermissionAction,
   PermissionEntity,
@@ -17,10 +21,12 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     entity: PermissionEntity.asset,
     action: PermissionAction.read,
   });
-  const image = await getFilamentImage(
-    organizationId,
-    String(params.key ?? "")
-  );
+  const key = String(params.key ?? "");
+  // ?size=thumb: the small copy, for tiles and lists
+  const thumb = new URL(request.url).searchParams.get("size") === "thumb";
+  const image = thumb
+    ? await getFilamentThumb(organizationId, key)
+    : await getFilamentImage(organizationId, key);
   if (!image) return new Response("Not found", { status: 404 });
   return new Response(Buffer.from(image.bytes), {
     headers: {

@@ -877,10 +877,17 @@ function FilamentTile({
         <Link to={href} className="block size-full">
           {image?.status === "found" ? (
             <img
-              src={`/api/filament/image/${encodeURIComponent(group.key)}`}
+              // the small copy: the full picture in every tile is what made
+              // the browser drop and redraw them while scrolling
+              src={`/api/filament/image/${encodeURIComponent(
+                group.key
+              )}?size=thumb`}
               alt={`${group.colourName} ${group.type}`}
               className="size-full object-contain"
               loading="lazy"
+              decoding="async"
+              width={480}
+              height={480}
             />
           ) : (
             <span className="flex size-full items-center justify-center">

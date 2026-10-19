@@ -4,6 +4,7 @@
  * Every spool of that filament shares it. Fetching runs in the background,
  * one filament at a time, at the store client's polite pace.
  */
+import sharp from "sharp";
 import { db } from "~/database/db.server";
 import { ShelfError } from "~/utils/error";
 import { Logger } from "~/utils/logger";
@@ -48,8 +49,8 @@ export async function ensureFilamentImage(
   const save = (data: Record<string, unknown>) =>
     db.filamentImage.upsert({
       where: { organizationId_key: { organizationId, key } },
-      create: { organizationId, key, ...data } as never,
-      update: { ...data, fetchedAt: new Date() },
+      create: { organizationId, key, ...data, thumb: null } as never,
+      update: { ...data, thumb: null, fetchedAt: new Date() },
     });
 
   try {
@@ -154,6 +155,44 @@ export async function imageStatuses(organizationId: string) {
     },
   });
   return Object.fromEntries(rows.map((r) => [r.key, r]));
+}
+
+/** The size of the small copy's longest side, in pixels. */
+export const THUMB_SIZE = 480;
+
+/**
+ * A filament's picture as a small copy (480 px WebP) for tiles and lists:
+ * made from the full picture the first time it's asked for, then kept. A
+ * full-size picture scaled down in every tile uses a lot of the browser's
+ * memory, which makes it drop and redraw pictures as you scroll.
+ */
+export async function getFilamentThumb(organizationId: string, key: string) {
+  const row = await db.filamentImage.findUnique({
+    where: { organizationId_key: { organizationId, key } },
+    select: { bytes: true, thumb: true, status: true },
+  });
+  if (row?.status !== "found" || !row.bytes) return null;
+  if (row.thumb)
+    return { bytes: new Uint8Array(row.thumb), contentType: "image/webp" };
+  try {
+    const thumb = await sharp(Buffer.from(row.bytes))
+      .resize(THUMB_SIZE, THUMB_SIZE, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 82 })
+      .toBuffer();
+    await db.filamentImage
+      .updateMany({
+        where: { organizationId, key },
+        data: { thumb: new Uint8Array(thumb) },
+      })
+      .catch(() => undefined); // kept next time; served now either way
+    return { bytes: new Uint8Array(thumb), contentType: "image/webp" };
+  } catch {
+    // a picture sharp can't read: the full one, as before
+    return getFilamentImage(organizationId, key);
+  }
 }
 
 export async function getFilamentImage(organizationId: string, key: string) {
@@ -331,6 +370,8 @@ export async function linkStorePage(
     filamentCode: variant.filamentCode,
     message: picture ? null : "The store page has no picture for this colour.",
     fetchedAt: new Date(),
+    // the small copy is made again from the new picture
+    thumb: null,
   };
   await db.filamentImage.upsert({
     where: { organizationId_key: { organizationId, key } },
