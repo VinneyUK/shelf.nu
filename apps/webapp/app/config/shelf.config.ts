@@ -19,10 +19,8 @@ export const config: Config = {
   disableSSO: DISABLE_SSO || false,
   enableScim: ENABLE_SCIM || false,
 
-  logoPath: {
-    fullLogo: "/static/images/logo-full-color(x2).png",
-    symbol: "/static/images/shelf-symbol.png",
-  },
+  // fork: no custom logo files, so the app shows Vinventory's own logo
+  // (components/marketing/vinventory-logo.tsx). Set logoPath to use images.
   faviconPath: "/static/favicon.ico",
   emailPrimaryColor: "#EF6820",
   showHowDidYouFindUs: SHOW_HOW_DID_YOU_FIND_US || false,

@@ -1,6 +1,6 @@
-import { ShelfTypography } from "~/components/icons/library";
 import { config } from "~/config/shelf.config";
 import { tw } from "~/utils/tw";
+import { VinventorySymbol, VinventoryWordmark } from "./vinventory-logo"; // fork
 import When from "../when/when";
 
 /**
@@ -15,7 +15,7 @@ export const ShelfSidebarLogo = ({ minimized }: { minimized: boolean }) => {
     return minimized ? (
       <img
         src={logoPath.symbol}
-        alt="Shelf Logo"
+        alt="Logo"
         className="mx-1.5 inline h-[32px] transition duration-150 ease-linear"
       />
     ) : (
@@ -27,16 +27,13 @@ export const ShelfSidebarLogo = ({ minimized }: { minimized: boolean }) => {
     );
   }
 
+  // fork: Vinventory's logo; just the square when the sidebar is collapsed
   return (
     <>
-      <img
-        src="/static/images/shelf-symbol.png"
-        alt="Shelf Logo"
-        className="mx-1.5 inline h-[32px]"
-      />
+      <VinventorySymbol className="mx-1.5 inline size-8 shrink-0 rounded-[5px]" />
       <When truthy={!minimized}>
-        <span className="logo-text transition duration-150 ease-linear">
-          <ShelfTypography />
+        <span className="logo-text ml-1 text-gray-900 transition duration-150 ease-linear">
+          <VinventoryWordmark className="h-[18px] w-auto" />
         </span>
       </When>
     </>
@@ -53,12 +50,12 @@ export const ShelfMobileLogo = () => {
     return <img src={logoPath.fullLogo} alt="Shelf Logo" className="h-full" />;
   }
 
+  // fork: Vinventory's logo
   return (
-    <img
-      src="/static/images/logo-full-color(x2).png"
-      alt="logo"
-      className="h-full"
-    />
+    <span className="flex h-full items-center gap-2 text-gray-900">
+      <VinventorySymbol className="h-full w-auto rounded-[4px]" />
+      <VinventoryWordmark className="h-3/5 w-auto" />
+    </span>
   );
 };
 
@@ -73,9 +70,8 @@ export const ShelfSymbolLogo = ({ className }: { className?: string }) => {
     return <img src={logoPath.symbol} alt="Shelf Logo" className={classes} />;
   }
 
-  return (
-    <img src="/static/images/shelf-symbol.png" alt="logo" className={classes} />
-  );
+  // fork: Vinventory's symbol
+  return <VinventorySymbol className={tw("rounded-md", classes)} />;
 };
 
 /**
