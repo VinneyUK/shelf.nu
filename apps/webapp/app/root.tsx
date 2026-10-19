@@ -65,7 +65,8 @@ export const handle = {
 
 export const links: LinksFunction = () => [
   { rel: "manifest", href: "/static/manifest.json" },
-  { rel: "apple-touch-icon", href: config.faviconPath },
+  // fork: Vinventory's square, for a phone's home screen
+  { rel: "apple-touch-icon", href: "/static/images/vinventory-touch-180.png" },
   { rel: "icon", href: config.faviconPath },
   ...splashScreenLinks,
   { rel: "stylesheet", href: styles },
@@ -80,7 +81,7 @@ export const links: LinksFunction = () => [
 
 export const meta: MetaFunction = () => [
   {
-    title: "shelf.nu",
+    title: "Vinventory", // fork
   },
 ];
 

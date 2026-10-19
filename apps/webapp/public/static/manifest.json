@@ -1,16 +1,22 @@
 {
-  "name": "shelf",
+  "name": "Vinventory",
   "lang": "en-US",
-  "short_name": "shelf",
-  "description": "Open Source Asset and Equipment tracking software that lets you create QR asset labels, manage and overview your assets across locations.",
+  "short_name": "Vinventory",
+  "description": "Ant's inventory: assets, boxes and filament.",
   "start_url": "/",
   "display": "standalone",
   "scope": "/",
-  "theme_color": "#FFFFFF",
+  "theme_color": "#EF6820",
   "background_color": "#FFFFFF",
   "icons": [
     {
-      "src": "/static/images/shelf-logo-x512.png",
+      "src": "/static/images/vinventory-x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/images/vinventory-x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

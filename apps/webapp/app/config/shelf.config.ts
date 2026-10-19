@@ -21,7 +21,7 @@ export const config: Config = {
 
   // fork: no custom logo files, so the app shows Vinventory's own logo
   // (components/marketing/vinventory-logo.tsx). Set logoPath to use images.
-  faviconPath: "/static/favicon.ico",
+  faviconPath: "/static/vinventory-favicon.ico", // fork: Vinventory
   emailPrimaryColor: "#EF6820",
   showHowDidYouFindUs: SHOW_HOW_DID_YOU_FIND_US || false,
   collectBusinessIntel:
