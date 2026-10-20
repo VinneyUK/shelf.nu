@@ -173,6 +173,18 @@ describe("a filament's page", () => {
     expect(await screen.findByText(/How much is left/)).toBeTruthy();
   });
 
+  it("lets an open spool go back to sealed, or out of the AMS", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: "More for #3" }));
+    expect(await screen.findByText(/Back to\s+sealed \(New\)/)).toBeTruthy();
+    expect(screen.getByText(/Opened, out of the AMS/)).toBeTruthy();
+  });
+
+  it("has no title row under the breadcrumbs: the summary names it", async () => {
+    show();
+    expect(await screen.findAllByText("Jade White")).toHaveLength(1);
+  });
+
   it("folds finished ones away until asked", async () => {
     show();
     const toggle = await screen.findByRole("button", { name: /Finished/ });

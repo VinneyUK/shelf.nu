@@ -167,6 +167,23 @@ describe("running out", () => {
       remainingPercent: 27,
     });
   });
+  it("marked Opened again, a finished one comes back with what it had (fork)", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      id: "s1",
+      status: "retired",
+      remainingPercent: 0,
+      retiredPercent: 40,
+      openedOn: new Date("2026-10-01"),
+      amsSlot: null,
+    });
+    m.spool.update.mockResolvedValue({});
+    await changeSpoolState("o1", "s1", "opened");
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      status: "active",
+      remainingPercent: 40,
+      retiredPercent: null,
+    });
+  });
   it("asks how much is left when that wasn't kept", async () => {
     m.spool.findFirst.mockResolvedValue({ retiredPercent: null });
     await expect(keepSpool("o1", "s1")).rejects.toThrow(/more than 0%/);

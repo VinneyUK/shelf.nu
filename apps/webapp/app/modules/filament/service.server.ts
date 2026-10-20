@@ -667,8 +667,12 @@ export async function changeSpoolState(
       amsSlot: null,
       status: "active",
       retiredAt: null,
+      // a finished one comes back with what it had when it was finished
       remainingPercent:
-        back && spool.remainingPercent === 0 ? 5 : spool.remainingPercent,
+        back && spool.remainingPercent === 0
+          ? spool.retiredPercent || 5
+          : spool.remainingPercent,
+      retiredPercent: null,
     },
   });
   if (back)

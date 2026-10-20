@@ -14,6 +14,7 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   MoreHorizontalIcon,
+  PackageIcon,
   PackageOpenIcon,
   RefreshCwIcon,
   ScaleIcon,
@@ -897,7 +898,7 @@ function PicturePopover({
           type="button"
           aria-label="The picture, line and colour"
           title="Change the picture, line or colour"
-          className="mr-4 rounded-md hover:ring-2 hover:ring-primary-200"
+          className="inline-flex shrink-0 rounded-md align-top leading-none hover:ring-2 hover:ring-primary-200 focus-visible:ring-2 focus-visible:ring-primary-300"
         >
           <FilamentPicture {...filament} images={images} size="size-24" />
         </button>
@@ -1121,7 +1122,8 @@ export default function FilamentDetail() {
 
   return (
     <>
-      <Header>
+      {/* no title row: the summary card below names the filament */}
+      <Header hidePageDescription>
         <div className="flex items-center gap-2">
           {fil ? (
             <PrintLabelButton id={fil.id} kind="filament" withText />
@@ -1455,6 +1457,7 @@ function InUseCard({
           >
             Mark finished
           </Button>
+          <RowMenu spool={spool} number={number} tare={tare} kind="open" />
         </span>
       </div>
       <div className="flex flex-col items-center gap-8 p-6 sm:flex-row">
@@ -1672,6 +1675,46 @@ function RowMenu({
                 >
                   <PackageOpenIcon className="size-4" aria-hidden="true" /> Open
                   it
+                </button>
+              ) : null}
+              {kind === "open" && spool.amsSlot !== null ? (
+                <button
+                  type="button"
+                  className={item}
+                  disabled={busy}
+                  onClick={() => {
+                    // still open, just out of the printer
+                    void act.submit(
+                      {
+                        intent: "state",
+                        id: spool.id,
+                        target: "opened",
+                        label,
+                      },
+                      { method: "post" }
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <PackageOpenIcon className="size-4" aria-hidden="true" />{" "}
+                  Opened, out of the AMS
+                </button>
+              ) : null}
+              {kind === "open" ? (
+                <button
+                  type="button"
+                  className={item}
+                  disabled={busy}
+                  onClick={() => {
+                    void act.submit(
+                      { intent: "state", id: spool.id, target: "new", label },
+                      { method: "post" }
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <PackageIcon className="size-4" aria-hidden="true" /> Back to
+                  sealed (New)
                 </button>
               ) : null}
               {kind === "open" ? (
