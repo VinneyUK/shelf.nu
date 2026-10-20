@@ -10,7 +10,17 @@ import {
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import { ScaleIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ChevronDownIcon,
+  ExternalLinkIcon,
+  MoreHorizontalIcon,
+  PackageOpenIcon,
+  RefreshCwIcon,
+  ScaleIcon,
+  Trash2Icon,
+  Undo2Icon,
+} from "lucide-react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -25,6 +35,7 @@ import {
   barFill,
   barTrack,
   CodeChip,
+  levelColour,
   DateField,
   FilamentPicture,
   FilamentSearch,
@@ -66,11 +77,7 @@ import {
   costPerKg,
   filamentKey,
   gramsLeft,
-  SPOOL_STATES,
   spoolState,
-  stateLabel,
-  stockOrder,
-  typeWords,
 } from "~/modules/filament/catalogue";
 import {
   fetchMissingImages,
@@ -89,6 +96,7 @@ import {
   refreshPrice,
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
+import { daysOnHand, usageRate } from "~/modules/filament/run-out";
 import {
   changeSpoolState,
   createSpools,
@@ -741,102 +749,6 @@ function ago(iso: string) {
   return `${Math.round(hours / 24)} days ago`;
 }
 
-/** The filament on the Bambu store: spool and refill prices, any offer, and what you've paid. */
-function StoreCard({
-  price,
-  paidPerKg,
-  productUrl,
-}: {
-  price: PageData["price"];
-  paidPerKg: number | null;
-  productUrl: string | null;
-}) {
-  const money = useMoney();
-  const fetcher = useFetcher<Result>();
-  const summary = priceSummary(price?.variants);
-  const row = (label: string, p: { now: number; was: number | null } | null) =>
-    p ? (
-      <div className="grid grid-cols-[7rem_1fr] border-b border-gray-100 py-2 text-sm">
-        <span className="text-gray-500">{label}</span>
-        <span className="tabular-nums text-gray-900">
-          {money(p.now)}
-          {p.was ? (
-            <span className="ml-2 text-xs text-gray-400 line-through">
-              {money(p.was)}
-            </span>
-          ) : null}
-        </span>
-      </div>
-    ) : null;
-  return (
-    <Card className="my-0">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-text-md font-semibold text-gray-900">
-          Bambu store
-        </h3>
-        {summary.onOffer ? (
-          <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
-            On offer
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-2">
-        {price?.status === "found" ? (
-          <>
-            {row("Spool, 1 kg", summary.spool)}
-            {row("Refill, 1 kg", summary.refill)}
-            {!summary.spool && !summary.refill ? (
-              <p className="py-2 text-sm text-gray-500">
-                The store has no 1 kg price for this colour.
-              </p>
-            ) : null}
-          </>
-        ) : price ? (
-          <p className="py-2 text-sm text-gray-500">{price.message}</p>
-        ) : (
-          <p className="py-2 text-sm text-gray-500">Not checked yet.</p>
-        )}
-        {paidPerKg !== null ? (
-          <div className="grid grid-cols-[7rem_1fr] py-2 text-sm">
-            <span className="text-gray-500">You've paid</span>
-            <span className="tabular-nums text-gray-900">
-              {money(paidPerKg)}/kg on average
-            </span>
-          </div>
-        ) : null}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-gray-500">
-          {price ? `Checked ${ago(price.checkedAt)}` : ""}
-        </span>
-        <div className="flex items-center gap-2">
-          <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="check-prices" />
-            <Button
-              type="submit"
-              variant="secondary"
-              size="sm"
-              disabled={isFormProcessing(fetcher.state)}
-            >
-              Check now
-            </Button>
-          </fetcher.Form>
-          {productUrl ? (
-            <Button
-              to={productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-            >
-              Buy again
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 /** A date, or how it reads when it isn't known. */
 function DateText({
   date,
@@ -852,290 +764,18 @@ function DateText({
   );
 }
 
-const STATUS_OPTIONS = [
-  { value: "new", label: "New" },
-  { value: "opened", label: "Opened" },
-  { value: "ams1", label: "AMS 1" },
-  { value: "ams2", label: "AMS 2" },
-  { value: "ams3", label: "AMS 3" },
-  { value: "ams4", label: "AMS 4" },
-  { value: "retired", label: "Retired" },
-];
-
-/**
- * A filament's stock as a table: every cell click-to-change, as in Assets.
- * Open ones first (least left at the top), then new (oldest bought first),
- * then retired. Left shows as % or kg.
- */
-function StockTable({
-  items,
-  numbers,
-  tare,
-}: {
-  items: Spool[];
-  /** Each item's number, by the order it was added */
-  numbers: Map<string, number>;
-  /** The empty spool's weight from the catalogue, for items without their own */
-  tare: number | null;
-}) {
-  const [unit, setUnit] = useState<"percent" | "kg">("percent");
-  const head =
-    "px-2 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-400";
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[60rem] text-sm">
-        <thead className="border-b border-gray-200">
-          <tr>
-            <th className={tw(head, "w-10 pl-4")}>#</th>
-            <th className={head}>Status</th>
-            <th className={head}>Type</th>
-            <th className={tw(head, "w-56")}>
-              <span className="flex items-center gap-2">
-                Left
-                <span
-                  className="inline-flex rounded border border-gray-200 p-0.5 normal-case"
-                  role="radiogroup"
-                  aria-label="Show what's left in"
-                >
-                  {(["percent", "kg"] as const).map((u) => (
-                    <button
-                      key={u}
-                      type="button"
-                      role="radio"
-                      aria-checked={unit === u}
-                      onClick={() => setUnit(u)}
-                      className={tw(
-                        "rounded px-1.5 text-[11px] tracking-normal",
-                        unit === u
-                          ? "bg-gray-100 font-semibold text-gray-900"
-                          : "text-gray-500"
-                      )}
-                    >
-                      {u === "percent" ? "%" : "kg"}
-                    </button>
-                  ))}
-                </span>
-              </span>
-            </th>
-            <th className={head}>Paid</th>
-            <th className={head}>Bought</th>
-            <th className={head}>Opened</th>
-            <th className={head}>Size</th>
-            <th className={tw(head, "w-10 pr-4")}>
-              <span className="sr-only">More</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {items.map((s) => (
-            <StockRow
-              key={s.id}
-              spool={s}
-              number={numbers.get(s.id) ?? 0}
-              unit={unit}
-              tare={tare}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function StockRow({
-  spool,
-  number,
-  unit,
-  tare,
-}: {
-  spool: Spool;
-  number: number;
-  unit: "percent" | "kg";
-  tare: number | null;
-}) {
-  const money = useMoney();
-  const state = spoolState(spool);
-  const kg = gramsLeft(spool) / 1000;
-  const cell = "px-2 py-2 align-middle";
-  return (
-    <tr className={state === "retired" ? "bg-gray-25 text-gray-500" : ""}>
-      <td className={tw(cell, "pl-4 font-mono text-gray-400")}>#{number}</td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="status"
-          label="Status"
-          editor={{
-            kind: "select",
-            value:
-              state === "in-use"
-                ? `ams${spool.amsSlot}`
-                : state === "run-out"
-                ? "run-out"
-                : state,
-            options:
-              state === "run-out"
-                ? [
-                    { value: "run-out", label: "Run out?", disabled: true },
-                    ...STATUS_OPTIONS,
-                  ]
-                : STATUS_OPTIONS,
-          }}
-        >
-          <span
-            className={tw(
-              "whitespace-nowrap rounded px-1.5 py-0.5 text-xs",
-              SPOOL_STATES[state].tone
-            )}
-          >
-            {stateLabel(spool)}
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="packaging"
-          label="Type"
-          editor={{
-            kind: "select",
-            value: spool.packaging === "refill" ? "refill" : "spool",
-            options: [
-              { value: "spool", label: "Spool" },
-              { value: "refill", label: "Refill" },
-            ],
-          }}
-        >
-          {spool.packaging === "refill" ? "Refill" : "Spool"}
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field={unit === "percent" ? "left" : "leftKg"}
-          label={unit === "percent" ? "Left (%)" : "Left (kg)"}
-          editor={
-            unit === "percent"
-              ? {
-                  kind: "number",
-                  value: spool.remainingPercent,
-                  min: 0,
-                  max: 100,
-                  suffix: "%",
-                }
-              : {
-                  kind: "number",
-                  value: Number(kg.toFixed(3)),
-                  min: 0,
-                  max: spool.weightGrams / 1000,
-                  step: 0.001,
-                  suffix: "kg",
-                }
-          }
-          className="w-full"
-        >
-          <span className="flex w-48 items-center gap-2">
-            <span
-              className="h-1.5 flex-1 rounded-full"
-              style={barTrack(spool.remainingPercent)}
-            >
-              <span
-                className={"block h-1.5 rounded-full"}
-                style={barFill(spool.remainingPercent)}
-              />
-            </span>
-            <span className="w-16 text-right tabular-nums text-gray-900">
-              {unit === "percent"
-                ? `${spool.remainingPercent}%`
-                : `${kg.toFixed(2)} kg`}
-            </span>
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="pricePaid"
-          label="Price paid (£)"
-          editor={{
-            kind: "number",
-            value: spool.pricePaid,
-            min: 0,
-            step: 0.01,
-          }}
-        >
-          <span className="tabular-nums">
-            {spool.pricePaid !== null ? (
-              money(spool.pricePaid)
-            ) : (
-              <span className="text-gray-400">—</span>
-            )}
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="purchasedOn"
-          label="Bought on"
-          editor={{ kind: "date", value: spool.purchasedOn }}
-        >
-          <DateText date={spool.purchasedOn} />
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="openedOn"
-          label="Opened on"
-          editor={{ kind: "date", value: spool.openedOn }}
-        >
-          <DateText date={spool.openedOn} empty="—" />
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="weightGrams"
-          label="Size (filament, g)"
-          editor={{
-            kind: "number",
-            value: spool.weightGrams,
-            min: 1,
-            max: 10000,
-            suffix: "g",
-          }}
-        >
-          <span className="whitespace-nowrap tabular-nums">
-            {spool.weightGrams >= 1000
-              ? `${spool.weightGrams / 1000} kg`
-              : `${spool.weightGrams} g`}
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={tw(cell, "pr-4 text-right")}>
-        <span className="inline-flex items-center gap-2">
-          <WeighButton
-            spool={spool}
-            number={number}
-            tare={spool.spoolWeightGrams ?? tare}
-          />
-          <RowDelete spool={spool} number={number} />
-        </span>
-      </td>
-    </tr>
-  );
-}
-
 /** Weigh it: the grams on the scale, less the empty spool, give what's left. */
 function WeighButton({
   spool,
   number,
   tare,
+  withText = false,
 }: {
   spool: Spool;
   number: number;
   tare: number | null;
+  /** "Weigh spool" as the In use card's main button */
+  withText?: boolean;
 }) {
   const act = useFetcher<Result>();
   const [open, setOpen] = useState(false);
@@ -1145,16 +785,25 @@ function WeighButton({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="p-2"
-          aria-label={`Weigh #${number}`}
-          tooltip="Weigh it"
-        >
-          <ScaleIcon className="size-4" aria-hidden="true" />
-        </Button>
+        {withText ? (
+          <Button type="button" aria-label={`Weigh #${number}`}>
+            <span className="inline-flex items-center gap-2">
+              <ScaleIcon className="size-4" aria-hidden="true" />
+              Weigh spool
+            </span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="p-2"
+            aria-label={`Weigh #${number}`}
+            tooltip="Weigh it"
+          >
+            <ScaleIcon className="size-4" aria-hidden="true" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverPortal>
         <PopoverContent
@@ -1200,21 +849,6 @@ function WeighButton({
         </PopoverContent>
       </PopoverPortal>
     </Popover>
-  );
-}
-
-/** A row's Delete: the bin, asking first. */
-function RowDelete({ spool, number }: { spool: Spool; number: number }) {
-  const act = useFetcher<Result>();
-  return (
-    <DeleteSpool
-      icon
-      label={`#${number} of ${spool.colourName}`}
-      disabled={isFormProcessing(act.state)}
-      onDelete={() =>
-        void act.submit({ intent: "delete", id: spool.id }, { method: "post" })
-      }
-    />
   );
 }
 
@@ -1451,13 +1085,14 @@ export default function FilamentDetail() {
   // the page follows the AMS live: levels and slots update in place
   const { live } = useAmsLive(null, data);
   const spools = useMemo(() => live(data.spools), [live, data.spools]);
-  const money = useMoney();
   const picture = useFetcher<Result>();
   const [params] = useSearchParams();
-  const [showFinished, setShowFinished] = useState(false);
-  const onHand = spools.filter((s) => s.status !== "retired");
   const finished = spools.filter((s) => s.status === "retired");
-  const shown = stockOrder(showFinished ? spools : onHand);
+  const onHand = spools.filter((s) => s.status !== "retired");
+  const sealed = onHand.filter((s) => spoolState(s) === "new");
+  const open = onHand.filter((s) => spoolState(s) !== "new");
+  const inUse = primaryOpen(open);
+  const alsoOpen = open.filter((s) => s !== inUse);
   // each item keeps its number, by the order it was added
   const numbers = new Map(
     [...spools]
@@ -1479,41 +1114,12 @@ export default function FilamentDetail() {
   const image = (images as Images)[filament.key];
   const tare = catalogue?.spoolWeight ?? null;
   const code = filament.filamentCode ?? image?.filamentCode ?? null;
-  const fact = (k: string, v: string | null) =>
-    v ? (
-      <div
-        key={k}
-        className="grid grid-cols-[7rem_1fr] border-b border-gray-100 py-2 text-sm last:border-0"
-      >
-        <span className="text-gray-500">{k}</span>
-        <span className="tabular-nums text-gray-900">{v}</span>
-      </div>
-    ) : null;
+  // the run-out estimate: the spool in use's rate since it was opened
+  const rate = inUse ? usageRate(inUse) : null;
 
   return (
     <>
-      <Header
-        slots={{
-          "left-of-title": (
-            <PicturePopover
-              filament={filament}
-              images={images as Images}
-              codes={codes}
-            />
-          ),
-        }}
-        subHeading={
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-            <span>{filament.type}</span>
-            <span aria-hidden="true">·</span>
-            <span>Bambu Lab</span>
-            <span aria-hidden="true">·</span>
-            <span>1.75 mm</span>
-            {code ? <CodeChip code={code} /> : null}
-            <FilamentIdChip fil={fil} className="h-7" />
-          </div>
-        }
-      >
+      <Header>
         <div className="flex items-center gap-2">
           {fil ? (
             <PrintLabelButton id={fil.id} kind="filament" withText />
@@ -1545,7 +1151,9 @@ export default function FilamentDetail() {
         </div>
       </Header>
 
-      <div className="mt-4 flex flex-col gap-4">
+      {/* Ant's design: the summary on top; the spools on the left; Reorder,
+          Print settings and Label on the right */}
+      <div className="mt-4 flex flex-col gap-5">
         {params.get("add") === "1" ? (
           <AddMore
             storePrices={{
@@ -1555,43 +1163,945 @@ export default function FilamentDetail() {
           />
         ) : null}
 
-        <Card className="my-0 p-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-            <h3 className="text-text-md font-semibold text-gray-900">
-              In stock{" "}
-              <span className="font-normal text-gray-500">
-                · {typeWords(onHand)} · {(grams / 1000).toFixed(2)} kg left
-              </span>
-            </h3>
-            {finished.length > 0 ? (
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={showFinished}
-                  onChange={(e) => setShowFinished(e.target.checked)}
+        <SummaryCard
+          filament={filament}
+          images={images as Images}
+          codes={codes}
+          code={code}
+          fil={fil}
+          grams={grams}
+          openCount={open.length}
+          sealedCount={sealed.length}
+          perKg={perKg}
+          spent={anyPrice ? spent : null}
+          daysLeft={daysOnHand(grams, rate?.perDay ?? null)}
+        />
+
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="flex min-w-0 flex-col gap-5">
+            {inUse ? (
+              <div className="flex flex-col gap-3">
+                <InUseCard
+                  spool={inUse}
+                  number={numbers.get(inUse.id) ?? 0}
+                  tare={tare}
                 />
-                Show finished ({finished.length})
-              </label>
+                {alsoOpen.map((s) => (
+                  <AlsoOpenRow
+                    key={s.id}
+                    spool={s}
+                    number={numbers.get(s.id) ?? 0}
+                    tare={tare}
+                  />
+                ))}
+              </div>
+            ) : null}
+            <SealedCard items={sealed} numbers={numbers} tare={tare} />
+            <FinishedCard items={finished} numbers={numbers} />
+          </div>
+          <div className="flex flex-col gap-5">
+            <ReorderCard
+              price={price}
+              paidPerKg={perKg}
+              bought={spools.length}
+              productUrl={price?.productUrl ?? image?.productUrl ?? null}
+            />
+            <PrintSettingsCard
+              filament={filament}
+              catalogue={catalogue}
+              tare={tare}
+              code={code}
+            />
+            {fil && label ? (
+              <LabelCard
+                fil={fil}
+                qrUrl={label.qrUrl}
+                settings={label.settings}
+                colour={filament.colourName}
+                line={filament.type}
+                boxCode={code}
+              />
             ) : null}
           </div>
-          {shown.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-600">
-              All of this filament is finished.
-            </p>
-          ) : (
-            <StockTable items={shown} numbers={numbers} tare={tare} />
-          )}
-        </Card>
+        </div>
+      </div>
+    </>
+  );
+}
 
-        <div className="grid items-start gap-4 lg:grid-cols-3">
-          <Card className="my-0">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              Details
-            </h3>
-            <div className="mt-2">
-              <EditableFact
-                label="Code on the box"
+// ------------------------------------------- the page, after Ant's design
+
+const sectionHead =
+  "flex flex-wrap items-center gap-2 border-b border-gray-200 px-5 py-3.5";
+const factLabel = "text-xs font-medium text-gray-500";
+const factValue = "text-sm font-semibold tabular-nums text-gray-900";
+
+/** Grams as the page shows them: "270 g", "1.24 kg". */
+function weightText(grams: number) {
+  return grams >= 1000
+    ? `${(grams / 1000).toFixed(2)} kg`
+    : `${Math.round(grams)} g`;
+}
+
+/** The spool to put in the In use card: the one in the AMS, else the latest opened. */
+function primaryOpen(open: Spool[]) {
+  return (
+    open.find((s) => s.amsSlot !== null) ??
+    [...open].sort(
+      (a, b) =>
+        new Date(b.openedOn ?? 0).getTime() -
+        new Date(a.openedOn ?? 0).getTime()
+    )[0] ??
+    null
+  );
+}
+
+/** What's left, as a ring: orange, red at a tenth or less. */
+function LevelRing({ spool, size = 140 }: { spool: Spool; size?: number }) {
+  const percent = Math.max(0, Math.min(100, spool.remainingPercent));
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          style={{ stroke: "var(--level-track)" }}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${(c * percent) / 100} ${c}`}
+          style={{ stroke: levelColour(percent) }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[24px] font-bold tabular-nums text-gray-900">
+          {weightText(gramsLeft(spool))}
+        </span>
+        <span className="text-xs text-gray-500">{percent}% left</span>
+      </div>
+    </div>
+  );
+}
+
+/** The summary across the top: the filament, and its three figures. */
+function SummaryCard({
+  filament,
+  images,
+  codes,
+  code,
+  fil,
+  grams,
+  openCount,
+  sealedCount,
+  perKg,
+  spent,
+  daysLeft,
+}: {
+  filament: PageData["filament"];
+  images: Images;
+  codes: PageData["codes"];
+  code: string | null;
+  fil: { id: string; label: string } | null;
+  grams: number;
+  openCount: number;
+  sealedCount: number;
+  perKg: number | null;
+  spent: number | null;
+  daysLeft: number | null;
+}) {
+  const money = useMoney();
+  return (
+    <Card className="my-0 flex flex-col gap-6 p-5 lg:flex-row lg:items-center">
+      <div className="flex items-center gap-5">
+        <PicturePopover filament={filament} images={images} codes={codes} />
+        <div className="min-w-0">
+          <div className="text-display-xs font-semibold text-gray-900">
+            {filament.colourName}
+          </div>
+          <div className="text-sm text-gray-600">
+            {filament.type} · Bambu Lab · 1.75 mm
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {code ? <CodeChip code={code} /> : null}
+            <FilamentIdChip fil={fil} className="h-6" />
+          </div>
+        </div>
+      </div>
+      <dl className="grid flex-1 grid-cols-3 gap-6 lg:ml-auto lg:max-w-2xl">
+        <div>
+          <dt className={factLabel}>On hand</dt>
+          <dd className="text-display-xs font-semibold tabular-nums text-gray-900">
+            {(grams / 1000).toFixed(2)} kg
+          </dd>
+          {daysLeft !== null ? (
+            <dd className="text-xs text-gray-500">
+              ≈ {daysLeft} days at your recent rate
+            </dd>
+          ) : null}
+        </div>
+        <div>
+          <dt className={factLabel}>Units</dt>
+          <dd className="text-display-xs font-semibold tabular-nums text-gray-900">
+            {openCount + sealedCount}
+          </dd>
+          <dd className="text-xs text-gray-500">
+            {openCount} open · {sealedCount} sealed
+          </dd>
+        </div>
+        <div>
+          <dt className={factLabel}>Your cost</dt>
+          <dd className="text-display-xs font-semibold tabular-nums text-gray-900">
+            {perKg !== null ? (
+              <>
+                {money(perKg)}
+                <span className="text-sm font-medium text-gray-500">/kg</span>
+              </>
+            ) : (
+              "—"
+            )}
+          </dd>
+          {spent !== null ? (
+            <dd className="text-xs text-gray-500">
+              {money(spent)} spent in total
+            </dd>
+          ) : null}
+        </div>
+      </dl>
+    </Card>
+  );
+}
+
+/** The spool in use: its ring, what's known about it, Weigh and Mark finished. */
+function InUseCard({
+  spool,
+  number,
+  tare,
+}: {
+  spool: Spool;
+  number: number;
+  tare: number | null;
+}) {
+  const money = useMoney();
+  const act = useFetcher<Result>();
+  const rate = usageRate(spool);
+  const where =
+    spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "On the shelf";
+  const facts: [string, ReactNode, ReactNode?][] = [
+    ["Opened", <DateText key="o" date={spool.openedOn} empty="—" />],
+    [
+      "Used so far",
+      weightText(rate.used),
+      rate.perDay !== null ? `≈ ${Math.round(rate.perDay)} g a day` : undefined,
+    ],
+    rate.runsOut
+      ? [
+          "Runs out",
+          `≈ ${rate.runsOut.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+          })}`,
+          "at this rate",
+        ]
+      : ["Where", where],
+    ["Paid", spool.pricePaid !== null ? money(spool.pricePaid) : "—"],
+    ["Bought", <DateText key="b" date={spool.purchasedOn} />],
+    [
+      "Tare (empty)",
+      (spool.spoolWeightGrams ?? tare) !== null
+        ? `${spool.spoolWeightGrams ?? tare} g`
+        : "—",
+    ],
+  ];
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">
+          {spool.amsSlot !== null ? "In use" : "Open"}
+        </h3>
+        <span className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-700">
+          #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
+        </span>
+        <span className="text-sm text-gray-500">{where}</span>
+        <span className="ml-auto flex items-center gap-2">
+          <WeighButton
+            spool={spool}
+            number={number}
+            tare={spool.spoolWeightGrams ?? tare}
+            withText
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isFormProcessing(act.state)}
+            onClick={() =>
+              void act.submit(
+                { intent: "retire", id: spool.id },
+                { method: "post" }
+              )
+            }
+          >
+            Mark finished
+          </Button>
+        </span>
+      </div>
+      <div className="flex flex-col items-center gap-8 p-6 sm:flex-row">
+        <LevelRing spool={spool} />
+        <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3">
+          {facts.map(([k, v, sub]) => (
+            <div key={k}>
+              <dt className={factLabel}>{k}</dt>
+              <dd className={factValue}>{v}</dd>
+              {sub ? <dd className="text-xs text-gray-500">{sub}</dd> : null}
+            </div>
+          ))}
+        </dl>
+      </div>
+    </Card>
+  );
+}
+
+/** Another open spool: a slim row under the In use card. */
+function AlsoOpenRow({
+  spool,
+  number,
+  tare,
+}: {
+  spool: Spool;
+  number: number;
+  tare: number | null;
+}) {
+  const state = spoolState(spool);
+  return (
+    <Card className="my-0 flex flex-wrap items-center gap-4 px-5 py-3">
+      <span className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-700">
+        #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
+      </span>
+      <span className="text-sm text-gray-500">
+        {state === "run-out" ? "Run out?" : "Also open"} ·{" "}
+        {spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "On the shelf"}
+      </span>
+      <span className="flex min-w-40 flex-1 items-center gap-3">
+        <span
+          className="h-1.5 flex-1 rounded-full"
+          style={barTrack(spool.remainingPercent)}
+        >
+          <span
+            className="block h-1.5 rounded-full"
+            style={barFill(spool.remainingPercent)}
+          />
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-gray-900">
+          {weightText(gramsLeft(spool))}
+        </span>
+      </span>
+      <RowMenu spool={spool} number={number} tare={tare} kind="open" />
+    </Card>
+  );
+}
+
+/** A row's ⋯ menu: weigh it, open it or bring it back, delete it. */
+function RowMenu({
+  spool,
+  number,
+  tare,
+  kind,
+}: {
+  spool: Spool;
+  number: number;
+  tare: number | null;
+  kind: "open" | "sealed" | "finished";
+}) {
+  const act = useFetcher<Result>();
+  const [open, setOpen] = useState(false);
+  const [weighing, setWeighing] = useState(false);
+  const [grams, setGrams] = useState("");
+  const busy = isFormProcessing(act.state);
+  const label = `#${number} of ${spool.colourName}`;
+  const empty = spool.spoolWeightGrams ?? tare;
+  const item =
+    "flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50";
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setWeighing(false);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`More for #${number}`}
+          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        >
+          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          className="z-[60] w-60 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
+        >
+          {weighing ? (
+            <form
+              className="flex flex-col gap-2 p-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void act.submit(
+                  { intent: "weigh", id: spool.id, grossGrams: grams },
+                  { method: "post" }
+                );
+                setGrams("");
+                setOpen(false);
+              }}
+            >
+              <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+                Weigh it: on the scale
+                <span className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    value={grams}
+                    onChange={(e) => setGrams(e.target.value)}
+                    className={tw(inputClass, "w-full")}
+                    autoFocus
+                  />
+                  <span className="text-sm font-normal text-gray-500">g</span>
+                </span>
+              </label>
+              <span className="text-xs text-gray-500">
+                {empty
+                  ? `Less the empty spool, ${empty} g.`
+                  : "Set the empty spool weight in Print settings first."}
+              </span>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={busy || !empty || !grams}
+              >
+                Update what's left
+              </Button>
+            </form>
+          ) : (
+            <>
+              {kind !== "finished" ? (
+                <button
+                  type="button"
+                  className={item}
+                  onClick={() => setWeighing(true)}
+                >
+                  <ScaleIcon className="size-4" aria-hidden="true" /> Weigh it
+                </button>
+              ) : null}
+              {kind === "sealed" ? (
+                <button
+                  type="button"
+                  className={item}
+                  disabled={busy}
+                  onClick={() => {
+                    void act.submit(
+                      { intent: "open", id: spool.id, label },
+                      { method: "post" }
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <PackageOpenIcon className="size-4" aria-hidden="true" /> Open
+                  it
+                </button>
+              ) : null}
+              {kind === "open" ? (
+                <button
+                  type="button"
+                  className={item}
+                  disabled={busy}
+                  onClick={() => {
+                    void act.submit(
+                      { intent: "retire", id: spool.id },
+                      { method: "post" }
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <CheckCircle2Icon className="size-4" aria-hidden="true" />{" "}
+                  Mark finished
+                </button>
+              ) : null}
+              {kind === "finished" ? (
+                <button
+                  type="button"
+                  className={item}
+                  disabled={busy}
+                  onClick={() => {
+                    void act.submit(
+                      {
+                        intent: "keep",
+                        id: spool.id,
+                        remainingPercent: String(spool.remainingPercent),
+                      },
+                      { method: "post" }
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <Undo2Icon className="size-4" aria-hidden="true" /> Bring it
+                  back
+                </button>
+              ) : null}
+              <div className="px-1 pt-1">
+                <DeleteSpool
+                  label={label}
+                  disabled={busy}
+                  onDelete={() =>
+                    void act.submit(
+                      { intent: "delete", id: spool.id },
+                      { method: "post" }
+                    )
+                  }
+                />
+              </div>
+            </>
+          )}
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
+/** Sealed stock: click a cell to change it. */
+function SealedCard({
+  items,
+  numbers,
+  tare,
+}: {
+  items: Spool[];
+  numbers: Map<string, number>;
+  tare: number | null;
+}) {
+  const money = useMoney();
+  const grams = items.reduce((n, s) => n + gramsLeft(s), 0);
+  const head = "px-5 py-2 text-left text-xs font-medium text-gray-500";
+  const cell = "px-5 py-2.5 align-middle text-sm";
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">
+          Sealed stock
+        </h3>
+        <span className="text-sm text-gray-500">
+          {items.length} {items.length === 1 ? "unit" : "units"} ·{" "}
+          {(grams / 1000).toFixed(2)} kg
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-gray-500">Nothing sealed left.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-25">
+              <tr>
+                <th className={head}>#</th>
+                <th className={head}>Type</th>
+                <th className={head}>Size</th>
+                <th className={head}>Paid</th>
+                <th className={head}>Bought</th>
+                <th className={head} />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {items.map((s) => (
+                <tr key={s.id}>
+                  <td className={tw(cell, "font-mono text-gray-400")}>
+                    #{numbers.get(s.id)}
+                  </td>
+                  <td className={cell}>
+                    <FilamentCell
+                      id={s.id}
+                      field="packaging"
+                      label="Type"
+                      editor={{
+                        kind: "select",
+                        value: s.packaging === "refill" ? "refill" : "spool",
+                        options: [
+                          { value: "spool", label: "Spool" },
+                          { value: "refill", label: "Refill" },
+                        ],
+                      }}
+                    >
+                      {s.packaging === "refill" ? "Refill" : "Spool"}
+                    </FilamentCell>
+                  </td>
+                  <td className={cell}>
+                    <FilamentCell
+                      id={s.id}
+                      field="weightGrams"
+                      label="Size (filament, g)"
+                      editor={{
+                        kind: "number",
+                        value: s.weightGrams,
+                        min: 1,
+                        max: 10000,
+                        suffix: "g",
+                      }}
+                    >
+                      <span className="whitespace-nowrap tabular-nums">
+                        {s.weightGrams >= 1000
+                          ? `${s.weightGrams / 1000} kg`
+                          : `${s.weightGrams} g`}
+                      </span>
+                    </FilamentCell>
+                  </td>
+                  <td className={cell}>
+                    <FilamentCell
+                      id={s.id}
+                      field="pricePaid"
+                      label="Price paid (£)"
+                      editor={{
+                        kind: "number",
+                        value: s.pricePaid,
+                        min: 0,
+                        step: 0.01,
+                      }}
+                    >
+                      <span className="tabular-nums">
+                        {s.pricePaid !== null ? (
+                          money(s.pricePaid)
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </span>
+                    </FilamentCell>
+                  </td>
+                  <td className={cell}>
+                    <FilamentCell
+                      id={s.id}
+                      field="purchasedOn"
+                      label="Bought on"
+                      editor={{ kind: "date", value: s.purchasedOn }}
+                    >
+                      {s.purchasedOn ? (
+                        <DateText date={s.purchasedOn} />
+                      ) : (
+                        <span className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
+                          Add date
+                        </span>
+                      )}
+                    </FilamentCell>
+                  </td>
+                  <td className={tw(cell, "text-right")}>
+                    <RowMenu
+                      spool={s}
+                      number={numbers.get(s.id) ?? 0}
+                      tare={tare}
+                      kind="sealed"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** Finished spools and refills: kept for the history, folded away. */
+function FinishedCard({
+  items,
+  numbers,
+}: {
+  items: Spool[];
+  numbers: Map<string, number>;
+}) {
+  const money = useMoney();
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  const paid = items.reduce((n, s) => n + (s.pricePaid ?? 0), 0);
+  return (
+    <Card className="my-0 p-0">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-5 py-3.5 text-left"
+      >
+        <ChevronDownIcon
+          className={tw(
+            "size-4 text-gray-500 transition",
+            open ? "" : "-rotate-90"
+          )}
+          aria-hidden="true"
+        />
+        <span className="text-text-md font-semibold text-gray-900">
+          Finished
+        </span>
+        <span className="text-sm text-gray-500">
+          {items.length}
+          {paid > 0 ? ` · ${money(paid)} paid` : ""}
+        </span>
+      </button>
+      {open ? (
+        <ul className="divide-y divide-gray-100 border-t border-gray-200">
+          {items.map((s) => (
+            <li
+              key={s.id}
+              className="flex flex-wrap items-center gap-4 px-5 py-2.5 text-sm text-gray-600"
+            >
+              <span className="font-mono text-gray-400">
+                #{numbers.get(s.id)}
+              </span>
+              <span className="text-gray-900">
+                {s.packaging === "refill" ? "Refill" : "Spool"}
+              </span>
+              <span>
+                Bought <DateText date={s.purchasedOn} />
+              </span>
+              <span>
+                Finished <DateText date={s.retiredAt} empty="—" />
+              </span>
+              <span className="ml-auto tabular-nums text-gray-900">
+                {s.pricePaid !== null ? money(s.pricePaid) : "—"}
+              </span>
+              <RowMenu
+                spool={s}
+                number={numbers.get(s.id) ?? 0}
+                tare={null}
+                kind="finished"
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Card>
+  );
+}
+
+/** Reorder: today's store prices, the refill's saving, and Buy. */
+function ReorderCard({
+  price,
+  paidPerKg,
+  bought,
+  productUrl,
+}: {
+  price: PageData["price"];
+  paidPerKg: number | null;
+  bought: number;
+  productUrl: string | null;
+}) {
+  const money = useMoney();
+  const fetcher = useFetcher<Result>();
+  const summary = priceSummary(price?.variants);
+  const saving =
+    summary.spool && summary.refill
+      ? summary.spool.now - summary.refill.now
+      : null;
+  const option = (
+    name: string,
+    sub: ReactNode,
+    p: { now: number; was: number | null },
+    highlight: boolean
+  ) => (
+    <div
+      className={tw(
+        "flex items-center justify-between gap-3 rounded-lg border px-4 py-3",
+        highlight ? "border-primary-200 bg-primary-25" : "border-gray-200"
+      )}
+    >
+      <div>
+        <div className="text-sm font-semibold text-gray-900">{name}</div>
+        <div
+          className={tw(
+            "text-xs",
+            highlight ? "text-primary-700" : "text-gray-500"
+          )}
+        >
+          {sub}
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="text-md font-semibold tabular-nums text-gray-900">
+          {money(p.now)}
+        </div>
+        {p.was ? (
+          <div className="text-xs text-gray-400 line-through">
+            {money(p.was)}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">Reorder</h3>
+        {summary.onOffer ? (
+          <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
+            On offer
+          </span>
+        ) : null}
+        <fetcher.Form method="post" className="ml-auto">
+          <input type="hidden" name="intent" value="check-prices" />
+          <button
+            type="submit"
+            disabled={isFormProcessing(fetcher.state)}
+            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+            title="Check the store now"
+          >
+            <RefreshCwIcon
+              className={tw(
+                "size-3.5",
+                isFormProcessing(fetcher.state) && "animate-spin"
+              )}
+              aria-hidden="true"
+            />
+            {price ? `Checked ${ago(price.checkedAt)}` : "Check now"}
+          </button>
+        </fetcher.Form>
+      </div>
+      <div className="flex flex-col gap-3 p-5">
+        {price?.status === "found" ? (
+          <>
+            {summary.spool
+              ? option("Spool · 1 kg", "Bambu store", summary.spool, false)
+              : null}
+            {summary.refill
+              ? option(
+                  "Refill · 1 kg",
+                  saving !== null && saving > 0
+                    ? `${money(saving)} cheaper: reuses an empty spool`
+                    : "Reuses an empty spool",
+                  summary.refill,
+                  saving !== null && saving > 0
+                )
+              : null}
+            {!summary.spool && !summary.refill ? (
+              <p className="text-sm text-gray-500">
+                The store has no 1 kg price for this colour.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">
+            {price ? price.message : "Not checked yet."}
+          </p>
+        )}
+        {paidPerKg !== null ? (
+          <p className="text-xs text-gray-500">
+            You've averaged {money(paidPerKg)}/kg across {bought}{" "}
+            {bought === 1 ? "purchase" : "purchases"}.
+          </p>
+        ) : null}
+        {productUrl ? (
+          <Button
+            to={productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            width="full"
+            className="justify-center"
+          >
+            <span className="inline-flex items-center gap-2">
+              Buy on the Bambu store
+              <ExternalLinkIcon className="size-4" aria-hidden="true" />
+            </span>
+          </Button>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/** Print settings: the catalogue's temperatures and facts; code and empty spool can be changed. */
+function PrintSettingsCard({
+  filament,
+  catalogue,
+  tare,
+  code,
+}: {
+  filament: PageData["filament"];
+  catalogue: PageData["catalogue"];
+  tare: number | null;
+  code: string | null;
+}) {
+  const tile = (k: string, v: number | null | undefined) => (
+    <div className="rounded-lg bg-gray-25 px-4 py-3 ring-1 ring-inset ring-gray-200">
+      <div className={factLabel}>{k}</div>
+      <div className="text-display-xs font-semibold tabular-nums text-gray-900">
+        {v ? `${v} °C` : "—"}
+      </div>
+    </div>
+  );
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">
+          Print settings
+        </h3>
+      </div>
+      <div className="flex flex-col gap-4 p-5">
+        <div className="grid grid-cols-2 gap-3">
+          {tile("Nozzle", catalogue?.nozzleTemp)}
+          {tile("Bed", catalogue?.bedTemp)}
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div>
+            <dt className={factLabel}>Material</dt>
+            <dd className={factValue}>{filament.material}</dd>
+          </div>
+          <div>
+            <dt className={factLabel}>Diameter</dt>
+            <dd className={factValue}>1.75 mm</dd>
+          </div>
+          <div>
+            <dt className={factLabel}>Density</dt>
+            <dd className={factValue}>
+              {catalogue?.density ? `${catalogue.density} g/cm³` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className={factLabel}>Empty spool</dt>
+            <dd className={factValue}>
+              <FilamentCell
+                id=""
+                intent="filament-field"
+                field="spoolWeightGrams"
+                label="Empty spool"
+                editor={{
+                  kind: "number",
+                  value: filament.spoolWeightGrams,
+                  min: 0,
+                  max: 2000,
+                  suffix: "g",
+                }}
+              >
+                {filament.spoolWeightGrams !== null
+                  ? `${filament.spoolWeightGrams} g`
+                  : tare
+                  ? `${tare} g`
+                  : "—"}
+              </FilamentCell>
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className={factLabel}>Code on the box</dt>
+            <dd className={factValue}>
+              <FilamentCell
+                id=""
+                intent="filament-field"
                 field="filamentCode"
+                label="Code on the box"
                 editor={{
                   kind: "text",
                   value: code ?? "",
@@ -1601,118 +2111,21 @@ export default function FilamentDetail() {
                 {code ? (
                   <CodeChip code={code} />
                 ) : (
-                  <span className="text-gray-400">—</span>
+                  <span className="text-gray-400">Add it</span>
                 )}
-              </EditableFact>
-              <EditableFact
-                label="Empty spool"
-                field="spoolWeightGrams"
-                editor={{
-                  kind: "number",
-                  value: filament.spoolWeightGrams,
-                  min: 0,
-                  max: 2000,
-                  suffix: "g",
-                }}
-              >
-                {filament.spoolWeightGrams !== null ? (
-                  <span className="tabular-nums">
-                    {filament.spoolWeightGrams} g
-                  </span>
-                ) : tare ? (
-                  <span
-                    className="tabular-nums text-gray-500"
-                    title="Bambu's figure; click to set your own"
-                  >
-                    {tare} g
-                  </span>
-                ) : (
-                  <span className="text-gray-400">—</span>
-                )}
-              </EditableFact>
-              {fact("Material", filament.material)}
-              {fact("Diameter", "1.75 mm")}
-              {fact(
-                "Density",
-                catalogue?.density ? `${catalogue.density} g/cm³` : null
-              )}
-              {fact(
-                "Nozzle",
-                catalogue?.nozzleTemp ? `${catalogue.nozzleTemp} °C` : null
-              )}
-              {fact(
-                "Bed",
-                catalogue?.bedTemp ? `${catalogue.bedTemp} °C` : null
-              )}
-              {!catalogue ? (
-                <p className="py-2 text-sm text-gray-500">
-                  This line isn't in the catalogue.
-                </p>
-              ) : null}
-            </div>
-          </Card>
-          <Card className="my-0">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              Your figures
-            </h3>
-            <div className="mt-2">
-              {fact(
-                "Left",
-                `${(grams / 1000).toFixed(2)} kg on ${typeWords(onHand)}`
-              )}
-              {fact("Cost per kg", perKg !== null ? money(perKg) : "—")}
-              {fact("Spent", anyPrice ? money(spent) : "—")}
-              {fact("Bought ever", String(spools.length))}
-            </div>
-          </Card>
-          <StoreCard
-            price={price}
-            paidPerKg={perKg}
-            productUrl={price?.productUrl ?? image?.productUrl ?? null}
-          />
-          {fil && label ? (
-            <LabelCard
-              fil={fil}
-              qrUrl={label.qrUrl}
-              settings={label.settings}
-              colour={filament.colourName}
-              line={filament.type}
-              boxCode={code}
-            />
-          ) : null}
-        </div>
+              </FilamentCell>
+            </dd>
+          </div>
+        </dl>
+        {!catalogue ? (
+          <p className="text-xs text-gray-500">
+            This line isn't in Bambu's catalogue.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">From Bambu's catalogue.</p>
+        )}
       </div>
-    </>
-  );
-}
-
-/** A row of the Details card you can click to change, for the whole filament. */
-function EditableFact({
-  label,
-  field,
-  editor,
-  children,
-}: {
-  label: string;
-  field: FilamentField;
-  editor: Parameters<typeof FilamentCell>[0]["editor"];
-  children: ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[7rem_1fr] items-center border-b border-gray-100 py-1.5 text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span>
-        <FilamentCell
-          id=""
-          intent="filament-field"
-          field={field}
-          label={label}
-          editor={editor}
-        >
-          {children}
-        </FilamentCell>
-      </span>
-    </div>
+    </Card>
   );
 }
 
