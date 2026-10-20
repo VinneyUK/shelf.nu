@@ -184,7 +184,7 @@ function AdvancedCell({
             placeholder: "e.g. 10100",
           }}
         >
-          {r.code ? <CodeChip code={r.code} /> : none}
+          {r.code ? <CodeChip code={r.code} plain /> : none}
         </FilamentCell>
       );
     case "fil":

@@ -13,7 +13,6 @@ import {
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
-  ExternalLinkIcon,
   MoreHorizontalIcon,
   PackageOpenIcon,
   RefreshCwIcon,
@@ -507,13 +506,16 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           "Filament retired",
           "Tick Show finished to see it, or bring it back."
         );
-      case "keep":
-        await keepSpool(
+      case "keep": {
+        // no amount given: what it had when it was marked finished
+        const given = String(form.get("remainingPercent") ?? "").trim();
+        const percent = await keepSpool(
           organizationId,
           id,
-          Number(form.get("remainingPercent") ?? 0)
+          given ? Number(given) : null
         );
-        return done(userId, "Filament back in use", null);
+        return done(userId, "Filament back in use", `${percent}% left.`);
+      }
       case "delete": {
         await deleteSpool(organizationId, id);
         notify(userId, "Filament deleted", null);
@@ -897,7 +899,7 @@ function PicturePopover({
           title="Change the picture, line or colour"
           className="mr-4 rounded-md hover:ring-2 hover:ring-primary-200"
         >
-          <FilamentPicture {...filament} images={images} size="size-14" />
+          <FilamentPicture {...filament} images={images} size="size-24" />
         </button>
       </PopoverTrigger>
       <PopoverPortal>
@@ -1525,6 +1527,9 @@ function RowMenu({
   const act = useFetcher<Result>();
   const [open, setOpen] = useState(false);
   const [weighing, setWeighing] = useState(false);
+  // bringing back one whose level wasn't kept: say how much is left
+  const [restoring, setRestoring] = useState(false);
+  const [percentLeft, setPercentLeft] = useState("");
   const [grams, setGrams] = useState("");
   const busy = isFormProcessing(act.state);
   const label = `#${number} of ${spool.colourName}`;
@@ -1536,7 +1541,10 @@ function RowMenu({
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (!o) setWeighing(false);
+        if (!o) {
+          setWeighing(false);
+          setRestoring(false);
+        }
       }}
     >
       <PopoverTrigger asChild>
@@ -1554,7 +1562,51 @@ function RowMenu({
           sideOffset={4}
           className="z-[60] w-60 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
         >
-          {weighing ? (
+          {restoring ? (
+            <form
+              className="flex flex-col gap-2 p-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void act.submit(
+                  {
+                    intent: "keep",
+                    id: spool.id,
+                    remainingPercent: percentLeft,
+                  },
+                  { method: "post" }
+                );
+                setPercentLeft("");
+                setOpen(false);
+              }}
+            >
+              <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+                How much is left?
+                <span className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={percentLeft}
+                    onChange={(e) => setPercentLeft(e.target.value)}
+                    className={tw(inputClass, "w-full")}
+                    autoFocus
+                  />
+                  <span className="text-sm font-normal text-gray-500">%</span>
+                </span>
+              </label>
+              <span className="text-xs text-gray-500">
+                Its level wasn't kept when it was marked finished. You can weigh
+                it once it's back.
+              </span>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={busy || !(Number(percentLeft) > 0)}
+              >
+                Bring it back
+              </Button>
+            </form>
+          ) : weighing ? (
             <form
               className="flex flex-col gap-2 p-1.5"
               onSubmit={(e) => {
@@ -1639,25 +1691,32 @@ function RowMenu({
                   Mark finished
                 </button>
               ) : null}
-              {kind === "finished" ? (
+              {kind === "finished" && (spool.retiredPercent ?? 0) > 0 ? (
                 <button
                   type="button"
                   className={item}
                   disabled={busy}
                   onClick={() => {
+                    // back as it was when it was marked finished
                     void act.submit(
-                      {
-                        intent: "keep",
-                        id: spool.id,
-                        remainingPercent: String(spool.remainingPercent),
-                      },
+                      { intent: "keep", id: spool.id },
                       { method: "post" }
                     );
                     setOpen(false);
                   }}
                 >
                   <Undo2Icon className="size-4" aria-hidden="true" /> Bring it
-                  back
+                  back ({spool.retiredPercent}% left)
+                </button>
+              ) : null}
+              {kind === "finished" && !((spool.retiredPercent ?? 0) > 0) ? (
+                <button
+                  type="button"
+                  className={item}
+                  onClick={() => setRestoring(true)}
+                >
+                  <Undo2Icon className="size-4" aria-hidden="true" /> Bring it
+                  back…
                 </button>
               ) : null}
               <div className="px-1 pt-1">
@@ -2012,10 +2071,7 @@ function ReorderCard({
             width="full"
             className="justify-center"
           >
-            <span className="inline-flex items-center gap-2">
-              Buy on the Bambu store
-              <ExternalLinkIcon className="size-4" aria-hidden="true" />
-            </span>
+            Buy on the Bambu store
           </Button>
         ) : null}
       </div>
@@ -2109,7 +2165,7 @@ function PrintSettingsCard({
                 }}
               >
                 {code ? (
-                  <CodeChip code={code} />
+                  <CodeChip code={code} plain />
                 ) : (
                   <span className="text-gray-400">Add it</span>
                 )}

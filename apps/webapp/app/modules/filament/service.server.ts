@@ -283,31 +283,52 @@ export async function updateSpool(
 
 /** Retires a spool that has run out (or that you've finished with). */
 export async function retireSpool(organizationId: string, id: string) {
+  const spool = await db.spool.findFirst({
+    where: { id, organizationId, status: { in: ["active", "empty"] } },
+    select: { remainingPercent: true },
+  });
+  if (!spool) throw bad("That filament can't be retired.", 404);
   const { count } = await db.spool.updateMany({
     where: { id, organizationId, status: { in: ["active", "empty"] } },
     data: {
       status: "retired",
       retiredAt: new Date(),
       amsSlot: null,
+      // what was left is kept, so Bring it back can restore it (fork)
+      retiredPercent: spool.remainingPercent,
       remainingPercent: 0,
     },
   });
   if (count === 0) throw bad("That filament can't be retired.", 404);
 }
 
-/** "It's not empty after all": back to active with some filament left. */
+/**
+ * "It's not empty after all": back to active with some filament left: the
+ * amount given, or else what it had when it was marked finished.
+ */
 export async function keepSpool(
   organizationId: string,
   id: string,
-  remainingPercent: number
+  remainingPercent?: number | null
 ) {
-  const percent = clampPercent(remainingPercent);
+  const spool = await db.spool.findFirst({
+    where: { id, organizationId, status: { in: ["empty", "retired"] } },
+    select: { retiredPercent: true },
+  });
+  if (!spool) throw bad("That filament can't be brought back.", 404);
+  const percent = clampPercent(remainingPercent ?? spool.retiredPercent ?? 0);
   if (percent === 0) throw bad("Say how much is left: more than 0%.");
   const { count } = await db.spool.updateMany({
     where: { id, organizationId, status: { in: ["empty", "retired"] } },
-    data: { status: "active", remainingPercent: percent, retiredAt: null },
+    data: {
+      status: "active",
+      remainingPercent: percent,
+      retiredAt: null,
+      retiredPercent: null,
+    },
   });
   if (count === 0) throw bad("That filament can't be brought back.", 404);
+  return percent;
 }
 
 export async function deleteSpool(organizationId: string, id: string) {

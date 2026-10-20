@@ -136,20 +136,40 @@ describe("adding and editing spools", () => {
 });
 
 describe("running out", () => {
-  it("retires on confirmation, and takes it out of the AMS", async () => {
+  it("retires on confirmation, and takes it out of the AMS, keeping what was left", async () => {
+    m.spool.findFirst.mockResolvedValue({ remainingPercent: 27 });
     await retireSpool("o1", "s1");
     expect(m.spool.updateMany.mock.calls[0][0]).toMatchObject({
       where: { id: "s1", organizationId: "o1" },
-      data: { status: "retired", amsSlot: null, remainingPercent: 0 },
+      data: {
+        status: "retired",
+        amsSlot: null,
+        remainingPercent: 0,
+        retiredPercent: 27,
+      },
     });
   });
   it("can be told it isn't empty after all, with how much is left", async () => {
+    m.spool.findFirst.mockResolvedValue({ retiredPercent: null });
     await keepSpool("o1", "s1", 15);
     expect(m.spool.updateMany.mock.calls[0][0].data).toMatchObject({
       status: "active",
       remainingPercent: 15,
+      retiredPercent: null,
     });
     await expect(keepSpool("o1", "s1", 0)).rejects.toThrow(/more than 0%/);
+  });
+  it("brings it back as it was when it was marked finished (fork)", async () => {
+    m.spool.findFirst.mockResolvedValue({ retiredPercent: 27 });
+    expect(await keepSpool("o1", "s1")).toBe(27);
+    expect(m.spool.updateMany.mock.calls[0][0].data).toMatchObject({
+      status: "active",
+      remainingPercent: 27,
+    });
+  });
+  it("asks how much is left when that wasn't kept", async () => {
+    m.spool.findFirst.mockResolvedValue({ retiredPercent: null });
+    await expect(keepSpool("o1", "s1")).rejects.toThrow(/more than 0%/);
   });
 });
 

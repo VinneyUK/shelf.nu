@@ -89,6 +89,13 @@ const data = {
       remainingPercent: 0,
       retiredAt: day("2026-10-09"),
     }),
+    spool({
+      n: 8,
+      status: "retired",
+      remainingPercent: 0,
+      retiredPercent: 27,
+      retiredAt: day("2026-10-08"),
+    }),
   ],
   images: {},
   price: {
@@ -147,6 +154,23 @@ describe("a filament's page", () => {
       .closest("div.my-0") as HTMLElement;
     expect(within(table).getAllByRole("row")).toHaveLength(3); // heading + 2
     expect(within(table).getAllByText("Add date")).toHaveLength(2);
+  });
+
+  it("brings a finished spool back as it was", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: /Finished/ }));
+    fireEvent.click(screen.getByRole("button", { name: "More for #6" }));
+    expect(await screen.findByText(/Bring it back \(27% left\)/)).toBeTruthy();
+  });
+
+  it("asks how much is left when a finished spool's level wasn't kept", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: /Finished/ }));
+    fireEvent.click(screen.getByRole("button", { name: "More for #5" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Bring it back…/ })
+    );
+    expect(await screen.findByText(/How much is left/)).toBeTruthy();
   });
 
   it("folds finished ones away until asked", async () => {

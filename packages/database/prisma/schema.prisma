@@ -2984,6 +2984,8 @@ model Spool {
   source           String    @default("manual")
   notes            String?
   retiredAt        DateTime?
+  /// What was left when it was marked finished (fork), so Bring it back restores it
+  retiredPercent   Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

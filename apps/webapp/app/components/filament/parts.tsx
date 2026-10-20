@@ -739,11 +739,26 @@ export function TypeRows({ items }: { items: Stocked[] }) {
 export function CodeChip({
   code,
   className,
+  plain = false,
 }: {
   code: string;
   className?: string;
+  /** Just the pill, not a copy button: for inside something you click to edit */
+  plain?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  if (plain)
+    return (
+      <span
+        style={{ backgroundColor: "#101828", color: "#ffffff" }}
+        className={tw(
+          "inline-flex h-6 items-center rounded px-1.5 text-xs font-bold tabular-nums tracking-wide",
+          className
+        )}
+      >
+        {code}
+      </span>
+    );
   return (
     <button
       type="button"
