@@ -3,18 +3,27 @@
  * name; its spools (weigh, edit, retire, bring back, delete); its specs, edited
  * once for every spool; Bambu's catalogue facts; and Add spools of this.
  */
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Popover,
   PopoverContent,
   PopoverPortal,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
+import { Reorder, useDragControls } from "framer-motion";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
-  MoreHorizontalIcon,
   PackageIcon,
+  CheckIcon,
+  CpuIcon,
+  GripVerticalIcon,
   PackageOpenIcon,
   RefreshCwIcon,
   ScaleIcon,
@@ -27,6 +36,17 @@ import type {
   MetaFunction,
 } from "react-router";
 import { data, redirect, useFetcher, useLoaderData } from "react-router";
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { z } from "zod";
 import { ErrorContent } from "~/components/errors";
 import { FilamentCell } from "~/components/filament/filament-cell";
@@ -68,7 +88,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/shared/modal";
+import { db } from "~/database/db.server";
 import { useSearchParams } from "~/hooks/search-params";
+import { useKeyboardReorder } from "~/hooks/use-keyboard-reorder";
 import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
 import {
   BAMBU_TYPES,
@@ -85,6 +107,8 @@ import {
   linkStorePage,
   setFilamentImageFromUrl,
 } from "~/modules/filament/images.server";
+import { averageUse, dailySeries, projection } from "~/modules/filament/levels";
+import { getLevels, recordLevels } from "~/modules/filament/levels.server";
 import { done, failed, notify } from "~/modules/filament/notify.server";
 import {
   ensureFilamentQr,
@@ -114,6 +138,8 @@ import {
   type SpoolField,
   updateFilament,
   updateFilamentField,
+  setAmsSlot,
+  reorderSealed,
   updateSpoolDetails,
   updateSpoolField,
   weighSpool,
@@ -156,6 +182,25 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     ]);
     refreshStalePrices(organizationId); // anything over a day old, in the background
     const codes = await knownCodes(organizationId);
+    // what's in each AMS slot, for "Put in AMS" (fork)
+    const inAms = await db.spool.findMany({
+      where: {
+        organizationId,
+        amsSlot: { not: null },
+        status: { not: "retired" },
+      },
+      select: {
+        id: true,
+        amsSlot: true,
+        type: true,
+        colourName: true,
+        colourHex: true,
+      },
+    });
+    // the usage chart: today's level kept, then the last 30 days (fork)
+    const key = filamentKey(first.type, first.colourName);
+    await recordLevels(organizationId, key).catch(() => undefined);
+    const levels = await getLevels(organizationId, key);
     const entry = catalogueEntry(first.type);
     // its label: FIL-0001 and what the printed label looks like
     const labelsOff = await isFeatureSwitchedOff(
@@ -177,6 +222,11 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
           }
         : null;
     return payload({
+      inAms,
+      levels: levels.map((l) => ({
+        day: l.day.toISOString().slice(0, 10),
+        grams: l.grams,
+      })),
       fil: fil ? { id: fil.id, label: fil.label } : null,
       label,
       header: { title: first.colourName },
@@ -470,6 +520,28 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           "Status changed",
           `${String(form.get("label") ?? "The filament")}: ${what}`
         );
+      }
+      // put it in an AMS slot by hand, or take it out (fork)
+      case "slot": {
+        const raw = String(form.get("slot") ?? "");
+        const message = await setAmsSlot(
+          organizationId,
+          id,
+          raw ? Number(raw) : null
+        );
+        return done(
+          userId,
+          raw ? "In the AMS" : "Out of the AMS",
+          `${String(form.get("label") ?? "The filament")}: ${message}`
+        );
+      }
+      // the order of sealed stock, as dragged (fork)
+      case "reorder": {
+        const ids = String(form.get("ids") ?? "")
+          .split(",")
+          .filter(Boolean);
+        await reorderSealed(organizationId, slug, ids);
+        return done(userId, "Order saved", "Sealed stock is in your order.");
       }
       case "open": {
         await openSpool(organizationId, id);
@@ -1092,7 +1164,15 @@ export default function FilamentDetail() {
   const [params] = useSearchParams();
   const finished = spools.filter((s) => s.status === "retired");
   const onHand = spools.filter((s) => s.status !== "retired");
-  const sealed = onHand.filter((s) => spoolState(s) === "new");
+  // sealed stock in the order you set, then the rest by when they were added
+  const sealed = onHand
+    .filter((s) => spoolState(s) === "new")
+    .sort(
+      (a, b) =>
+        (a.stockOrder ?? Number.MAX_SAFE_INTEGER) -
+          (b.stockOrder ?? Number.MAX_SAFE_INTEGER) ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
   const open = onHand.filter((s) => spoolState(s) !== "new");
   const inUse = primaryOpen(open);
   const alsoOpen = open.filter((s) => s !== inUse);
@@ -1125,9 +1205,6 @@ export default function FilamentDetail() {
       {/* no title row: the summary card below names the filament */}
       <Header hidePageDescription>
         <div className="flex items-center gap-2">
-          {fil ? (
-            <PrintLabelButton id={fil.id} kind="filament" withText />
-          ) : null}
           {image?.productUrl ? (
             <Button
               to={image.productUrl}
@@ -1179,6 +1256,7 @@ export default function FilamentDetail() {
           perKg={perKg}
           spent={anyPrice ? spent : null}
           daysLeft={daysOnHand(grams, rate?.perDay ?? null)}
+          label={label}
         />
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -1189,6 +1267,7 @@ export default function FilamentDetail() {
                   spool={inUse}
                   number={numbers.get(inUse.id) ?? 0}
                   tare={tare}
+                  inAms={data.inAms}
                 />
                 {alsoOpen.map((s) => (
                   <AlsoOpenRow
@@ -1196,11 +1275,13 @@ export default function FilamentDetail() {
                     spool={s}
                     number={numbers.get(s.id) ?? 0}
                     tare={tare}
+                    inAms={data.inAms}
                   />
                 ))}
               </div>
             ) : null}
             <SealedCard items={sealed} numbers={numbers} tare={tare} />
+            <UsageCard levels={data.levels} />
             <FinishedCard items={finished} numbers={numbers} />
           </div>
           <div className="flex flex-col gap-5">
@@ -1216,16 +1297,6 @@ export default function FilamentDetail() {
               tare={tare}
               code={code}
             />
-            {fil && label ? (
-              <LabelCard
-                fil={fil}
-                qrUrl={label.qrUrl}
-                settings={label.settings}
-                colour={filament.colourName}
-                line={filament.type}
-                boxCode={code}
-              />
-            ) : null}
           </div>
         </div>
       </div>
@@ -1311,6 +1382,7 @@ function SummaryCard({
   perKg,
   spent,
   daysLeft,
+  label,
 }: {
   filament: PageData["filament"];
   images: Images;
@@ -1323,8 +1395,10 @@ function SummaryCard({
   perKg: number | null;
   spent: number | null;
   daysLeft: number | null;
+  label: PageData["label"];
 }) {
   const money = useMoney();
+  const labelledAt = useLabelledAt(fil?.id ?? "");
   return (
     <Card className="my-0 flex flex-col gap-6 p-5 lg:flex-row lg:items-center">
       <div className="flex items-center gap-5">
@@ -1342,7 +1416,12 @@ function SummaryCard({
           </div>
         </div>
       </div>
-      <dl className="grid flex-1 grid-cols-3 gap-6 lg:ml-auto lg:max-w-2xl">
+      <dl
+        className={tw(
+          "grid flex-1 gap-6 lg:ml-auto",
+          fil && label ? "grid-cols-4 lg:max-w-4xl" : "grid-cols-3 lg:max-w-2xl"
+        )}
+      >
         <div>
           <dt className={factLabel}>On hand</dt>
           <dd className="text-display-xs font-semibold tabular-nums text-gray-900">
@@ -1381,6 +1460,34 @@ function SummaryCard({
             </dd>
           ) : null}
         </div>
+        {fil && label ? (
+          <div>
+            <dt className={factLabel}>Label</dt>
+            <dd className="mt-1 flex items-center gap-2">
+              <FilamentLabelPreview
+                content={{
+                  filamentId: fil.label,
+                  colour: filament.colourName,
+                  line: filament.type,
+                  boxCode: code,
+                  qrUrl: label.qrUrl,
+                }}
+                settings={label.settings}
+                scale={0.42}
+              />
+              <PrintLabelButton id={fil.id} kind="filament" />
+            </dd>
+            <dd className="mt-1 text-xs text-gray-500">
+              {labelledAt ? (
+                <>
+                  Printed <DateS date={labelledAt} />
+                </>
+              ) : (
+                "Not printed yet"
+              )}
+            </dd>
+          </div>
+        ) : null}
       </dl>
     </Card>
   );
@@ -1391,11 +1498,14 @@ function InUseCard({
   spool,
   number,
   tare,
+  inAms,
 }: {
   spool: Spool;
   number: number;
   tare: number | null;
+  inAms: PageData["inAms"];
 }) {
+  const label = `#${number} of ${spool.colourName}`;
   const money = useMoney();
   const act = useFetcher<Result>();
   const rate = usageRate(spool);
@@ -1437,13 +1547,30 @@ function InUseCard({
           #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
         </span>
         <span className="text-sm text-gray-500">{where}</span>
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex flex-wrap items-center gap-2">
           <WeighButton
             spool={spool}
             number={number}
             tare={spool.spoolWeightGrams ?? tare}
             withText
           />
+          <AmsPicker spool={spool} label={label} inAms={inAms} />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isFormProcessing(act.state)}
+            onClick={() =>
+              void act.submit(
+                { intent: "state", id: spool.id, target: "new", label },
+                { method: "post" }
+              )
+            }
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <PackageIcon className="size-4" aria-hidden="true" />
+              Back to New
+            </span>
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -1455,9 +1582,12 @@ function InUseCard({
               )
             }
           >
-            Mark finished
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2Icon className="size-4" aria-hidden="true" />
+              Finished
+            </span>
           </Button>
-          <RowMenu spool={spool} number={number} tare={tare} kind="open" />
+          <DeleteIcon spool={spool} label={label} />
         </span>
       </div>
       <div className="flex flex-col items-center gap-8 p-6 sm:flex-row">
@@ -1481,12 +1611,15 @@ function AlsoOpenRow({
   spool,
   number,
   tare,
+  inAms,
 }: {
   spool: Spool;
   number: number;
   tare: number | null;
+  inAms: PageData["inAms"];
 }) {
   const state = spoolState(spool);
+  const label = `#${number} of ${spool.colourName}`;
   return (
     <Card className="my-0 flex flex-wrap items-center gap-4 px-5 py-3">
       <span className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-700">
@@ -1510,279 +1643,389 @@ function AlsoOpenRow({
           {weightText(gramsLeft(spool))}
         </span>
       </span>
-      <RowMenu spool={spool} number={number} tare={tare} kind="open" />
+      <span className="flex items-center gap-2">
+        <WeighButton
+          spool={spool}
+          number={number}
+          tare={spool.spoolWeightGrams ?? tare}
+        />
+        <AmsPicker spool={spool} label={label} inAms={inAms} compact />
+        <ActIcon
+          icon={PackageIcon}
+          label="Back to New (sealed)"
+          form={{ intent: "state", id: spool.id, target: "new", label }}
+        />
+        <ActIcon
+          icon={CheckCircle2Icon}
+          label="Mark finished"
+          form={{ intent: "retire", id: spool.id }}
+        />
+        <DeleteIcon spool={spool} label={label} />
+      </span>
     </Card>
   );
 }
 
-/** A row's ⋯ menu: weigh it, open it or bring it back, delete it. */
-function RowMenu({
+/** "Put in AMS": load it into a slot (what's there comes out), or take it out. */
+function AmsPicker({
   spool,
-  number,
-  tare,
-  kind,
+  label,
+  inAms,
+  compact = false,
 }: {
   spool: Spool;
-  number: number;
-  tare: number | null;
-  kind: "open" | "sealed" | "finished";
+  label: string;
+  inAms: PageData["inAms"];
+  compact?: boolean;
 }) {
   const act = useFetcher<Result>();
   const [open, setOpen] = useState(false);
-  const [weighing, setWeighing] = useState(false);
-  // bringing back one whose level wasn't kept: say how much is left
-  const [restoring, setRestoring] = useState(false);
-  const [percentLeft, setPercentLeft] = useState("");
-  const [grams, setGrams] = useState("");
   const busy = isFormProcessing(act.state);
-  const label = `#${number} of ${spool.colourName}`;
-  const empty = spool.spoolWeightGrams ?? tare;
-  const item =
-    "flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50";
+  const pick = (slot: number | null) => {
+    void act.submit(
+      {
+        intent: "slot",
+        id: spool.id,
+        slot: slot === null ? "" : String(slot),
+        label,
+      },
+      { method: "post" }
+    );
+    setOpen(false);
+  };
+  const text = spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "Put in AMS";
   return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (!o) {
-          setWeighing(false);
-          setRestoring(false);
-        }
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`More for #${number}`}
-          className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-        >
-          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
-        </button>
+        {compact ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="p-2"
+            aria-label={text}
+            tooltip={text}
+            disabled={busy}
+          >
+            <CpuIcon className="size-4" aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" disabled={busy}>
+            <span className="inline-flex items-center gap-1.5">
+              <CpuIcon className="size-4" aria-hidden="true" />
+              {text}
+              <ChevronDownIcon className="size-4" aria-hidden="true" />
+            </span>
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverPortal>
         <PopoverContent
           align="end"
           sideOffset={4}
-          className="z-[60] w-60 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
+          className="z-[60] w-72 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
         >
-          {restoring ? (
-            <form
-              className="flex flex-col gap-2 p-1.5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void act.submit(
-                  {
-                    intent: "keep",
-                    id: spool.id,
-                    remainingPercent: percentLeft,
-                  },
-                  { method: "post" }
-                );
-                setPercentLeft("");
-                setOpen(false);
-              }}
-            >
-              <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-                How much is left?
-                <span className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={percentLeft}
-                    onChange={(e) => setPercentLeft(e.target.value)}
-                    className={tw(inputClass, "w-full")}
-                    autoFocus
-                  />
-                  <span className="text-sm font-normal text-gray-500">%</span>
-                </span>
-              </label>
-              <span className="text-xs text-gray-500">
-                Its level wasn't kept when it was marked finished. You can weigh
-                it once it's back.
-              </span>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={busy || !(Number(percentLeft) > 0)}
+          <div className="px-2.5 py-1.5 text-xs font-medium text-gray-400">
+            Load it into a slot
+          </div>
+          {[1, 2, 3, 4].map((n) => {
+            const there = inAms.find(
+              (s) => s.amsSlot === n && s.id !== spool.id
+            );
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => pick(n)}
+                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-gray-900 hover:bg-gray-50"
               >
-                Bring it back
-              </Button>
-            </form>
-          ) : weighing ? (
-            <form
-              className="flex flex-col gap-2 p-1.5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void act.submit(
-                  { intent: "weigh", id: spool.id, grossGrams: grams },
-                  { method: "post" }
-                );
-                setGrams("");
-                setOpen(false);
-              }}
-            >
-              <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
-                Weigh it: on the scale
-                <span className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    value={grams}
-                    onChange={(e) => setGrams(e.target.value)}
-                    className={tw(inputClass, "w-full")}
-                    autoFocus
+                <span className="w-12 font-medium">Slot {n}</span>
+                {spool.amsSlot === n ? (
+                  <span className="text-gray-500">This one</span>
+                ) : there ? (
+                  <>
+                    <Swatch hex={there.colourHex} size="size-3" />
+                    <span className="truncate text-gray-500">
+                      {there.colourName}: swaps out
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-500">Empty</span>
+                )}
+                {spool.amsSlot === n ? (
+                  <CheckIcon
+                    className="ml-auto size-4 text-primary-600"
+                    aria-hidden="true"
                   />
-                  <span className="text-sm font-normal text-gray-500">g</span>
-                </span>
-              </label>
-              <span className="text-xs text-gray-500">
-                {empty
-                  ? `Less the empty spool, ${empty} g.`
-                  : "Set the empty spool weight in Print settings first."}
-              </span>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={busy || !empty || !grams}
-              >
-                Update what's left
-              </Button>
-            </form>
-          ) : (
-            <>
-              {kind !== "finished" ? (
-                <button
-                  type="button"
-                  className={item}
-                  onClick={() => setWeighing(true)}
-                >
-                  <ScaleIcon className="size-4" aria-hidden="true" /> Weigh it
-                </button>
-              ) : null}
-              {kind === "sealed" ? (
-                <button
-                  type="button"
-                  className={item}
-                  disabled={busy}
-                  onClick={() => {
-                    void act.submit(
-                      { intent: "open", id: spool.id, label },
-                      { method: "post" }
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <PackageOpenIcon className="size-4" aria-hidden="true" /> Open
-                  it
-                </button>
-              ) : null}
-              {kind === "open" && spool.amsSlot !== null ? (
-                <button
-                  type="button"
-                  className={item}
-                  disabled={busy}
-                  onClick={() => {
-                    // still open, just out of the printer
-                    void act.submit(
-                      {
-                        intent: "state",
-                        id: spool.id,
-                        target: "opened",
-                        label,
-                      },
-                      { method: "post" }
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <PackageOpenIcon className="size-4" aria-hidden="true" />{" "}
-                  Opened, out of the AMS
-                </button>
-              ) : null}
-              {kind === "open" ? (
-                <button
-                  type="button"
-                  className={item}
-                  disabled={busy}
-                  onClick={() => {
-                    void act.submit(
-                      { intent: "state", id: spool.id, target: "new", label },
-                      { method: "post" }
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <PackageIcon className="size-4" aria-hidden="true" /> Back to
-                  sealed (New)
-                </button>
-              ) : null}
-              {kind === "open" ? (
-                <button
-                  type="button"
-                  className={item}
-                  disabled={busy}
-                  onClick={() => {
-                    void act.submit(
-                      { intent: "retire", id: spool.id },
-                      { method: "post" }
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <CheckCircle2Icon className="size-4" aria-hidden="true" />{" "}
-                  Mark finished
-                </button>
-              ) : null}
-              {kind === "finished" && (spool.retiredPercent ?? 0) > 0 ? (
-                <button
-                  type="button"
-                  className={item}
-                  disabled={busy}
-                  onClick={() => {
-                    // back as it was when it was marked finished
-                    void act.submit(
-                      { intent: "keep", id: spool.id },
-                      { method: "post" }
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Undo2Icon className="size-4" aria-hidden="true" /> Bring it
-                  back ({spool.retiredPercent}% left)
-                </button>
-              ) : null}
-              {kind === "finished" && !((spool.retiredPercent ?? 0) > 0) ? (
-                <button
-                  type="button"
-                  className={item}
-                  onClick={() => setRestoring(true)}
-                >
-                  <Undo2Icon className="size-4" aria-hidden="true" /> Bring it
-                  back…
-                </button>
-              ) : null}
-              <div className="px-1 pt-1">
-                <DeleteSpool
-                  label={label}
-                  disabled={busy}
-                  onDelete={() =>
-                    void act.submit(
-                      { intent: "delete", id: spool.id },
-                      { method: "post" }
-                    )
-                  }
-                />
-              </div>
-            </>
-          )}
+                ) : null}
+              </button>
+            );
+          })}
+          {spool.amsSlot !== null ? (
+            <button
+              type="button"
+              onClick={() => pick(null)}
+              className="mt-1 flex w-full items-center gap-2 rounded border-t border-gray-200 px-2.5 py-2 text-left text-sm text-gray-900 hover:bg-gray-50"
+            >
+              Take it out (keep it open)
+            </button>
+          ) : null}
         </PopoverContent>
       </PopoverPortal>
     </Popover>
   );
 }
 
-/** Sealed stock: click a cell to change it. */
+/** An icon button that sends one action, like the asset rows' icons. */
+function ActIcon({
+  icon: Icon,
+  label,
+  form,
+}: {
+  icon: typeof ScaleIcon;
+  label: string;
+  form: Record<string, string>;
+}) {
+  const act = useFetcher<Result>();
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="p-2"
+      aria-label={label}
+      tooltip={label}
+      disabled={isFormProcessing(act.state)}
+      onClick={() => void act.submit(form, { method: "post" })}
+    >
+      <Icon className="size-4" aria-hidden="true" />
+    </Button>
+  );
+}
+
+/** Delete, as the bin icon, asking first. */
+function DeleteIcon({ spool, label }: { spool: Spool; label: string }) {
+  const act = useFetcher<Result>();
+  return (
+    <DeleteSpool
+      icon
+      label={label}
+      disabled={isFormProcessing(act.state)}
+      onDelete={() =>
+        void act.submit({ intent: "delete", id: spool.id }, { method: "post" })
+      }
+    />
+  );
+}
+
+/** Bring a finished one back: as it was, or saying how much is left when that wasn't kept. */
+function BringBack({ spool, label }: { spool: Spool; label: string }) {
+  const act = useFetcher<Result>();
+  const [open, setOpen] = useState(false);
+  const [percent, setPercent] = useState("");
+  const busy = isFormProcessing(act.state);
+  const kept = (spool.retiredPercent ?? 0) > 0;
+  if (kept)
+    return (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="p-2"
+        aria-label={`Bring it back (${spool.retiredPercent}% left)`}
+        tooltip={`Bring it back (${spool.retiredPercent}% left)`}
+        disabled={busy}
+        onClick={() =>
+          void act.submit({ intent: "keep", id: spool.id }, { method: "post" })
+        }
+      >
+        <Undo2Icon className="size-4" aria-hidden="true" />
+      </Button>
+    );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="p-2"
+          aria-label="Bring it back…"
+          tooltip="Bring it back…"
+        >
+          <Undo2Icon className="size-4" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          className="z-[60] w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
+        >
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void act.submit(
+                {
+                  intent: "keep",
+                  id: spool.id,
+                  remainingPercent: percent,
+                  label,
+                },
+                { method: "post" }
+              );
+              setPercent("");
+              setOpen(false);
+            }}
+          >
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-900">
+              How much is left?
+              <span className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={percent}
+                  onChange={(e) => setPercent(e.target.value)}
+                  className={tw(inputClass, "w-full")}
+                  autoFocus
+                />
+                <span className="text-sm font-normal text-gray-500">%</span>
+              </span>
+            </label>
+            <span className="text-xs text-gray-500">
+              Its level wasn't kept when it was marked finished.
+            </span>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={busy || !(Number(percent) > 0)}
+            >
+              Bring it back
+            </Button>
+          </form>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
+/** Usage: what's been on hand over the last 30 days, and where it heads. */
+function UsageCard({ levels }: { levels: PageData["levels"] }) {
+  const series = dailySeries(levels, new Date());
+  const perDay = averageUse(series);
+  const ahead = projection(series[series.length - 1], perDay);
+  const runsOut = ahead.find((d) => d.grams === 0)?.day ?? null;
+  const fmt = (day: string) =>
+    new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+  // the record so far, then the projection from today, as one line each
+  const data = [
+    ...series.map((d, i) => ({
+      day: fmt(d.day),
+      onHand: d.grams,
+      projected: i === series.length - 1 ? d.grams : null,
+    })),
+    ...ahead
+      .slice(0, 45)
+      .map((d) => ({ day: fmt(d.day), onHand: null, projected: d.grams })),
+  ];
+  const today = series.length ? fmt(series[series.length - 1].day) : null;
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">Usage</h3>
+        <span className="text-sm text-gray-500">Last 30 days</span>
+        <span className="ml-auto flex flex-wrap gap-6 text-sm">
+          <span>
+            <span className="text-gray-500">Average </span>
+            <b className="text-gray-900">
+              {perDay !== null ? `${Math.round(perDay)} g a day` : "—"}
+            </b>
+          </span>
+          <span>
+            <span className="text-gray-500">Runs out </span>
+            <b className="text-primary-600">
+              {runsOut ? `≈ ${fmt(runsOut)}` : "—"}
+            </b>
+          </span>
+        </span>
+      </div>
+      {series.length < 2 ? (
+        <p className="px-5 py-6 text-sm text-gray-500">
+          Shelf has started keeping what's left of this filament each day; the
+          chart fills in from today.
+        </p>
+      ) : (
+        <div className="usage-chart h-72 p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={data}
+              margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v: number) => `${(v / 1000).toFixed(1)} kg`}
+                tickLine={false}
+                axisLine={false}
+                width={52}
+              />
+              <Tooltip
+                formatter={(v, k) => [
+                  typeof v === "number" ? `${(v / 1000).toFixed(2)} kg` : "—",
+                  k === "onHand" ? "On hand" : "Projected",
+                ]}
+              />
+              {today ? (
+                <ReferenceLine
+                  x={today}
+                  strokeDasharray="3 3"
+                  label={{ value: "Today", fontSize: 11, position: "top" }}
+                />
+              ) : null}
+              <Area
+                type="monotone"
+                dataKey="onHand"
+                stroke="#EF6820"
+                fill="#EF6820"
+                fillOpacity={0.12}
+                strokeWidth={2}
+                connectNulls={false}
+              />
+              <Line
+                type="linear"
+                dataKey="projected"
+                stroke="#EF6820"
+                strokeDasharray="6 5"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <p className="px-5 pb-4 text-xs text-gray-400">
+        On hand across all its spools and refills; the dashed line carries on at
+        your last 14 days' average.
+      </p>
+    </Card>
+  );
+}
+
+/** Sealed stock: click a cell to change it; drag the handle to put them in your order. */
 function SealedCard({
   items,
   numbers,
@@ -1792,10 +2035,33 @@ function SealedCard({
   numbers: Map<string, number>;
   tare: number | null;
 }) {
-  const money = useMoney();
+  const save = useFetcher<Result>();
+  // the order as dragged, kept here until the page's data catches up; the
+  // page's list is new on every render, so it's compared by what's in it
+  const signature = items
+    .map((s) => `${s.id}:${s.updatedAt}:${s.stockOrder ?? ""}`)
+    .join("|");
+  const [order, setOrder] = useState(items);
+  const [prevSignature, setPrevSignature] = useState(signature);
+  if (signature !== prevSignature) {
+    setPrevSignature(signature);
+    setOrder(items);
+  }
+  const persist = (next: Spool[]) =>
+    void save.submit(
+      { intent: "reorder", ids: next.map((s) => s.id).join(",") },
+      { method: "post" }
+    );
+  const { handleKeyDown, announcement, itemRefs } = useKeyboardReorder({
+    items: order,
+    onReorder: (next) => {
+      setOrder(next);
+      persist(next);
+    },
+    getItemName: (s) => `#${numbers.get(s.id)}`,
+  });
   const grams = items.reduce((n, s) => n + gramsLeft(s), 0);
   const head = "px-5 py-2 text-left text-xs font-medium text-gray-500";
-  const cell = "px-5 py-2.5 align-middle text-sm";
   return (
     <Card className="my-0 p-0">
       <div className={sectionHead}>
@@ -1806,6 +2072,14 @@ function SealedCard({
           {items.length} {items.length === 1 ? "unit" : "units"} ·{" "}
           {(grams / 1000).toFixed(2)} kg
         </span>
+        {items.length > 1 ? (
+          <span className="ml-auto text-xs text-gray-400">
+            Drag the handle to put them in the order you'll use them
+          </span>
+        ) : null}
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcement}
       </div>
       {items.length === 0 ? (
         <p className="px-5 py-4 text-sm text-gray-500">Nothing sealed left.</p>
@@ -1814,6 +2088,7 @@ function SealedCard({
           <table className="w-full">
             <thead className="bg-gray-25">
               <tr>
+                <th className={tw(head, "w-8 px-2")} />
                 <th className={head}>#</th>
                 <th className={head}>Type</th>
                 <th className={head}>Size</th>
@@ -1822,101 +2097,174 @@ function SealedCard({
                 <th className={head} />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {items.map((s) => (
-                <tr key={s.id}>
-                  <td className={tw(cell, "font-mono text-gray-400")}>
-                    #{numbers.get(s.id)}
-                  </td>
-                  <td className={cell}>
-                    <FilamentCell
-                      id={s.id}
-                      field="packaging"
-                      label="Type"
-                      editor={{
-                        kind: "select",
-                        value: s.packaging === "refill" ? "refill" : "spool",
-                        options: [
-                          { value: "spool", label: "Spool" },
-                          { value: "refill", label: "Refill" },
-                        ],
-                      }}
-                    >
-                      {s.packaging === "refill" ? "Refill" : "Spool"}
-                    </FilamentCell>
-                  </td>
-                  <td className={cell}>
-                    <FilamentCell
-                      id={s.id}
-                      field="weightGrams"
-                      label="Size (filament, g)"
-                      editor={{
-                        kind: "number",
-                        value: s.weightGrams,
-                        min: 1,
-                        max: 10000,
-                        suffix: "g",
-                      }}
-                    >
-                      <span className="whitespace-nowrap tabular-nums">
-                        {s.weightGrams >= 1000
-                          ? `${s.weightGrams / 1000} kg`
-                          : `${s.weightGrams} g`}
-                      </span>
-                    </FilamentCell>
-                  </td>
-                  <td className={cell}>
-                    <FilamentCell
-                      id={s.id}
-                      field="pricePaid"
-                      label="Price paid (£)"
-                      editor={{
-                        kind: "number",
-                        value: s.pricePaid,
-                        min: 0,
-                        step: 0.01,
-                      }}
-                    >
-                      <span className="tabular-nums">
-                        {s.pricePaid !== null ? (
-                          money(s.pricePaid)
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </span>
-                    </FilamentCell>
-                  </td>
-                  <td className={cell}>
-                    <FilamentCell
-                      id={s.id}
-                      field="purchasedOn"
-                      label="Bought on"
-                      editor={{ kind: "date", value: s.purchasedOn }}
-                    >
-                      {s.purchasedOn ? (
-                        <DateText date={s.purchasedOn} />
-                      ) : (
-                        <span className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
-                          Add date
-                        </span>
-                      )}
-                    </FilamentCell>
-                  </td>
-                  <td className={tw(cell, "text-right")}>
-                    <RowMenu
-                      spool={s}
-                      number={numbers.get(s.id) ?? 0}
-                      tare={tare}
-                      kind="sealed"
-                    />
-                  </td>
-                </tr>
+            <Reorder.Group
+              as="tbody"
+              axis="y"
+              values={order}
+              onReorder={setOrder}
+              className="divide-y divide-gray-100"
+            >
+              {order.map((s, index) => (
+                <SealedRow
+                  key={s.id}
+                  spool={s}
+                  number={numbers.get(s.id) ?? 0}
+                  tare={tare}
+                  onDragEnd={() => persist(order)}
+                  onHandleKeyDown={(e) => handleKeyDown(e, index)}
+                  handleRef={(el) => {
+                    itemRefs.current[index] = el;
+                  }}
+                />
               ))}
-            </tbody>
+            </Reorder.Group>
           </table>
         </div>
       )}
     </Card>
+  );
+}
+
+/** One sealed row: dragged by its handle (or moved with Alt+↑↓ on it). */
+function SealedRow({
+  spool,
+  number,
+  tare,
+  onDragEnd,
+  onHandleKeyDown,
+  handleRef,
+}: {
+  spool: Spool;
+  number: number;
+  tare: number | null;
+  onDragEnd: () => void;
+  onHandleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  handleRef: (el: HTMLButtonElement | null) => void;
+}) {
+  const money = useMoney();
+  const controls = useDragControls();
+  const cell = "px-5 py-2.5 align-middle text-sm";
+  return (
+    <Reorder.Item
+      as="tr"
+      value={spool}
+      dragListener={false}
+      dragControls={controls}
+      onDragEnd={onDragEnd}
+      className="bg-white"
+    >
+      <td className="px-2 py-2.5">
+        <button
+          type="button"
+          ref={handleRef}
+          onPointerDown={(e) => controls.start(e)}
+          onKeyDown={onHandleKeyDown}
+          aria-label={`Move #${number}`}
+          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+          title="Drag to reorder, or Alt+↑↓"
+          className="flex cursor-grab touch-none items-center rounded p-1 text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <GripVerticalIcon className="size-4" aria-hidden="true" />
+        </button>
+      </td>
+      <td className={tw(cell, "font-mono text-gray-400")}>#{number}</td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="packaging"
+          label="Type"
+          editor={{
+            kind: "select",
+            value: spool.packaging === "refill" ? "refill" : "spool",
+            options: [
+              { value: "spool", label: "Spool" },
+              { value: "refill", label: "Refill" },
+            ],
+          }}
+        >
+          {spool.packaging === "refill" ? "Refill" : "Spool"}
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="weightGrams"
+          label="Size (filament, g)"
+          editor={{
+            kind: "number",
+            value: spool.weightGrams,
+            min: 1,
+            max: 10000,
+            suffix: "g",
+          }}
+        >
+          <span className="whitespace-nowrap tabular-nums">
+            {spool.weightGrams >= 1000
+              ? `${spool.weightGrams / 1000} kg`
+              : `${spool.weightGrams} g`}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="pricePaid"
+          label="Price paid (£)"
+          editor={{
+            kind: "number",
+            value: spool.pricePaid,
+            min: 0,
+            step: 0.01,
+          }}
+        >
+          <span className="tabular-nums">
+            {spool.pricePaid !== null ? (
+              money(spool.pricePaid)
+            ) : (
+              <span className="text-gray-400">—</span>
+            )}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="purchasedOn"
+          label="Bought on"
+          editor={{ kind: "date", value: spool.purchasedOn }}
+        >
+          {spool.purchasedOn ? (
+            <DateText date={spool.purchasedOn} />
+          ) : (
+            <span className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
+              Add date
+            </span>
+          )}
+        </FilamentCell>
+      </td>
+      <td className={tw(cell, "text-right")}>
+        <span className="inline-flex items-center gap-2">
+          <WeighButton
+            spool={spool}
+            number={number}
+            tare={spool.spoolWeightGrams ?? tare}
+          />
+          <ActIcon
+            icon={PackageOpenIcon}
+            label="Open it"
+            form={{
+              intent: "open",
+              id: spool.id,
+              label: `#${number} of ${spool.colourName}`,
+            }}
+          />
+          <DeleteIcon
+            spool={spool}
+            label={`#${number} of ${spool.colourName}`}
+          />
+        </span>
+      </td>
+    </Reorder.Item>
   );
 }
 
@@ -1977,12 +2325,16 @@ function FinishedCard({
               <span className="ml-auto tabular-nums text-gray-900">
                 {s.pricePaid !== null ? money(s.pricePaid) : "—"}
               </span>
-              <RowMenu
-                spool={s}
-                number={numbers.get(s.id) ?? 0}
-                tare={null}
-                kind="finished"
-              />
+              <span className="flex items-center gap-2">
+                <BringBack
+                  spool={s}
+                  label={`#${numbers.get(s.id)} of ${s.colourName}`}
+                />
+                <DeleteIcon
+                  spool={s}
+                  label={`#${numbers.get(s.id)} of ${s.colourName}`}
+                />
+              </span>
             </li>
           ))}
         </ul>
@@ -2223,52 +2575,6 @@ function PrintSettingsCard({
         ) : (
           <p className="text-xs text-gray-400">From Bambu's catalogue.</p>
         )}
-      </div>
-    </Card>
-  );
-}
-
-/**
- * The filament's label as it prints: FIL-0001, the Bambu code, the colour and
- * the line, at the label size set in Labels → Settings. Filament labels (fork).
- */
-function LabelCard({
-  fil,
-  qrUrl,
-  settings,
-  colour,
-  line,
-  boxCode,
-}: {
-  fil: { id: string; label: string };
-  qrUrl: string;
-  settings: { labelWidth: number; leftMargin: number };
-  colour: string;
-  line: string;
-  boxCode: string | null;
-}) {
-  const labelledAt = useLabelledAt(fil.id);
-  return (
-    <Card className="my-0">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">
-        Label
-      </h3>
-      <div className="mt-3 flex flex-col gap-2">
-        <FilamentLabelPreview
-          content={{ filamentId: fil.label, colour, line, boxCode, qrUrl }}
-          settings={settings}
-          scale={1.1}
-          className="max-w-full"
-        />
-        <p className="text-xs text-gray-500">
-          {labelledAt ? (
-            <>
-              Printed <DateS date={labelledAt} />
-            </>
-          ) : (
-            "Not printed yet. Every spool and refill of this filament shares this label."
-          )}
-        </p>
       </div>
     </Card>
   );

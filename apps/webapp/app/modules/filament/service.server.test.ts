@@ -33,8 +33,10 @@ vi.mock("~/database/db.server", () => ({
     filamentImage: { findMany: imageRows },
     spool: m.spool,
     spoolCandidate: m.spoolCandidate,
-    $transaction: (fn: (tx: unknown) => unknown) =>
-      fn({ spool: m.spool, spoolCandidate: m.spoolCandidate }),
+    $transaction: (fn: unknown) =>
+      typeof fn === "function"
+        ? fn({ spool: m.spool, spoolCandidate: m.spoolCandidate })
+        : Promise.all(fn as unknown[]),
   },
 }));
 
@@ -55,6 +57,8 @@ import {
   syncAmsTrays,
   updateFilament,
   updateFilamentField,
+  setAmsSlot,
+  reorderSealed,
   updateSpool,
   updateSpoolDetails,
   updateSpoolField,
@@ -1194,5 +1198,62 @@ describe("a filament's own details, for all of it at once", () => {
     await expect(
       updateFilamentField("o1", slug, "filamentCode", "1")
     ).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("putting it in an AMS slot by hand (fork)", () => {
+  it("loads it, taking out whatever was there, and opens it if it was sealed", async () => {
+    m.spool.findFirst.mockResolvedValue({ openedOn: null, status: "active" });
+    m.spool.updateMany.mockResolvedValue({ count: 1 });
+    m.spool.update.mockResolvedValue({});
+    expect(await setAmsSlot("o1", "s1", 3)).toBe("In AMS slot 3.");
+    expect(m.spool.updateMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { organizationId: "o1", amsSlot: 3, NOT: { id: "s1" } },
+      data: { amsSlot: null },
+    });
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      amsSlot: 3,
+      status: "active",
+    });
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data.openedOn).toBeInstanceOf(
+      Date
+    );
+  });
+
+  it("takes it out and leaves it open", async () => {
+    m.spool.findFirst.mockResolvedValue({
+      openedOn: new Date("2026-10-01"),
+      status: "active",
+    });
+    m.spool.update.mockResolvedValue({});
+    expect(await setAmsSlot("o1", "s1", null)).toBe(
+      "Out of the AMS, still open."
+    );
+    expect(m.spool.update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      amsSlot: null,
+    });
+  });
+
+  it("refuses a slot that isn't 1 to 4, or a finished spool", async () => {
+    await expect(setAmsSlot("o1", "s1", 5)).rejects.toThrow(/1 to 4/);
+    m.spool.findFirst.mockResolvedValue({ openedOn: null, status: "retired" });
+    await expect(setAmsSlot("o1", "s1", 1)).rejects.toThrow(/Bring it back/);
+  });
+});
+
+describe("the order of sealed stock (fork)", () => {
+  it("saves each one's place, only for that filament's own", async () => {
+    m.spool.findMany.mockResolvedValue([
+      { id: "a", type: "PLA Basic", colourName: "Jade White" },
+      { id: "b", type: "PLA Basic", colourName: "Jade White" },
+    ]);
+    m.spool.updateMany.mockResolvedValue({ count: 1 });
+    const slug = filamentSlug("PLA Basic", "Jade White");
+    expect(await reorderSealed("o1", slug, ["b", "elsewhere", "a"])).toBe(2);
+    const calls = m.spool.updateMany.mock.calls.slice(-2).map((c) => c[0]);
+    expect(calls).toEqual([
+      { where: { id: "b", organizationId: "o1" }, data: { stockOrder: 0 } },
+      { where: { id: "a", organizationId: "o1" }, data: { stockOrder: 1 } },
+    ]);
   });
 });

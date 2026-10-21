@@ -1210,3 +1210,59 @@ export async function renameFilamentField(
       field === "type" ? `Line: ${raw.trim()}.` : `Colour: ${raw.trim()}.`,
   };
 }
+
+/**
+ * Puts a spool or refill into an AMS slot by hand, or takes it out (null)
+ * and leaves it open (fork). Whatever was in that slot comes out; loading
+ * one opens it if it was sealed.
+ */
+export async function setAmsSlot(
+  organizationId: string,
+  id: string,
+  slot: number | null
+): Promise<string> {
+  if (slot !== null && ![1, 2, 3, 4].includes(slot))
+    throw bad("Choose an AMS slot from 1 to 4.");
+  const spool = await db.spool.findFirst({
+    where: { id, organizationId },
+    select: { openedOn: true, status: true },
+  });
+  if (!spool) throw bad("That filament doesn't exist.", 404);
+  if (spool.status === "retired")
+    throw bad("Bring it back first: it's finished.");
+  await db.$transaction(async (tx) => {
+    await freeSlot(tx, organizationId, slot, id);
+    await tx.spool.update({
+      where: { id, organizationId },
+      data: {
+        amsSlot: slot,
+        status: "active",
+        openedOn: spool.openedOn ?? (slot !== null ? today() : null),
+      },
+    });
+  });
+  return slot === null ? "Out of the AMS, still open." : `In AMS slot ${slot}.`;
+}
+
+/**
+ * The order of a filament's sealed stock, as dragged (fork): each id's
+ * place in the list. Only that filament's own spools and refills are moved.
+ */
+export async function reorderSealed(
+  organizationId: string,
+  slug: string,
+  ids: string[]
+) {
+  const spools = await getFilamentBySlug(organizationId, slug);
+  const own = new Set(spools.map((s) => s.id));
+  const order = ids.filter((id) => own.has(id));
+  await db.$transaction(
+    order.map((id, i) =>
+      db.spool.updateMany({
+        where: { id, organizationId },
+        data: { stockOrder: i },
+      })
+    )
+  );
+  return order.length;
+}

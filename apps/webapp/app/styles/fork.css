@@ -44,3 +44,17 @@ html.dark {
 html.dark .ams-slot-outline {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
+
+/* A filament's usage chart: axis text and grid lines in the theme's greys */
+.usage-chart .recharts-cartesian-axis-tick-value {
+  fill: #667085;
+}
+.usage-chart .recharts-cartesian-grid line {
+  stroke: var(--level-track);
+}
+.usage-chart .recharts-reference-line line {
+  stroke: #98a2b3;
+}
+html.dark .usage-chart .recharts-cartesian-axis-tick-value {
+  fill: #9aa3af;
+}

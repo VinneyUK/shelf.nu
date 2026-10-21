@@ -13,6 +13,7 @@ import { regierAssetWorkers } from "./modules/asset-reminder/worker.server";
 import { registerAuditWorkers } from "./modules/audit/worker.server";
 import { registerBookingWorkers } from "./modules/booking/worker.server";
 import { startEmailReceiptWorker } from "./modules/email-receipts/service.server"; // email receipts feature
+import { startFilamentLevels } from "./modules/filament/levels.server"; // filament feature
 import { startAmsWatchers } from "./modules/filament/printer.server"; // filament feature
 import { startLabelWorker } from "./modules/labels/service.server"; // labels feature
 import { ShelfError } from "./utils/error";
@@ -105,6 +106,8 @@ startLabelWorker();
 startEmailReceiptWorker();
 // filament feature: read the AMS from the moment Shelf starts
 startAmsWatchers();
+// filament feature: keep each filament's daily level for its usage chart
+startFilamentLevels();
 
 /**
  * Handle errors that are not handled by a loader or action try/catch block.

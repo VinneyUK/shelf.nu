@@ -114,6 +114,27 @@ const data = {
     ],
   },
   codes: [],
+  inAms: [
+    {
+      id: "5",
+      amsSlot: 2,
+      type: "PLA Basic",
+      colourName: "Jade White",
+      colourHex: "#EDEDE6",
+    },
+    {
+      id: "x",
+      amsSlot: 1,
+      type: "PLA Basic",
+      colourName: "Red",
+      colourHex: "#D62B2B",
+    },
+  ],
+  levels: [
+    { day: "2026-10-15", grams: 3600 },
+    { day: "2026-10-17", grams: 3300 },
+    { day: "2026-10-19", grams: 2910 },
+  ],
 };
 
 function show() {
@@ -137,12 +158,14 @@ describe("a filament's page", () => {
     const heading = await screen.findByRole("heading", { name: "In use" });
     const card = heading.closest("div.my-0") as HTMLElement;
     expect(within(card).getByText("#3 · Spool")).toBeTruthy();
-    expect(within(card).getByText("AMS 2")).toBeTruthy();
+    expect(within(card).getAllByText("AMS 2").length).toBeGreaterThan(0);
     expect(within(card).getByText("270 g")).toBeTruthy();
     expect(within(card).getByText("Runs out")).toBeTruthy();
     expect(within(card).getByText(/≈ \d+ g a day/)).toBeTruthy();
+    // Weigh, Put in AMS, Back to New, Finished and Delete, nothing hidden
+    expect(within(card).getByRole("button", { name: "Finished" })).toBeTruthy();
     expect(
-      within(card).getByRole("button", { name: "Mark finished" })
+      within(card).getByRole("button", { name: "Back to New" })
     ).toBeTruthy();
   });
 
@@ -158,36 +181,52 @@ describe("a filament's page", () => {
 
   it("brings a finished spool back as it was", async () => {
     show();
-    fireEvent.click(await screen.findByRole("button", { name: /Finished/ }));
-    fireEvent.click(screen.getByRole("button", { name: "More for #6" }));
-    expect(await screen.findByText(/Bring it back \(27% left\)/)).toBeTruthy();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Finished \d/ })
+    );
+    expect(
+      await screen.findByRole("button", { name: "Bring it back (27% left)" })
+    ).toBeTruthy();
   });
 
   it("asks how much is left when a finished spool's level wasn't kept", async () => {
     show();
-    fireEvent.click(await screen.findByRole("button", { name: /Finished/ }));
-    fireEvent.click(screen.getByRole("button", { name: "More for #5" }));
     fireEvent.click(
-      await screen.findByRole("button", { name: /Bring it back…/ })
+      await screen.findByRole("button", { name: /^Finished \d/ })
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Bring it back…" })
     );
     expect(await screen.findByText(/How much is left/)).toBeTruthy();
   });
 
-  it("lets an open spool go back to sealed, or out of the AMS", async () => {
+  it("puts the open spool in an AMS slot, saying what's in each", async () => {
     show();
-    fireEvent.click(await screen.findByRole("button", { name: "More for #3" }));
-    expect(await screen.findByText(/Back to\s+sealed \(New\)/)).toBeTruthy();
-    expect(screen.getByText(/Opened, out of the AMS/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: /AMS 2/ }));
+    expect(await screen.findByText(/Red: swaps out/)).toBeTruthy();
+    expect(screen.getByText("Take it out (keep it open)")).toBeTruthy();
   });
 
-  it("has no title row under the breadcrumbs: the summary names it", async () => {
+  it("has every action out on the rows, and a handle to reorder sealed stock", async () => {
     show();
-    expect(await screen.findAllByText("Jade White")).toHaveLength(1);
+    expect(
+      await screen.findAllByRole("button", { name: "Open it" })
+    ).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Move #/ })).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Back to New (sealed)" })
+    ).toBeTruthy();
+  });
+
+  it("charts usage with an average and a run-out date", async () => {
+    show();
+    expect(await screen.findByRole("heading", { name: "Usage" })).toBeTruthy();
+    expect(screen.getByText(/g a day/, { selector: "b" })).toBeTruthy();
   });
 
   it("folds finished ones away until asked", async () => {
     show();
-    const toggle = await screen.findByRole("button", { name: /Finished/ });
+    const toggle = await screen.findByRole("button", { name: /^Finished \d/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");

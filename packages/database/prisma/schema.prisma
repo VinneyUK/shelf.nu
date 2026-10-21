@@ -2986,6 +2986,8 @@ model Spool {
   retiredAt        DateTime?
   /// What was left when it was marked finished (fork), so Bring it back restores it
   retiredPercent   Int?
+  /// Where it sits in its filament's sealed stock, as dragged (fork); unset ones follow by date added
+  stockOrder       Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -3020,6 +3022,22 @@ model SpoolCandidate {
   updatedAt        DateTime  @updatedAt
 
   @@index([organizationId, status])
+}
+
+/// What's on hand of a filament (line and colour) at the end of each day
+/// (fork): kept hourly and when its page is opened, for its usage chart.
+model FilamentLevel {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// "pla basic|jade white": the line and colour, lower case
+  key            String
+  day            DateTime @db.Date
+  /// Grams on hand that day (all its spools and refills, not finished)
+  grams          Int
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, key, day])
+  @@index([organizationId, key, day])
 }
 
 /// A filament's number, FIL-0001, for its QR label (fork): one per line and
