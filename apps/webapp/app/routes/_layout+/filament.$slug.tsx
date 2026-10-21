@@ -71,7 +71,6 @@ import {
 } from "~/components/filament/parts";
 import { TrashIcon } from "~/components/icons/library";
 import { FilamentIdChip } from "~/components/labels/filament-id-chip";
-import { FilamentLabelPreview } from "~/components/labels/filament-label-preview";
 import { useLabelledAt } from "~/components/labels/labelled-badge";
 import { PrintLabelButton } from "~/components/labels/print-label-button";
 import Header from "~/components/layout/header";
@@ -684,13 +683,18 @@ function DeleteSpool({
             <Trash2Icon className="size-4" />
           </Button>
         ) : (
+          // full size, like the buttons beside it; red so it stands apart
           <Button
             type="button"
             variant="secondary"
-            size="sm"
             disabled={disabled}
+            className="border-error-300 text-error-700 hover:bg-error-25 hover:text-error-800"
+            aria-label={`Delete ${label}`}
           >
-            Delete
+            <span className="inline-flex items-center gap-1.5">
+              <Trash2Icon className="size-4" aria-hidden="true" />
+              Delete
+            </span>
           </Button>
         )}
       </AlertDialogTrigger>
@@ -1463,19 +1467,8 @@ function SummaryCard({
         {fil && label ? (
           <div>
             <dt className={factLabel}>Label</dt>
-            <dd className="mt-1 flex items-center gap-2">
-              <FilamentLabelPreview
-                content={{
-                  filamentId: fil.label,
-                  colour: filament.colourName,
-                  line: filament.type,
-                  boxCode: code,
-                  qrUrl: label.qrUrl,
-                }}
-                settings={label.settings}
-                scale={0.42}
-              />
-              <PrintLabelButton id={fil.id} kind="filament" />
+            <dd className="mt-1">
+              <PrintLabelButton id={fil.id} kind="filament" withText />
             </dd>
             <dd className="mt-1 text-xs text-gray-500">
               {labelledAt ? (
@@ -1587,7 +1580,7 @@ function InUseCard({
               Finished
             </span>
           </Button>
-          <DeleteIcon spool={spool} label={label} />
+          <DeleteIcon spool={spool} label={label} words />
         </span>
       </div>
       <div className="flex flex-col items-center gap-8 p-6 sm:flex-row">
@@ -1803,12 +1796,20 @@ function ActIcon({
   );
 }
 
-/** Delete, as the bin icon, asking first. */
-function DeleteIcon({ spool, label }: { spool: Spool; label: string }) {
+/** Delete, asking first: the bin icon on rows, or "Delete" in words on the open card. */
+function DeleteIcon({
+  spool,
+  label,
+  words = false,
+}: {
+  spool: Spool;
+  label: string;
+  words?: boolean;
+}) {
   const act = useFetcher<Result>();
   return (
     <DeleteSpool
-      icon
+      icon={!words}
       label={label}
       disabled={isFormProcessing(act.state)}
       onDelete={() =>

@@ -215,6 +215,7 @@ html.dark .hover\:\!bg-error-800:hover { background-color: #912018 !important; }
 html.dark .hover\:bg-blue-100:hover { background-color: #16243a; }
 html.dark .hover\:bg-blue-200:hover { background-color: #1a2d4c; }
 html.dark .hover\:bg-blue-400:hover { background-color: #60a5fa; }
+html.dark .hover\:bg-error-25:hover { background-color: #1d1518; }
 html.dark .hover\:bg-error-600:hover { background-color: #D92D20; }
 html.dark .hover\:bg-error-800:hover { background-color: #912018; }
 html.dark .hover\:bg-gray-100:hover { background-color: #1c2229; }
@@ -241,6 +242,7 @@ html.dark .hover\:text-blue-700:hover { color: #93c5fd; }
 html.dark .hover\:text-blue-800:hover { color: #bfdbfe; }
 html.dark .hover\:text-error-600:hover { color: #F97066; }
 html.dark .hover\:text-error-700:hover { color: #FDA29B; }
+html.dark .hover\:text-error-800:hover { color: #FECDCA; }
 html.dark .hover\:text-gray-500:hover { color: #9098a6; }
 html.dark .hover\:text-gray-600:hover { color: #a1a8b3; }
 html.dark .hover\:text-gray-700:hover { color: #d1d5db; }

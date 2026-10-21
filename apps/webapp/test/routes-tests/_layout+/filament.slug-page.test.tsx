@@ -58,7 +58,10 @@ const spool = (over: Record<string, unknown>) => ({
 const opened = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 const data = {
   fil: { id: "n1", label: "FIL-0010" },
-  label: null,
+  label: {
+    qrUrl: "https://shelf.local/qr/abc",
+    settings: { labelWidth: 240, leftMargin: 8 },
+  },
   header: { title: "Jade White" },
   slug: "pla-basic--jade-white",
   filament: {
@@ -145,6 +148,17 @@ function show() {
 }
 
 describe("a filament's page", () => {
+  it("has a Print label button in the banner, without a label picture", async () => {
+    show();
+    expect(
+      await screen.findByRole("button", { name: "Print label" })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("img", { name: /Label for FIL-0010/ })
+    ).toBeNull();
+    expect(screen.getByText("Not printed yet")).toBeTruthy();
+  });
+
   it("sums it up at the top: on hand, units, cost, and how long it lasts", async () => {
     show();
     // 1 kg + 1 kg sealed, 270 g + 640 g open
@@ -167,6 +181,10 @@ describe("a filament's page", () => {
     expect(
       within(card).getByRole("button", { name: "Back to New" })
     ).toBeTruthy();
+    // Delete in words, the same size as the buttons beside it
+    expect(
+      within(card).getByRole("button", { name: /^Delete #/ }).textContent
+    ).toContain("Delete");
   });
 
   it("shows another open spool as a row, and the sealed ones in the table", async () => {
