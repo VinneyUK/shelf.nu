@@ -24,6 +24,7 @@ import {
   type StatusReport,
   type Tray,
 } from "./ams";
+import { trackPrint } from "./prints.server";
 import { syncAmsTrays } from "./service.server";
 
 export type PrinterSettings = {
@@ -199,6 +200,14 @@ export type PrinterStatusView = {
   problem: "auth" | "connection" | null;
   /** The connection's error in its own words, for anything else */
   error: string | null;
+  /** The job printing now, with how far through it is (fork) */
+  job: {
+    name: string;
+    percent: number | null;
+    minutesLeft: number | null;
+    layer: number | null;
+    layers: number | null;
+  } | null;
 };
 
 function viewOf(
@@ -219,6 +228,18 @@ function viewOf(
     hms: watch?.status.hms ?? [],
     problem: watch?.connected ? null : connectionProblem(error),
     error: watch?.connected ? null : error,
+    job:
+      watch?.connected &&
+      (watch.status.state === "printing" || watch.status.state === "paused") &&
+      watch.status.jobName
+        ? {
+            name: watch.status.jobName,
+            percent: watch.status.percent ?? null,
+            minutesLeft: watch.status.minutesLeft ?? null,
+            layer: watch.status.layer ?? null,
+            layers: watch.status.layers ?? null,
+          }
+        : null,
   };
 }
 
@@ -238,6 +259,7 @@ export async function printerStatus(
       hms: [],
       problem: null,
       error: null,
+      job: null,
     };
   return viewOf(watchers.get(organizationId), s.lastSeenAt);
 }
@@ -425,7 +447,12 @@ async function handleReport(
   }
   // the status bar: state, slot in use, slots and health, from any report
   const status = statusInReport(report);
+  const before = watch.status.state;
   watch.status = { ...watch.status, ...status };
+  // a print starting or ending: record it (fork)
+  void trackPrint(organizationId, before, watch.status).catch((cause) =>
+    Logger.error(cause)
+  );
   watch.lastReportAt = Date.now();
   publishStatus(organizationId, watch);
   if (!(report as { print?: { ams?: unknown } })?.print?.ams) return;

@@ -69,6 +69,7 @@ import {
   todayIso,
   useMoney,
 } from "~/components/filament/parts";
+import { PrintResult, took, when } from "~/components/filament/prints";
 import { TrashIcon } from "~/components/icons/library";
 import { FilamentIdChip } from "~/components/labels/filament-id-chip";
 import { useLabelledAt } from "~/components/labels/labelled-badge";
@@ -119,6 +120,7 @@ import {
   refreshPrice,
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
+import { listPrints } from "~/modules/filament/prints.server";
 import { daysOnHand, usageRate } from "~/modules/filament/run-out";
 import {
   changeSpoolState,
@@ -200,6 +202,11 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     const key = filamentKey(first.type, first.colourName);
     await recordLevels(organizationId, key).catch(() => undefined);
     const levels = await getLevels(organizationId, key);
+    // the prints that used it, the last 30 days (fork)
+    const prints = await listPrints(organizationId, {
+      key,
+      since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    });
     const entry = catalogueEntry(first.type);
     // its label: FIL-0001 and what the printed label looks like
     const labelsOff = await isFeatureSwitchedOff(
@@ -222,6 +229,15 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         : null;
     return payload({
       inAms,
+      prints: prints.map((p) => ({
+        id: p.id,
+        name: p.name,
+        startedAt: p.startedAt,
+        endedAt: p.endedAt,
+        status: p.status,
+        // what this filament used in it
+        uses: p.uses.filter((u) => u.key === key),
+      })),
       levels: levels.map((l) => ({
         day: l.day.toISOString().slice(0, 10),
         grams: l.grams,
@@ -1286,6 +1302,7 @@ export default function FilamentDetail() {
             ) : null}
             <SealedCard items={sealed} numbers={numbers} tare={tare} />
             <UsageCard levels={data.levels} />
+            <PrintsCard prints={data.prints} />
             <FinishedCard items={finished} numbers={numbers} />
           </div>
           <div className="flex flex-col gap-5">
@@ -1909,6 +1926,101 @@ function BringBack({ spool, label }: { spool: Spool; label: string }) {
         </PopoverContent>
       </PopoverPortal>
     </Popover>
+  );
+}
+
+/** The prints that used this filament in the last 30 days, and what each used and cost. */
+function PrintsCard({ prints }: { prints: PageData["prints"] }) {
+  const money = useMoney();
+  const grams = prints.reduce(
+    (n, p) => n + p.uses.reduce((m, u) => m + u.grams, 0),
+    0
+  );
+  const cost = prints.reduce(
+    (n, p) => n + p.uses.reduce((m, u) => m + (u.cost ?? 0), 0),
+    0
+  );
+  const head = "px-5 py-2 text-left text-xs font-medium text-gray-500";
+  const cell = "px-5 py-2.5 align-middle text-sm";
+  return (
+    <Card className="my-0 p-0">
+      <div className={sectionHead}>
+        <h3 className="text-text-md font-semibold text-gray-900">Prints</h3>
+        <span className="text-sm text-gray-500">Last 30 days</span>
+        {prints.length ? (
+          <span className="ml-auto flex gap-6 text-sm">
+            <span>
+              <span className="text-gray-500">Used </span>
+              <b className="text-gray-900">{grams} g</b>
+            </span>
+            <span>
+              <span className="text-gray-500">Cost </span>
+              <b className="text-gray-900">{money(cost)}</b>
+            </span>
+          </span>
+        ) : null}
+        <Button to="/filament/prints" variant="link" className="ml-2 text-sm">
+          All prints
+        </Button>
+      </div>
+      {prints.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-gray-500">
+          No prints recorded with it yet. Shelf records each print the printer
+          runs, and what each filament used.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-25">
+              <tr>
+                <th className={head}>Print</th>
+                <th className={head}>When</th>
+                <th className={head}>Took</th>
+                <th className={tw(head, "text-right")}>Used</th>
+                <th className={tw(head, "text-right")}>Cost</th>
+                <th className={head}>Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {prints.map((p) => {
+                const used = p.uses.reduce((m, u) => m + u.grams, 0);
+                const c = p.uses.reduce((m, u) => m + (u.cost ?? 0), 0);
+                return (
+                  <tr key={p.id}>
+                    <td className={tw(cell, "font-medium text-gray-900")}>
+                      {p.name}
+                    </td>
+                    <td className={tw(cell, "text-gray-600")}>
+                      {when(p.startedAt)}
+                    </td>
+                    <td className={tw(cell, "text-gray-600")}>{took(p)}</td>
+                    <td
+                      className={tw(
+                        cell,
+                        "text-right tabular-nums text-gray-900"
+                      )}
+                    >
+                      {used} g
+                    </td>
+                    <td
+                      className={tw(
+                        cell,
+                        "text-right tabular-nums text-gray-900"
+                      )}
+                    >
+                      {c > 0 ? money(c) : "—"}
+                    </td>
+                    <td className={cell}>
+                      <PrintResult status={p.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 

@@ -62,7 +62,8 @@ describe("statusInReport", () => {
   });
 
   it("leaves out what a report doesn't mention, so the last value stands", () => {
-    expect(statusInReport({ print: { mc_percent: 40 } })).toEqual({});
+    // (how far through a print is now read too: see "the job's progress")
+    expect(statusInReport({ print: { mc_print_stage: 2 } })).toEqual({});
     expect(statusInReport({ print: { gcode_state: "PAUSE" } })).toEqual({
       state: "paused",
     });
@@ -105,5 +106,27 @@ describe("connectionProblem", () => {
     );
     expect(connectionProblem("Something else")).toBeNull();
     expect(connectionProblem(null)).toBeNull();
+  });
+});
+
+describe("the job's progress (fork)", () => {
+  it("reads the job's name, how far through, minutes left and layers", () => {
+    expect(
+      statusInReport({
+        print: {
+          subtask_name: "Desk organiser",
+          mc_percent: 42,
+          mc_remaining_time: 216,
+          layer_num: 118,
+          total_layer_num: 280,
+        },
+      })
+    ).toEqual({
+      jobName: "Desk organiser",
+      percent: 42,
+      minutesLeft: 216,
+      layer: 118,
+      layers: 280,
+    });
   });
 });

@@ -93,6 +93,12 @@ export interface FilamentStatusBarProps {
   printer: {
     state: PrinterState;
     issue?: PrinterIssue | null;
+    /** The job printing now (fork): shown in the header line */
+    job?: {
+      name: string;
+      percent: number | null;
+      minutesLeft: number | null;
+    } | null;
   };
   /** Where the "fix it" buttons go. */
   links: {
@@ -401,6 +407,7 @@ export function FilamentStatusBar({
               )}
               {pill.label}
             </span>
+            {printer.job ? <JobLine job={printer.job} /> : null}
           </div>
           {Number.isFinite(lastUpdateMs) && lastUpdateMs > 0 ? (
             <span className="hidden items-center gap-1 whitespace-nowrap text-xs text-gray-600 sm:inline-flex">
@@ -644,6 +651,45 @@ function SlotItem({
         </span>
       </Wrapper>
     </li>
+  );
+}
+
+/** "Desk organiser · 42% · 3h 36m left", with a thin bar (fork). */
+function JobLine({
+  job,
+}: {
+  job: { name: string; percent: number | null; minutesLeft: number | null };
+}) {
+  const left =
+    job.minutesLeft === null
+      ? null
+      : job.minutesLeft >= 60
+      ? `${Math.floor(job.minutesLeft / 60)}h ${job.minutesLeft % 60}m left`
+      : `${job.minutesLeft}m left`;
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span className="truncate text-sm text-gray-900">
+        <b className="font-semibold">{job.name}</b>
+        {job.percent !== null ? ` · ${job.percent}%` : ""}
+        {left ? ` · ${left}` : ""}
+      </span>
+      {job.percent !== null ? (
+        <span
+          className="hidden h-1.5 w-32 shrink-0 overflow-hidden rounded-full sm:block"
+          style={{ backgroundColor: "var(--level-track)" }}
+          role="progressbar"
+          aria-label="Print progress"
+          aria-valuenow={job.percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span
+            className="block h-full rounded-full bg-primary-500"
+            style={{ width: `${job.percent}%` }}
+          />
+        </span>
+      ) : null}
+    </span>
   );
 }
 

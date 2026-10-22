@@ -120,6 +120,12 @@ export type StatusReport = {
   slots?: SlotReport[];
   /** Health messages, as Bambu's codes ("0700_2000_0002_0001") */
   hms?: string[];
+  /** The job: its name, how far through, minutes left, and layers */
+  jobName?: string | null;
+  percent?: number | null;
+  minutesLeft?: number | null;
+  layer?: number | null;
+  layers?: number | null;
 };
 
 const STATES: Record<string, PrinterState> = {
@@ -177,6 +183,27 @@ export function statusInReport(report: unknown): StatusReport {
     }
     out.slots = slots;
   }
+  // the job's progress (fork): name, %, minutes left, layer
+  if (typeof print.subtask_name === "string")
+    out.jobName = print.subtask_name.trim() || null;
+  const num = (v: unknown) =>
+    typeof v === "number" || (typeof v === "string" && v.trim() !== "")
+      ? Number(v)
+      : NaN;
+  if (print.mc_percent !== undefined && Number.isFinite(num(print.mc_percent)))
+    out.percent = Math.max(0, Math.min(100, Math.round(num(print.mc_percent))));
+  if (
+    print.mc_remaining_time !== undefined &&
+    Number.isFinite(num(print.mc_remaining_time))
+  )
+    out.minutesLeft = Math.max(0, Math.round(num(print.mc_remaining_time)));
+  if (print.layer_num !== undefined && Number.isFinite(num(print.layer_num)))
+    out.layer = num(print.layer_num);
+  if (
+    print.total_layer_num !== undefined &&
+    Number.isFinite(num(print.total_layer_num))
+  )
+    out.layers = num(print.total_layer_num);
   if (Array.isArray(print.hms)) {
     out.hms = (print.hms as { attr?: number; code?: number }[])
       .filter((h) => typeof h.attr === "number" && typeof h.code === "number")

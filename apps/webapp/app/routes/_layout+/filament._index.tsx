@@ -675,7 +675,11 @@ function StatusBar({
         online: !!status?.online,
         lastUpdate: status?.lastUpdate ?? null,
       }}
-      printer={{ state: status?.state ?? "offline", issue }}
+      printer={{
+        state: status?.state ?? "offline",
+        issue,
+        job: status?.job ?? null,
+      }}
       links={{
         printerSettings: "/settings/printer",
         findInStock: (s) =>
@@ -1525,6 +1529,9 @@ export default function FilamentPage() {
           <GetPictures images={images} spools={spools} />
           {onHand.length > 0 ? <CheckPrices /> : null}
           {missingPrices > 0 ? <FillPrices count={missingPrices} /> : null}
+          <Button to="/filament/prints" variant="secondary">
+            Prints
+          </Button>
           {onHand.length > 0 ? (
             <Button to="/filament/stocktake" variant="secondary">
               Stocktake

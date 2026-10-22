@@ -3024,6 +3024,44 @@ model SpoolCandidate {
   @@index([organizationId, status])
 }
 
+/// A print the printer ran (fork): recorded from its reports, with what
+/// each filament used, measured from the AMS's levels before and after.
+model PrintJob {
+  id             String         @id @default(cuid())
+  organizationId String
+  /// The job's name, as the printer reports it
+  name           String
+  startedAt      DateTime
+  endedAt        DateTime?
+  /// running, done, failed or cancelled
+  status         String         @default("running")
+  /// Each AMS slot's spool and level when it started: {"1":{"spoolId":"…","percent":96}}
+  startLevels    Json?
+  uses           PrintJobUse[]
+  createdAt      DateTime       @default(now())
+
+  @@index([organizationId, startedAt])
+}
+
+/// What one filament used in a print (fork).
+model PrintJobUse {
+  id             String   @id @default(cuid())
+  organizationId String
+  jobId          String
+  job            PrintJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  spoolId        String?
+  /// The filament: "pla basic|jade white"
+  key            String
+  slot           Int?
+  /// Grams used, measured from the AMS's levels
+  grams          Int
+  /// What it cost, at what was paid for that spool
+  cost           Float?
+
+  @@index([organizationId, key])
+  @@index([jobId])
+}
+
 /// What's on hand of a filament (line and colour) at the end of each day
 /// (fork): kept hourly and when its page is opened, for its usage chart.
 model FilamentLevel {

@@ -120,3 +120,21 @@ describe("FilamentStatusBar", () => {
     ).toBeTruthy();
   });
 });
+
+describe("the job printing now (fork)", () => {
+  it("shows its name, how far through and the time left, with a bar", () => {
+    show({
+      printer: {
+        state: "printing",
+        issue: null,
+        job: { name: "Desk organiser", percent: 42, minutesLeft: 216 },
+      },
+    });
+    expect(
+      screen.getByText(/Desk organiser/).parentElement?.textContent
+    ).toContain("Desk organiser · 42% · 3h 36m left");
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+      "42"
+    );
+  });
+});

@@ -133,6 +133,25 @@ const data = {
       colourHex: "#D62B2B",
     },
   ],
+  prints: [
+    {
+      id: "j1",
+      name: "Cable clips x12",
+      startedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      endedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      status: "done",
+      uses: [
+        {
+          id: "u1",
+          key: "pla basic|jade white",
+          spoolId: "5",
+          slot: 2,
+          grams: 38,
+          cost: 0.65,
+        },
+      ],
+    },
+  ],
   levels: [
     { day: "2026-10-15", grams: 3600 },
     { day: "2026-10-17", grams: 3300 },
@@ -234,6 +253,17 @@ describe("a filament's page", () => {
     expect(
       screen.getByRole("button", { name: "Back to New (sealed)" })
     ).toBeTruthy();
+  });
+
+  it("lists the prints that used it, with what each used and cost", async () => {
+    show();
+    expect(await screen.findByRole("heading", { name: "Prints" })).toBeTruthy();
+    expect(screen.getByText("Cable clips x12")).toBeTruthy();
+    expect(screen.getAllByText("38 g").length).toBeGreaterThan(0);
+    const card = screen
+      .getByRole("heading", { name: "Prints" })
+      .closest("div.my-0") as HTMLElement;
+    expect(within(card).getByText("Finished")).toBeTruthy();
   });
 
   it("charts usage with an average and a run-out date", async () => {
