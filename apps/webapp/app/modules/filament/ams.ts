@@ -122,6 +122,8 @@ export type StatusReport = {
   hms?: string[];
   /** The job: its name, how far through, minutes left, and layers */
   jobName?: string | null;
+  /** The print's file, as the printer names it ("Metadata/plate_1.gcode") */
+  gcodeFile?: string | null;
   percent?: number | null;
   minutesLeft?: number | null;
   layer?: number | null;
@@ -186,6 +188,8 @@ export function statusInReport(report: unknown): StatusReport {
   // the job's progress (fork): name, %, minutes left, layer
   if (typeof print.subtask_name === "string")
     out.jobName = print.subtask_name.trim() || null;
+  if (typeof print.gcode_file === "string")
+    out.gcodeFile = print.gcode_file.trim() || null;
   const num = (v: unknown) =>
     typeof v === "number" || (typeof v === "string" && v.trim() !== "")
       ? Number(v)

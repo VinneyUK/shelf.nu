@@ -3037,6 +3037,14 @@ model PrintJob {
   status         String         @default("running")
   /// Each AMS slot's spool and level when it started: {"1":{"spoolId":"…","percent":96}}
   startLevels    Json?
+  /// The AMS slots that fed it while it printed
+  fedSlots       Int[]          @default([])
+  /// The print's file on the printer, as it reports it ("Metadata/plate_1.gcode" or a name)
+  gcodeFile      String?
+  /// How far it got (0 to 100), for a print that stopped early
+  endPercent     Int?
+  /// Where the grams came from: "slicer" (the print's file), "manual", or none
+  source         String?
   uses           PrintJobUse[]
   createdAt      DateTime       @default(now())
 

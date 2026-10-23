@@ -1,6 +1,7 @@
 /**
- * Usage per print (fork): what each spool used, how a print ended, and its
- * record kept from the printer's reports. The database is pretend.
+ * Usage per print (fork): measured from the slicer's figures in the print's
+ * file, scaled by how far it got; recorded from the printer's reports. The
+ * database is pretend.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,15 +12,19 @@ const m = vi.hoisted(() => ({
     updateMany: vi.fn(),
     findMany: vi.fn(),
   },
-  use: { createMany: vi.fn() },
+  use: { createMany: vi.fn(), deleteMany: vi.fn() },
   spool: { findMany: vi.fn() },
 }));
 vi.mock("~/database/db.server", () => ({
-  db: { printJob: m.job, printJobUse: m.use, spool: m.spool },
+  db: {
+    printJob: m.job,
+    printJobUse: m.use,
+    spool: m.spool,
+    $transaction: (ops: unknown[]) => Promise.all(ops),
+  },
 }));
-const { finishPrint, outcome, trackPrint, usesFrom } = await import(
-  "./prints.server"
-);
+const { measurePrint, outcome, setPrintUses, trackPrint, usesFromSlicer } =
+  await import("./prints.server");
 
 const start = {
   "1": {
@@ -28,45 +33,37 @@ const start = {
     percent: 96,
     weightGrams: 1000,
     pricePaid: 16.99,
+    colourHex: "#D62B2B",
+    material: "PLA",
   },
   "2": {
     spoolId: "black",
     key: "pla basic|black",
     percent: 45,
     weightGrams: 1000,
-    pricePaid: null,
+    pricePaid: 16.99,
+    colourHex: "#161616",
+    material: "PLA",
   },
 };
+const black = [{ id: 1, type: "PLA", colourHex: "#000000", grams: 33.4 }];
 
 beforeEach(() => vi.clearAllMocks());
 
-describe("usesFrom", () => {
-  it("is each spool's drop in level, in grams, priced at what was paid", () => {
-    expect(
-      usesFrom(
-        start,
-        new Map([
-          ["red", 92],
-          ["black", 45],
-        ])
-      )
-    ).toEqual([
-      { spoolId: "red", key: "pla basic|red", slot: 1, grams: 40, cost: 0.68 },
+describe("usesFromSlicer", () => {
+  it("is the slicer's grams on the spool it printed from, priced at what was paid", () => {
+    expect(usesFromSlicer(black, start, [2], 1)).toEqual([
+      {
+        spoolId: "black",
+        key: "pla basic|black",
+        slot: 2,
+        grams: 33,
+        cost: 0.56,
+      },
     ]);
   });
-  it("has no cost for a spool with no price", () => {
-    expect(
-      usesFrom(
-        start,
-        new Map([
-          ["red", 96],
-          ["black", 25],
-        ])
-      )[0]
-    ).toMatchObject({
-      grams: 200,
-      cost: null,
-    });
+  it("is scaled by how far a print that stopped early got", () => {
+    expect(usesFromSlicer(black, start, [2], 0.4)[0].grams).toBe(13);
   });
 });
 
@@ -79,14 +76,16 @@ describe("outcome", () => {
 });
 
 describe("trackPrint", () => {
-  it("opens a record when printing starts, with each AMS spool's level", async () => {
+  it("opens a record when printing starts, with its file and the AMS spools", async () => {
     m.job.findFirst.mockResolvedValue(null);
     m.spool.findMany.mockResolvedValue([
       {
         id: "red",
         amsSlot: 1,
         type: "PLA Basic",
+        material: "PLA",
         colourName: "Red",
+        colourHex: "#D62B2B",
         remainingPercent: 96,
         weightGrams: 1000,
         pricePaid: 16.99,
@@ -95,16 +94,36 @@ describe("trackPrint", () => {
     await trackPrint("o1", "idle", {
       state: "printing",
       jobName: "Cable clips",
+      gcodeFile: "Metadata/plate_1.gcode",
+      activeSlot: 1,
     });
     expect(m.job.create.mock.calls[0][0].data).toMatchObject({
-      organizationId: "o1",
       name: "Cable clips",
-      startLevels: { "1": { spoolId: "red", percent: 96 } },
+      gcodeFile: "Metadata/plate_1.gcode",
+      fedSlots: [1],
+      startLevels: { "1": { spoolId: "red", colourHex: "#D62B2B" } },
+    });
+  });
+
+  it("keeps each slot that feeds it while it prints", async () => {
+    m.job.findFirst.mockResolvedValue({
+      id: "j1",
+      name: "Cable clips",
+      gcodeFile: "x",
+      fedSlots: [1],
+    });
+    await trackPrint("o1", "printing", { state: "printing", activeSlot: 2 });
+    expect(m.job.updateMany.mock.calls[0][0].data).toEqual({
+      fedSlots: [1, 2],
     });
   });
 
   it("carries on with the open record when Shelf restarts mid-print", async () => {
-    m.job.findFirst.mockResolvedValue({ id: "j1", name: "Cable clips" });
+    m.job.findFirst.mockResolvedValue({
+      id: "j1",
+      name: "Cable clips",
+      fedSlots: [],
+    });
     await trackPrint("o1", undefined, {
       state: "printing",
       jobName: "Cable clips",
@@ -112,55 +131,84 @@ describe("trackPrint", () => {
     expect(m.job.create).not.toHaveBeenCalled();
   });
 
-  it("closes it a little after printing stops, once the levels have settled", async () => {
-    vi.useFakeTimers();
-    m.job.findFirst.mockResolvedValue({
-      id: "j1",
-      name: "Cable clips",
-      status: "running",
-      startLevels: start,
-    });
-    await trackPrint("o1", "printing", { state: "idle", percent: 100 });
-    expect(m.job.updateMany).not.toHaveBeenCalled();
-    m.spool.findMany.mockResolvedValue([
-      { id: "red", remainingPercent: 92, status: "active" },
-      { id: "black", remainingPercent: 45, status: "active" },
-    ]);
+  it("closes it when printing stops, and measures it from its file", async () => {
+    m.job.findFirst
+      .mockResolvedValueOnce({ id: "j1", name: "Cable clips", fedSlots: [2] })
+      .mockResolvedValueOnce({
+        id: "j1",
+        name: "Cable clips",
+        status: "done",
+        endPercent: 100,
+        gcodeFile: "Metadata/plate_1.gcode",
+        fedSlots: [2],
+        startLevels: start,
+      });
     m.job.updateMany.mockResolvedValue({ count: 1 });
-    await vi.advanceTimersByTimeAsync(91_000);
+    const readFile = vi.fn().mockResolvedValue(black);
+    await trackPrint(
+      "o1",
+      "printing",
+      { state: "idle", percent: 100 },
+      readFile
+    );
     expect(m.job.updateMany.mock.calls[0][0].data).toMatchObject({
       status: "done",
+      endPercent: 100,
     });
+    expect(readFile).toHaveBeenCalledWith(
+      "Metadata/plate_1.gcode",
+      "Cable clips"
+    );
     expect(m.use.createMany.mock.calls[0][0].data).toEqual([
-      expect.objectContaining({ jobId: "j1", spoolId: "red", grams: 40 }),
+      expect.objectContaining({ jobId: "j1", spoolId: "black", grams: 33 }),
     ]);
-    vi.useRealTimers();
   });
 });
 
-describe("finishPrint", () => {
-  it("counts a spool that ran out and was finished as empty", async () => {
+describe("measurePrint", () => {
+  it("says so when the printer no longer has the file", async () => {
     m.job.findFirst.mockResolvedValue({
       id: "j1",
-      startLevels: { "2": start["2"] },
+      name: "Gone",
+      status: "done",
+      startLevels: start,
+      fedSlots: [],
     });
-    m.spool.findMany.mockResolvedValue([
-      { id: "black", remainingPercent: 0, status: "retired" },
-    ]);
-    m.job.updateMany.mockResolvedValue({ count: 1 });
-    await finishPrint("o1", "j1", "done");
-    expect(m.use.createMany.mock.calls[0][0].data[0]).toMatchObject({
-      grams: 450,
-    });
-  });
-
-  it("records it only once", async () => {
-    m.job.findFirst.mockResolvedValue({ id: "j1", startLevels: start });
-    m.spool.findMany.mockResolvedValue([
-      { id: "red", remainingPercent: 90, status: "active" },
-    ]);
-    m.job.updateMany.mockResolvedValue({ count: 0 });
-    await finishPrint("o1", "j1", "done");
+    expect(
+      await measurePrint("o1", "j1", vi.fn().mockResolvedValue(null))
+    ).toEqual({ measured: false });
     expect(m.use.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("setPrintUses", () => {
+  it("replaces a print's filament with what's set by hand, priced", async () => {
+    m.job.findFirst.mockResolvedValue({ id: "j1" });
+    m.spool.findMany.mockResolvedValue([
+      {
+        id: "black",
+        type: "PLA Basic",
+        colourName: "Black",
+        amsSlot: 2,
+        weightGrams: 1000,
+        pricePaid: 16.99,
+      },
+    ]);
+    await setPrintUses("o1", "j1", [
+      { spoolId: "black", grams: 34 },
+      { spoolId: "nope", grams: 5 },
+    ]);
+    expect(m.use.deleteMany).toHaveBeenCalled();
+    expect(m.use.createMany.mock.calls[0][0].data).toEqual([
+      expect.objectContaining({
+        spoolId: "black",
+        key: "pla basic|black",
+        grams: 34,
+        cost: 0.58,
+      }),
+    ]);
+    expect(m.job.updateMany.mock.calls[0][0].data).toEqual({
+      source: "manual",
+    });
   });
 });

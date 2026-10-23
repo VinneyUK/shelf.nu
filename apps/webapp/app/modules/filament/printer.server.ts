@@ -24,6 +24,7 @@ import {
   type StatusReport,
   type Tray,
 } from "./ams";
+import { fetchSliceInfo } from "./print-file.server";
 import { trackPrint } from "./prints.server";
 import { syncAmsTrays } from "./service.server";
 
@@ -450,9 +451,9 @@ async function handleReport(
   const before = watch.status.state;
   watch.status = { ...watch.status, ...status };
   // a print starting or ending: record it (fork)
-  void trackPrint(organizationId, before, watch.status).catch((cause) =>
-    Logger.error(cause)
-  );
+  void trackPrint(organizationId, before, watch.status, (file, name) =>
+    readSliceInfo(organizationId, file, name)
+  ).catch((cause) => Logger.error(cause));
   watch.lastReportAt = Date.now();
   publishStatus(organizationId, watch);
   if (!(report as { print?: { ams?: unknown } })?.print?.ams) return;
@@ -508,4 +509,19 @@ async function note(
  */
 export function currentTrays(organizationId: string): Tray[] | null {
   return watchers.get(organizationId)?.last ?? null;
+}
+
+/** A print's slicer figures, read from its file on the printer (fork). */
+export async function readSliceInfo(
+  organizationId: string,
+  gcodeFile: string | null,
+  jobName: string
+) {
+  const s = await getPrinterSettings(organizationId);
+  if (!s.host || !s.accessCode) return null;
+  return fetchSliceInfo(
+    { host: s.host, accessCode: s.accessCode },
+    gcodeFile,
+    jobName
+  );
 }

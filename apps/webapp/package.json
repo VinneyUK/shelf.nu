@@ -70,6 +70,7 @@
     "@supabase/supabase-js": "^2.103.0",
     "@tanstack/react-table": "^8.21.3",
     "@tremor/react": "^3.18.7",
+    "basic-ftp": "5.2.1",
     "changedpi": "^1.0.4",
     "chardet": "^2.1.1",
     "class-variance-authority": "^0.7.1",
