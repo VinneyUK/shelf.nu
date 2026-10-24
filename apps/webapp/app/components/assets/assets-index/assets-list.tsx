@@ -11,6 +11,7 @@ import { List, type ListProps } from "~/components/list";
 import { ListContentWrapper } from "~/components/list/content-wrapper";
 import { EmptyState } from "~/components/list/empty-state";
 import { LocationBadge } from "~/components/location/location-badge";
+import { MatterNameMark } from "~/components/matter/matter-name-mark"; // matter (fork)
 import { Button } from "~/components/shared/button";
 import { EmptyTableValue } from "~/components/shared/empty-table-value";
 import { GrayBadge } from "~/components/shared/gray-badge";
@@ -333,6 +334,7 @@ export const ListAssetContent = ({
                 >
                   {item.title}
                 </Button>
+                <MatterNameMark assetId={item.id} />
               </span>
               {/*
                 Single metadata line: status badge first (most glanceable —

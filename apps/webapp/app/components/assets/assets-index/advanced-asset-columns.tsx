@@ -17,6 +17,7 @@ import { LabelledCell } from "~/components/labels/labelled-badge"; // labels fea
 import LineBreakText from "~/components/layout/line-break-text";
 import { LocationBadge } from "~/components/location/location-badge";
 import { MarkdownViewer } from "~/components/markdown/markdown-viewer";
+import { MatterNameMark } from "~/components/matter/matter-name-mark"; // matter (fork)
 import { Button } from "~/components/shared/button";
 import { DateS } from "~/components/shared/date";
 import { EmptyTableValue } from "~/components/shared/empty-table-value";
@@ -200,6 +201,7 @@ export function AdvancedIndexColumn({
                       QTY
                     </span>
                   ) : null}
+                  <MatterNameMark assetId={item.id} />
                 </div>
               </div>
             </div>

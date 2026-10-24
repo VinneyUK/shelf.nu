@@ -17,6 +17,7 @@ import { AssetImage } from "~/components/assets/asset-image";
 import { CategoryBadge } from "~/components/assets/category-badge";
 import { useLabelledAt } from "~/components/labels/labelled-badge"; // labels feature
 import { EmptyState } from "~/components/list/empty-state";
+import { MatterNameMark } from "~/components/matter/matter-name-mark"; // matter (fork)
 import { DateS } from "~/components/shared/date";
 import { Tag as TagBadge } from "~/components/shared/tag";
 import { StatusOrSold } from "~/components/sold/status-or-sold"; // sold feature
@@ -130,12 +131,17 @@ function AssetTile({ item }: { item: AssetsFromViewItem }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-3">
-        <Link
-          to={href}
-          className="line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900 hover:underline"
-        >
-          {item.title}
-        </Link>
+        <div className="flex items-start gap-1.5">
+          <Link
+            to={href}
+            className="line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900 hover:underline"
+          >
+            {item.title}
+          </Link>
+          <span className="mt-0.5">
+            <MatterNameMark assetId={item.id} />
+          </span>
+        </div>
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3">
           {item.sequentialId ? (
