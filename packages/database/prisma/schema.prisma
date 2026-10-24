@@ -311,6 +311,8 @@ model Asset {
   @@index([sequentialId], name: "Asset_sequentialId_idx")
   // Index for foreign key
   @@index([userId])
+  /// Its Matter device's setup code and details (fork)
+  matter         AssetMatter?
 }
 
 enum AssetStatus {
@@ -3030,6 +3032,7 @@ model AssetMatter {
   id             String   @id @default(cuid())
   organizationId String
   assetId        String   @unique
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// The QR's "MT:…" text, encrypted; null when only the manual code is known
   payload        String?
   /// The 11- or 21-digit manual pairing code, encrypted

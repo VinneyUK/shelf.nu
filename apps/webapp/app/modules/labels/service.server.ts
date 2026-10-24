@@ -17,6 +17,8 @@ import {
   ensureFilamentQr,
   getFilamentNumbers,
 } from "~/modules/filament/numbers.server";
+import { formatManualCode } from "~/modules/matter/payload";
+import { revealMatter } from "~/modules/matter/service.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { SERVER_URL } from "~/utils/env";
 import { ShelfError } from "~/utils/error";
@@ -633,7 +635,9 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
     // Same link Shelf's own QR codes use (honours URL_SHORTENER)
     const qrUrl = qrUrlFor(job.qrId);
     const body = printRequestBody(
-      job.layout === "filament"
+      job.layout === "matter"
+        ? await matterLabelContent(job.organizationId, job.assetId, job.title)
+        : job.layout === "filament"
         ? {
             filamentId: job.sequentialId,
             colour: job.title,
@@ -730,6 +734,67 @@ export function nudgeLabelPrinter() {
  * Queues assets carrying a workspace's queue tag, then takes the tag off.
  * Done in that order so a crash in between prints twice rather than never.
  */
+/**
+ * A Matter device's label (fork): queued for an asset with a Matter code. The
+ * code itself isn't kept on the print job; it's read, decrypted, when the
+ * label is printed.
+ */
+export async function queueMatterLabel({
+  organizationId,
+  userId,
+  assetId,
+}: {
+  organizationId: string;
+  userId: string;
+  assetId: string;
+}) {
+  const asset = await db.asset.findFirst({
+    where: { id: assetId, organizationId },
+    select: { title: true, matter: { select: { productName: true } } },
+  });
+  if (!asset?.matter)
+    throw new ShelfError({
+      cause: null,
+      message: "Add the device's Matter code first.",
+      label,
+      shouldBeCaptured: false,
+    });
+  await db.labelPrintJob.create({
+    data: {
+      organizationId,
+      assetId,
+      layout: "matter",
+      sequentialId: "",
+      title: asset.matter.productName ?? asset.title,
+      qrId: "matter",
+      source: "manual",
+      requestedById: userId,
+    },
+  });
+  nudgeLabelPrinter();
+}
+
+/** What a Matter label shows, decrypted only now, as it's printed. */
+async function matterLabelContent(
+  organizationId: string,
+  assetId: string | null,
+  name: string
+) {
+  if (!assetId)
+    throw new ShelfError({
+      cause: null,
+      message: "The device is gone.",
+      label,
+      shouldBeCaptured: false,
+    });
+  const code = await revealMatter(organizationId, assetId);
+  return {
+    matterCode: formatManualCode(code.manualCode),
+    name,
+    payload: code.payload,
+  };
+}
+
 export async function queueTaggedAssets() {
   try {
     const workspaces = await db.labelSettings.findMany({

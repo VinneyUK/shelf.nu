@@ -9,6 +9,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   PencilIcon,
+  PrinterIcon,
   QrCodeIcon,
   ScanLineIcon,
   ShieldCheckIcon,
@@ -206,6 +207,23 @@ export function MatterCard({ assetId }: { assetId: string }) {
                     <EyeIcon className="size-4" aria-hidden="true" />
                   )}
                   {shown ? "Hide" : "Reveal"}
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={isFormProcessing(act.state)}
+                onClick={() =>
+                  void act.submit(
+                    { intent: "print" },
+                    { method: "post", action: url }
+                  )
+                }
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <PrinterIcon className="size-4" aria-hidden="true" /> Print
+                  label
                 </span>
               </Button>
               <Button

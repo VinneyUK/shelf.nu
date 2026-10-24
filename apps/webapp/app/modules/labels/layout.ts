@@ -261,9 +261,82 @@ export function filamentLabelPayload(
   ];
 }
 
+/** A Matter device's label (fork): what goes on it. */
+export type MatterLabelContent = {
+  /** "3497-011-2332" */
+  matterCode: string;
+  /** The device: "Eve Energy", or the asset's name */
+  name: string;
+  /** The QR's "MT:…" text; null when only the manual code is known */
+  payload: string | null;
+};
+
+/** The black band down the left, with an M in it. */
+export const MATTER_BAND = 30;
+
+/**
+ * A Matter label (design C): a black band with "M", the device's Matter QR
+ * (for a Home app to scan), then the manual code and the device's name.
+ */
+export function matterLabelPayload(
+  content: MatterLabelContent,
+  settings: LabelLayoutSettings
+) {
+  const m = settings.leftMargin;
+  const qrLeft = MATTER_BAND + 4 + m;
+  const left = content.payload ? qrLeft + QR_SIZE + 6 : qrLeft;
+  const room = settings.labelWidth - left - 4;
+  // the name cut to fit beside the QR
+  let name = content.name;
+  while (name.length > 1 && textWidth(name, 15) > room)
+    name = name.slice(0, -1);
+  if (name !== content.name) name = `${name.slice(0, -1).trimEnd()}…`;
+  const codeSize = textWidth(content.matterCode, 20) <= room ? 20 : 16;
+  return [
+    {
+      type: "rectangle",
+      x_start: m,
+      y_start: 0,
+      x_end: MATTER_BAND + m,
+      y_end: LABEL_HEIGHT,
+      fill: "black",
+      outline: "black",
+      width: 1,
+    },
+    {
+      type: "text",
+      value: "M",
+      x: m + MATTER_BAND / 2,
+      y: LABEL_HEIGHT / 2,
+      size: 22,
+      color: "white",
+      anchor: "mm",
+      font: "ppb.ttf",
+    },
+    ...(content.payload
+      ? [
+          {
+            type: "qrcode",
+            data: content.payload,
+            x: qrLeft,
+            y: 1,
+            boxsize: 3,
+            border: 1,
+            eclevel: "m",
+            width: QR_SIZE,
+            height: QR_SIZE,
+          },
+        ]
+      : []),
+    text("MATTER", left, 22, 12),
+    text(content.matterCode, left, 50, codeSize),
+    text(name, left, 78, 15),
+  ];
+}
+
 /** The whole request body for POST /api/services/niimbot/print. */
 export function printRequestBody(
-  content: LabelContent | FilamentLabelContent,
+  content: LabelContent | FilamentLabelContent | MatterLabelContent,
   settings: LabelLayoutSettings & {
     deviceId: string;
     rotate: number;
@@ -278,7 +351,9 @@ export function printRequestBody(
     height: LABEL_HEIGHT,
     preview: options.preview ?? false,
     payload:
-      "filamentId" in content
+      "matterCode" in content
+        ? matterLabelPayload(content, settings)
+        : "filamentId" in content
         ? filamentLabelPayload(content, settings)
         : labelPayload(content, settings),
     ...(settings.density ? { density: settings.density } : {}),

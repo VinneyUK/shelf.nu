@@ -7,6 +7,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { data } from "react-router";
 import { z } from "zod";
 import { done } from "~/modules/filament/notify.server";
+import { queueMatterLabel } from "~/modules/labels/service.server";
 import {
   getMatter,
   removeMatter,
@@ -88,6 +89,11 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
             .filter(Boolean),
         });
         return done(userId, "Matter details saved", "");
+      }
+      // a Matter label on the label printer
+      case "print": {
+        await queueMatterLabel({ organizationId, userId, assetId });
+        return done(userId, "Matter label queued", "It will print shortly.");
       }
       case "remove":
         await removeMatter(organizationId, assetId);
