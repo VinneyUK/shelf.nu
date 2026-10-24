@@ -860,7 +860,13 @@ export default function AssetOverview() {
     <div>
       <ContextualModal />
       <div className="mx-[-16px] mt-[-16px] block md:mx-0 lg:flex ">
-        <div className="max-w-full flex-1 overflow-hidden">
+        <div
+          className={tw(
+            "max-w-full overflow-hidden",
+            // matter (fork): beside an IoT asset's devices, the details keep to a fixed width
+            isIot ? "lg:w-[380px] lg:flex-none" : "flex-1"
+          )}
+        >
           <Card className="my-3 max-w-full px-[-4] py-[-5] md:border">
             <ul className="item-information">
               {SHOW_INTERNAL_ID ? (
@@ -1485,7 +1491,7 @@ export default function AssetOverview() {
         <div
           className={tw(
             "w-full lg:ml-4",
-            isIot ? "md:w-auto md:min-w-0 md:flex-[1.4]" : "md:w-[360px]"
+            isIot ? "lg:min-w-0 lg:flex-1" : "md:w-[360px]"
           )}
         >
           {isIot && asset ? <MatterCard assetId={asset.id} /> : null}

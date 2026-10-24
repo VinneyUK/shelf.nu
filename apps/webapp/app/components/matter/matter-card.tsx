@@ -179,23 +179,16 @@ export function MatterCard({ assetId }: { assetId: string }) {
           <table className="w-full">
             <thead className="bg-gray-25">
               <tr>
-                {[
-                  "#",
-                  "Name",
-                  "Setup code",
-                  "Where",
-                  "Connects",
-                  "Paired with",
-                  "Label",
-                  "",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
-                  >
-                    {h}
-                  </th>
-                ))}
+                {["#", "Name", "Setup code", "Connects", "Paired with", ""].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -260,7 +253,13 @@ function DeviceButtons({
       type="button"
       variant="secondary"
       size="sm"
-      className={danger ? "p-2 text-error-600" : "p-2"}
+      className={
+        danger
+          ? "p-2 text-error-600"
+          : label.startsWith("Re-print")
+          ? "p-2 text-success-700"
+          : "p-2"
+      }
       aria-label={label}
       tooltip={label}
       onClick={onClick}
@@ -283,7 +282,7 @@ function DeviceButtons({
         ? icon("Re-pair", QrCodeIcon, () => s.ask(() => s.setRepair(true)))
         : null}
       {icon(
-        "Print its label",
+        d.labelPrintedAt ? "Re-print its label (printed)" : "Print its label",
         PrinterIcon,
         () =>
           void s.act.submit(
@@ -450,8 +449,12 @@ function PairedCell({
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="Click to change"
-          className={`rounded px-1 text-left text-sm hover:bg-gray-100 ${
+          title={
+            list.length
+              ? `${list.join(", ")}: click to change`
+              : "Click to change"
+          }
+          className={`block max-w-full truncate rounded px-1 text-left text-sm hover:bg-gray-100 ${
             list.length ? "text-gray-700" : "text-gray-400"
           }`}
         >
@@ -505,18 +508,26 @@ function PairedCell({
 function DeviceRow({ d, url }: { d: Device; url: string }) {
   const s = useDevice(d, url);
   const save = useField(d, url);
-  const cell = "px-3 py-2.5 align-middle text-sm";
+  const cell = "whitespace-nowrap px-2.5 py-2.5 align-middle text-sm";
   return (
     <>
       <tr>
         <td className={`${cell} pl-5 text-gray-400`}>{d.number}</td>
         <td className={cell}>
-          <TextCell
-            value={d.name}
-            placeholder="Name it"
-            onSave={(v) => save("name", v)}
-            className="font-semibold"
-          />
+          <div className="flex flex-col items-start">
+            <TextCell
+              value={d.name}
+              placeholder="Name it"
+              onSave={(v) => save("name", v)}
+              className="font-semibold"
+            />
+            <TextCell
+              value={d.place}
+              placeholder="Where is it?"
+              onSave={(v) => save("place", v)}
+              className="text-xs text-gray-500"
+            />
+          </div>
         </td>
         <td
           className={`${cell} whitespace-nowrap font-mono font-semibold tracking-wide text-gray-900`}
@@ -524,26 +535,18 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
           {codeText(s)}
         </td>
         <td className={cell}>
-          <TextCell
-            value={d.place}
-            placeholder="—"
-            onSave={(v) => save("place", v)}
-          />
-        </td>
-        <td className={cell}>
           <TransportCell
             value={d.transport}
             onSave={(v) => save("transport", v)}
           />
         </td>
-        <td className={cell}>
+        <td className={`${cell} max-w-44`}>
           <PairedCell
             value={d.controllers}
             onSave={(v) => save("controllers", v)}
           />
         </td>
-        <td className={`${cell} whitespace-nowrap`}>{printedBadge(d)}</td>
-        <td className={`${cell} pr-5 text-right`}>
+        <td className={`${cell} whitespace-nowrap pr-5 text-right`}>
           <DeviceButtons d={d} url={url} s={s} />
         </td>
       </tr>
