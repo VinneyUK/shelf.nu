@@ -2078,7 +2078,7 @@ function UsageCard({ levels }: { levels: PageData["levels"] }) {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={data}
-              margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+              margin={{ top: 28, right: 32, left: 4, bottom: 4 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
@@ -2087,6 +2087,9 @@ function UsageCard({ levels }: { levels: PageData["levels"] }) {
                 tickLine={false}
                 axisLine={false}
                 minTickGap={24}
+                interval="preserveStartEnd"
+                padding={{ left: 8, right: 8 }}
+                tickMargin={6}
               />
               <YAxis
                 tick={{ fontSize: 11 }}
