@@ -29,6 +29,7 @@ import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { getPrimaryKit, isQuantityTracked } from "~/modules/asset/utils";
 import { getPrimaryCustody, hasCustody } from "~/modules/custody/utils";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
+import { isIotCategory } from "~/modules/matter/iot"; // matter (fork)
 import type { loader } from "~/routes/_layout+/assets.$assetId";
 import {
   PermissionAction,
@@ -374,6 +375,45 @@ const ConditionalActionsDropdown = () => {
                       </span>
                     </Button>
                   </div>
+                </When>
+                {/* matter (fork): an IoT asset's devices' Matter labels */}
+                <When
+                  truthy={
+                    labelsEnabled &&
+                    isIotCategory(
+                      (asset as { category?: { name?: string | null } | null })
+                        .category?.name
+                    )
+                  }
+                >
+                  {(
+                    [
+                      ["all", "Print Matter labels"],
+                      ["missing", "Print missing Matter labels"],
+                    ] as const
+                  ).map(([which, text]) => (
+                    <div key={which} className="px-0 py-1 md:p-0">
+                      <Button
+                        type="button"
+                        role="button"
+                        variant="link"
+                        className="justify-start px-4 py-3 text-gray-700 hover:bg-slate-100 hover:text-gray-700"
+                        width="full"
+                        onClick={() => {
+                          handleMenuClose();
+                          void printFetcher.submit(
+                            { assetIds: asset.id, which },
+                            { method: "post", action: "/api/matter/print" }
+                          );
+                        }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <PrinterIcon className="size-5" />
+                          {text}
+                        </span>
+                      </Button>
+                    </div>
+                  ))}
                 </When>
                 {/* labels feature: queue a label for this asset */}
                 <When truthy={labelsEnabled}>

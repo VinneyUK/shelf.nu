@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { BadgePoundSterlingIcon, ImageIcon } from "lucide-react"; // sold feature; find pictures
-import { useNavigation } from "react-router";
+import { BadgePoundSterlingIcon, ImageIcon, PrinterIcon } from "lucide-react"; // sold feature; find pictures; matter
+import { useFetcher, useNavigation } from "react-router";
 import { useHydrated } from "remix-utils/use-hydrated";
 import { selectedBulkItemsAtom } from "~/atoms/list";
 import { usePrintSelectedLabels } from "~/components/labels/use-print-selected-labels"; // labels feature
@@ -108,6 +108,7 @@ function ConditionalDropdown() {
     aiEnabled,
   } = useCustomisations(); // customise feature
   const printSelectedLabels = usePrintSelectedLabels(); // labels feature
+  const matterPrint = useFetcher(); // matter (fork)
   // sold feature
   const soldSelection = useSelectedAssets();
   const markNotSold = useMarkNotSold();
@@ -320,6 +321,33 @@ function ConditionalDropdown() {
               </DropdownMenuItem>
             ) : null}
             {/* labels feature: print / re-print / remove, by what's selected */}
+            {/* matter (fork): the ticked IoT assets' devices' Matter labels */}
+            {labelsEnabled ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMenu();
+                  const form = new FormData();
+                  for (const id of soldSelection.assetIds)
+                    form.append("assetIds", id);
+                  void matterPrint.submit(form, {
+                    method: "post",
+                    action: "/api/matter/print",
+                  });
+                }}
+                className="py-1 lg:p-0"
+                disabled={!soldSelection.assetIds.length}
+              >
+                <Button
+                  type="button"
+                  variant="link"
+                  className="flex w-full items-center justify-start px-4 py-3 text-gray-700 hover:text-gray-700"
+                >
+                  <span className="flex items-center gap-2">
+                    <PrinterIcon className="size-4" /> Print Matter labels (IoT)
+                  </span>
+                </Button>
+              </DropdownMenuItem>
+            ) : null}
             {labelsEnabled
               ? printSelectedLabels.entries.map((entry, i, all) => (
                   <DropdownMenuItem

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { GlobeIcon, PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
 import { PrintLabelButton } from "~/components/labels/print-label-button"; // labels feature
+import { IotPrintMenu } from "~/components/matter/iot-print-menu"; // matter (fork)
 import { Button } from "~/components/shared/button";
 import When from "~/components/when/when";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
@@ -10,6 +11,7 @@ import {
   webSearchUrl,
 } from "~/modules/customisation/catalogue"; // customise feature
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
+import { isIotCategory } from "~/modules/matter/iot"; // matter (fork)
 import {
   PermissionAction,
   PermissionEntity,
@@ -67,7 +69,15 @@ export default function AssetQuickActions({
           action: PermissionAction.update,
         })}
       >
-        <PrintLabelButton id={asset.id} />
+        {/* matter (fork): IoT assets print their devices' Matter labels too */}
+        {isIotCategory(
+          (asset as { category?: { name?: string | null } | null }).category
+            ?.name
+        ) ? (
+          <IotPrintMenu assetId={asset.id} />
+        ) : (
+          <PrintLabelButton id={asset.id} />
+        )}
       </When>
       {qrDownloadsEnabled ? ( // customise feature
         <CodePreviewDialog
