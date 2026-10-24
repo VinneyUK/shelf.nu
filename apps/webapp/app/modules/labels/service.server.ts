@@ -771,6 +771,7 @@ export async function queueMatterLabels({
       id: true,
       assetId: true,
       productName: true,
+      name: true,
       place: true,
       asset: { select: { title: true } },
     },
@@ -791,8 +792,8 @@ export async function queueMatterLabels({
       assetId: d.assetId,
       layout: "matter",
       sequentialId: "",
-      // the name on the label: where it is, else the asset's name
-      title: d.place ?? d.asset.title,
+      // the name on the label: the device's name, else where it is, else the asset's
+      title: d.name ?? d.place ?? d.asset.title,
       subtitle: d.id,
       qrId: "matter",
       source: "manual",

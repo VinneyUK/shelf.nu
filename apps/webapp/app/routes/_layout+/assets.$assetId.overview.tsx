@@ -853,6 +853,9 @@ export default function AssetOverview() {
   });
   const canEditAsset = canUpdateAvailability;
 
+  // matter (fork): IoT assets show their Matter devices beside the details
+  const isIot = isIotCategory(asset?.category?.name);
+
   return (
     <div>
       <ContextualModal />
@@ -1475,12 +1478,17 @@ export default function AssetOverview() {
             </>
           ) : null}
           {/* matter (fork): the device's setup code and details, full width */}
-          {asset && isIotCategory(asset.category?.name) ? (
-            <MatterCard assetId={asset.id} />
-          ) : null}
         </div>
 
-        <div className="w-full md:w-[360px] lg:ml-4">
+        {/* matter (fork): an IoT asset's devices sit on the right, wider
+            than the details beside them */}
+        <div
+          className={tw(
+            "w-full lg:ml-4",
+            isIot ? "md:w-auto md:min-w-0 md:flex-[1.4]" : "md:w-[360px]"
+          )}
+        >
+          {isIot && asset ? <MatterCard assetId={asset.id} /> : null}
           <When
             truthy={
               bookingsEnabled /* customise feature */ && canUpdateAvailability

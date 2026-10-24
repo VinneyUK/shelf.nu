@@ -3046,6 +3046,8 @@ model MatterDevice {
   productId      Int?
   vendorName     String?
   productName    String?
+  /// The device's own name: "Kettle plug" (for its label, and Home Assistant)
+  name           String?
   /// Where it is or what it's on: "Kitchen · kettle"
   place          String?
   /// Thread, Wi-Fi or Ethernet

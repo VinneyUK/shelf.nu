@@ -5,15 +5,21 @@
  */
 import { useEffect, useRef, useState } from "react";
 import {
+  Popover,
+  PopoverContent,
+  PopoverPortal,
+  PopoverTrigger,
+} from "@radix-ui/react-popover";
+import {
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
-  PencilIcon,
   PlusIcon,
   PrinterIcon,
   QrCodeIcon,
   ScanLineIcon,
   ShieldCheckIcon,
+  Trash2Icon,
 } from "lucide-react";
 import QRCode from "qrcode-generator";
 import { useFetcher } from "react-router";
@@ -71,6 +77,7 @@ type Device = {
   productId: number | null;
   vendorName: string | null;
   productName: string | null;
+  name: string | null;
   place: string | null;
   transport: string | null;
   firmware: string | null;
@@ -174,6 +181,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
               <tr>
                 {[
                   "#",
+                  "Name",
                   "Setup code",
                   "Where",
                   "Connects",
@@ -183,7 +191,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-2 text-left text-xs font-medium text-gray-500"
+                    className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
                   >
                     {h}
                   </th>
@@ -242,12 +250,17 @@ function DeviceButtons({
   url: string;
   s: ReturnType<typeof useDevice>;
 }) {
-  const icon = (label: string, Icon: typeof EyeIcon, onClick: () => void) => (
+  const icon = (
+    label: string,
+    Icon: typeof EyeIcon,
+    onClick: () => void,
+    danger = false
+  ) => (
     <Button
       type="button"
       variant="secondary"
       size="sm"
-      className="p-2"
+      className={danger ? "p-2 text-error-600" : "p-2"}
       aria-label={label}
       tooltip={label}
       onClick={onClick}
@@ -278,7 +291,20 @@ function DeviceButtons({
             { method: "post", action: url }
           )
       )}
-      {icon("Details", PencilIcon, () => s.setEditing(!s.editing))}
+      {icon(
+        "Remove device",
+        Trash2Icon,
+        () => {
+          if (
+            window.confirm("Remove this device? The quantity goes down by one.")
+          )
+            void s.act.submit(
+              { intent: "remove", id: d.id },
+              { method: "post", action: url }
+            );
+        },
+        true
+      )}
     </span>
   );
 }
@@ -297,35 +323,230 @@ const printedBadge = (d: Device) =>
 const codeText = (s: ReturnType<typeof useDevice>) =>
   s.shown && s.code ? formatManualCode(s.code.manualCode) : "••••-•••-••••";
 
+/** Saves one of a device's fields as its cell changes. */
+function useField(d: Device, url: string) {
+  const save = useFetcher();
+  return (field: string, value: string | string[]) => {
+    const form = new FormData();
+    form.set("intent", "field");
+    form.set("id", d.id);
+    form.set("field", field);
+    for (const v of Array.isArray(value) ? value : [value])
+      form.append("value", v);
+    void save.submit(form, { method: "post", action: url });
+  };
+}
+
+/** A text cell: click to change, Enter saves, Esc puts it back. */
+function TextCell({
+  value,
+  placeholder,
+  onSave,
+  className = "",
+}: {
+  value: string | null;
+  placeholder: string;
+  onSave: (v: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value ?? "");
+  const [shown, setShownValue] = useState(value ?? "");
+  if (editing)
+    return (
+      <input
+        autoFocus
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          setEditing(false);
+          if (v.trim() !== shown) {
+            setShownValue(v.trim());
+            onSave(v.trim());
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setV(shown);
+            setEditing(false);
+          }
+        }}
+        className={`w-full min-w-24 rounded border border-primary-400 px-1.5 py-0.5 text-sm ${className}`}
+      />
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setV(shown);
+        setEditing(true);
+      }}
+      title="Click to change"
+      className={`rounded px-1 text-left hover:bg-gray-100 ${
+        shown ? "text-gray-900" : "text-gray-400"
+      } ${className}`}
+    >
+      {shown || placeholder}
+    </button>
+  );
+}
+
+const TRANSPORTS = ["Thread", "Wi-Fi", "Ethernet"];
+const CONTROLLERS = [
+  "Apple Home",
+  "Google Home",
+  "Home Assistant",
+  "SmartThings",
+  "Alexa",
+];
+
+/** How it connects: Thread, Wi-Fi or Ethernet. */
+function TransportCell({
+  value,
+  onSave,
+}: {
+  value: string | null;
+  onSave: (v: string) => void;
+}) {
+  const [v, setV] = useState(value ?? "");
+  return (
+    <select
+      value={v}
+      onChange={(e) => {
+        setV(e.target.value);
+        onSave(e.target.value);
+      }}
+      aria-label="Connects over"
+      className="rounded border border-transparent bg-transparent py-0.5 pl-1 pr-6 text-sm text-gray-700 hover:border-gray-300"
+    >
+      <option value="">—</option>
+      {TRANSPORTS.map((x) => (
+        <option key={x}>{x}</option>
+      ))}
+    </select>
+  );
+}
+
+/** What it's paired with: a tick list, and your own. */
+function PairedCell({
+  value,
+  onSave,
+}: {
+  value: string[];
+  onSave: (v: string[]) => void;
+}) {
+  const [list, setList] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [other, setOther] = useState("");
+  const toggle = (c: string) => {
+    const next = list.includes(c) ? list.filter((x) => x !== c) : [...list, c];
+    setList(next);
+    onSave(next);
+  };
+  const choices = [...new Set([...CONTROLLERS, ...list])];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="Click to change"
+          className={`rounded px-1 text-left text-sm hover:bg-gray-100 ${
+            list.length ? "text-gray-700" : "text-gray-400"
+          }`}
+        >
+          {list.length ? list.join(", ") : "Not paired"}
+        </button>
+      </PopoverTrigger>
+      <PopoverPortal>
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          className="z-[60] w-56 rounded-md border border-gray-200 bg-white p-2 shadow-lg"
+        >
+          {choices.map((c) => (
+            <label
+              key={c}
+              className="flex items-center gap-2 rounded px-1.5 py-1 text-sm text-gray-900 hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={list.includes(c)}
+                onChange={() => toggle(c)}
+              />
+              {c}
+            </label>
+          ))}
+          <form
+            className="mt-1 flex gap-1.5 border-t border-gray-100 pt-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (other.trim() && !list.includes(other.trim()))
+                toggle(other.trim());
+              setOther("");
+            }}
+          >
+            <input
+              value={other}
+              onChange={(e) => setOther(e.target.value)}
+              placeholder="Another…"
+              className="h-8 min-w-0 flex-1 rounded border border-gray-300 px-2 text-sm"
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Add
+            </Button>
+          </form>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
 function DeviceRow({ d, url }: { d: Device; url: string }) {
   const s = useDevice(d, url);
-  const cell = "px-5 py-2.5 align-middle text-sm";
+  const save = useField(d, url);
+  const cell = "px-3 py-2.5 align-middle text-sm";
   return (
     <>
       <tr>
-        <td className={`${cell} text-gray-400`}>{d.number}</td>
+        <td className={`${cell} pl-5 text-gray-400`}>{d.number}</td>
+        <td className={cell}>
+          <TextCell
+            value={d.name}
+            placeholder="Name it"
+            onSave={(v) => save("name", v)}
+            className="font-semibold"
+          />
+        </td>
         <td
-          className={`${cell} font-mono font-semibold tracking-wide text-gray-900`}
+          className={`${cell} whitespace-nowrap font-mono font-semibold tracking-wide text-gray-900`}
         >
           {codeText(s)}
         </td>
-        <td className={`${cell} text-gray-900`}>{d.place ?? "—"}</td>
-        <td className={`${cell} text-gray-600`}>{d.transport ?? "—"}</td>
-        <td className={`${cell} text-gray-600`}>
-          {d.controllers.join(", ") || "—"}
+        <td className={cell}>
+          <TextCell
+            value={d.place}
+            placeholder="—"
+            onSave={(v) => save("place", v)}
+          />
         </td>
-        <td className={cell}>{printedBadge(d)}</td>
-        <td className={`${cell} text-right`}>
+        <td className={cell}>
+          <TransportCell
+            value={d.transport}
+            onSave={(v) => save("transport", v)}
+          />
+        </td>
+        <td className={cell}>
+          <PairedCell
+            value={d.controllers}
+            onSave={(v) => save("controllers", v)}
+          />
+        </td>
+        <td className={`${cell} whitespace-nowrap`}>{printedBadge(d)}</td>
+        <td className={`${cell} pr-5 text-right`}>
           <DeviceButtons d={d} url={url} s={s} />
         </td>
       </tr>
-      {s.editing ? (
-        <tr>
-          <td colSpan={7} className="bg-gray-25 px-5 py-3">
-            <DetailsForm d={d} url={url} act={s.act} />
-          </td>
-        </tr>
-      ) : null}
       {s.repair && s.code?.payload ? (
         <Repair d={d} code={s.code} onClose={() => s.setRepair(false)} />
       ) : null}
@@ -335,9 +556,10 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
 
 function DeviceCard({ d, url }: { d: Device; url: string }) {
   const s = useDevice(d, url);
+  const save = useField(d, url);
   return (
     <div className="rounded-lg border border-gray-200 p-3">
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         {d.hasQr ? (
           <div
             className="rounded-md border border-gray-200 p-1"
@@ -353,34 +575,62 @@ function DeviceCard({ d, url }: { d: Device; url: string }) {
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">
-              Device {d.number}
-            </span>
-            {d.place ? (
-              <span className="text-sm text-gray-600">{d.place}</span>
-            ) : null}
+            <TextCell
+              value={d.name}
+              placeholder={`Device ${d.number}: name it`}
+              onSave={(v) => save("name", v)}
+              className="font-semibold"
+            />
             {printedBadge(d)}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-            <span className="font-mono text-sm font-semibold tracking-wide text-gray-900">
+          <dl className="mt-1.5 grid grid-cols-[6rem_1fr] items-center gap-y-0.5 text-xs text-gray-500">
+            <dt>Code</dt>
+            <dd className="font-mono text-sm font-semibold tracking-wide text-gray-900">
               {codeText(s)}
-            </span>
-            {d.transport ? <span>{d.transport}</span> : null}
-            {d.controllers.length ? (
-              <span>{d.controllers.join(", ")}</span>
-            ) : null}
-            <span className="text-gray-400">
-              {hex(d.vendorId)} / {hex(d.productId)}
-            </span>
-          </div>
+            </dd>
+            <dt>Where</dt>
+            <dd>
+              <TextCell
+                value={d.place}
+                placeholder="—"
+                onSave={(v) => save("place", v)}
+              />
+            </dd>
+            <dt>Connects</dt>
+            <dd>
+              <TransportCell
+                value={d.transport}
+                onSave={(v) => save("transport", v)}
+              />
+            </dd>
+            <dt>Paired with</dt>
+            <dd>
+              <PairedCell
+                value={d.controllers}
+                onSave={(v) => save("controllers", v)}
+              />
+            </dd>
+            <dt>Firmware</dt>
+            <dd>
+              <TextCell
+                value={d.firmware}
+                placeholder="—"
+                onSave={(v) => save("firmware", v)}
+              />
+            </dd>
+            <dt>MAC</dt>
+            <dd>
+              <TextCell
+                value={d.mac}
+                placeholder="—"
+                onSave={(v) => save("mac", v)}
+                className="font-mono"
+              />
+            </dd>
+          </dl>
         </div>
         <DeviceButtons d={d} url={url} s={s} />
       </div>
-      {s.editing ? (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <DetailsForm d={d} url={url} act={s.act} />
-        </div>
-      ) : null}
       {s.repair && s.code?.payload ? (
         <Repair d={d} code={s.code} onClose={() => s.setRepair(false)} />
       ) : null}
@@ -539,97 +789,5 @@ function AddDevice({
         </p>
       ) : null}
     </div>
-  );
-}
-
-/** Where it is, how it connects, its firmware and MAC, and what it's paired with. */
-function DetailsForm({
-  d,
-  url,
-  act,
-}: {
-  d: Device;
-  url: string;
-  act: ReturnType<typeof useFetcher<Act>>;
-}) {
-  const input = "h-9 rounded-lg border border-gray-300 px-2.5 text-sm";
-  const [controllers, setControllers] = useState(d.controllers.join(", "));
-  return (
-    <act.Form
-      method="post"
-      action={url}
-      className="flex flex-wrap items-end gap-3"
-    >
-      <input type="hidden" name="intent" value="details" />
-      <input type="hidden" name="id" value={d.id} />
-      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
-        Where it is
-        <input name="place" defaultValue={d.place ?? ""} className={input} />
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
-        Connects over
-        <select
-          name="transport"
-          defaultValue={d.transport ?? ""}
-          className={input}
-        >
-          <option value="">—</option>
-          <option>Thread</option>
-          <option>Wi-Fi</option>
-          <option>Ethernet</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
-        Firmware
-        <input
-          name="firmware"
-          defaultValue={d.firmware ?? ""}
-          className={input}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
-        MAC
-        <input
-          name="mac"
-          defaultValue={d.mac ?? ""}
-          className={`${input} font-mono`}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
-        Paired with (commas between)
-        <input
-          value={controllers}
-          onChange={(e) => setControllers(e.target.value)}
-          placeholder="Apple Home, Home Assistant"
-          className={`${input} w-56`}
-        />
-      </label>
-      {controllers
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean)
-        .map((c) => (
-          <input key={c} type="hidden" name="controllers" value={c} />
-        ))}
-      <Button type="submit" size="sm" disabled={isFormProcessing(act.state)}>
-        Save
-      </Button>
-      <button
-        type="submit"
-        name="intent"
-        value="remove"
-        className="text-sm font-semibold text-error-600 hover:text-error-700"
-        onClick={(e) => {
-          if (
-            !window.confirm(
-              "Forget this device's Matter code? The quantity goes down by one."
-            )
-          )
-            e.preventDefault();
-        }}
-      >
-        Remove device
-      </button>
-    </act.Form>
   );
 }

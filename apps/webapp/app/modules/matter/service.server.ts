@@ -101,6 +101,7 @@ export async function listDevices(organizationId: string, assetId: string) {
     productId: d.productId,
     vendorName: d.vendorName,
     productName: d.productName,
+    name: d.name,
     place: d.place,
     transport: d.transport,
     firmware: d.firmware,
@@ -172,6 +173,7 @@ export async function updateDevice(
   organizationId: string,
   id: string,
   details: {
+    name?: string | null;
     place?: string | null;
     transport?: string | null;
     firmware?: string | null;

@@ -87,20 +87,25 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
       }
       case "reveal":
         return payload({ id, code: await revealDevice(organizationId, id) });
-      case "details": {
-        const transport = text("transport");
-        await updateDevice(organizationId, id, {
-          place: text("place"),
-          transport:
-            transport && TRANSPORTS.includes(transport) ? transport : null,
-          firmware: text("firmware"),
-          mac: text("mac"),
-          controllers: form
-            .getAll("controllers")
-            .map((c) => String(c).trim())
-            .filter(Boolean),
-        });
-        return done(userId, "Device updated", "");
+      // one field, changed in its cell (click to change, as on Filament)
+      case "field": {
+        const field = String(form.get("field") ?? "");
+        const value = text("value");
+        if (field === "controllers")
+          await updateDevice(organizationId, id, {
+            controllers: form
+              .getAll("value")
+              .map((c) => String(c).trim())
+              .filter(Boolean),
+          });
+        else if (field === "transport")
+          await updateDevice(organizationId, id, {
+            transport: value && TRANSPORTS.includes(value) ? value : null,
+          });
+        else if (["name", "place", "firmware", "mac"].includes(field))
+          await updateDevice(organizationId, id, { [field]: value });
+        else return payload({ ok: false });
+        return payload({ ok: true });
       }
       case "remove": {
         const quantity = await removeDevice(organizationId, id);
