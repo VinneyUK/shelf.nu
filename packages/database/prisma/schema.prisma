@@ -3024,6 +3024,33 @@ model SpoolCandidate {
   @@index([organizationId, status])
 }
 
+/// A Matter device's setup code and details, for an asset (fork). The code
+/// is kept encrypted and shown only when asked for.
+model AssetMatter {
+  id             String   @id @default(cuid())
+  organizationId String
+  assetId        String   @unique
+  /// The QR's "MT:…" text, encrypted; null when only the manual code is known
+  payload        String?
+  /// The 11- or 21-digit manual pairing code, encrypted
+  manualCode     String
+  vendorId       Int?
+  productId      Int?
+  /// The maker and model, from the CSA's register of certified devices
+  vendorName     String?
+  productName    String?
+  /// Thread, Wi-Fi or Ethernet
+  transport      String?
+  firmware       String?
+  mac            String?
+  /// Apple Home, Google Home, Home Assistant…
+  controllers    String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
 /// A print the printer ran (fork): recorded from its reports, with what
 /// each filament used, measured from the AMS's levels before and after.
 model PrintJob {

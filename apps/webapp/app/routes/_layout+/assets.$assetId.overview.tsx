@@ -31,6 +31,7 @@ import type { HeaderData } from "~/components/layout/header/types";
 import { LocationBadge } from "~/components/location/location-badge";
 import { LocationSelect } from "~/components/location/location-select";
 import { MarkdownViewer } from "~/components/markdown/markdown-viewer";
+import { MatterCard } from "~/components/matter/matter-card"; // matter (fork)
 import { Badge } from "~/components/shared/badge";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -1474,6 +1475,8 @@ export default function AssetOverview() {
               </Card>
             </>
           ) : null}
+          {/* matter (fork): the device's setup code and details, full width */}
+          {asset ? <MatterCard assetId={asset.id} /> : null}
         </div>
 
         <div className="w-full md:w-[360px] lg:ml-4">
