@@ -271,12 +271,70 @@ export type MatterLabelContent = {
   payload: string | null;
 };
 
-/** The black band down the left, with an M in it. */
-export const MATTER_BAND = 30;
+/** The black band down the left, with the Matter mark in it. */
+export const MATTER_BAND = 26;
+
+/** The biggest size, from max down to min, at which the text fits the room. */
+export function fitMatterSize(
+  value: string,
+  room: number,
+  max: number,
+  min: number
+) {
+  for (let size = max; size > min; size--)
+    if (textWidth(value, size) <= room) return size;
+  return min;
+}
+
+/** Text cut with "…" so it fits the room at that size. */
+export function cutToFit(value: string, room: number, size: number) {
+  if (textWidth(value, size) <= room) return value;
+  let v = value;
+  while (v.length > 1 && textWidth(`${v}…`, size) > room) v = v.slice(0, -1);
+  return `${v.trimEnd()}…`;
+}
 
 /**
- * A Matter label (design C): a black band with "M", the device's Matter QR
- * (for a Home app to scan), then the manual code and the device's name.
+ * The Matter mark in white on the band: a stem and two arms meeting, a dot
+ * at each end (lines and circles, as the printer draws them).
+ */
+function matterMark(cx: number, cy: number) {
+  const top = { x: cx, y: cy - 13 };
+  const mid = { x: cx, y: cy - 1 };
+  const left = { x: cx - 9, y: cy + 10 };
+  const right = { x: cx + 9, y: cy + 10 };
+  const line = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+    type: "line",
+    x_start: a.x,
+    y_start: a.y,
+    x_end: b.x,
+    y_end: b.y,
+    fill: "white",
+    width: 3,
+  });
+  const dot = (p: { x: number; y: number }) => ({
+    type: "circle",
+    x: p.x,
+    y: p.y,
+    radius: 3,
+    fill: "white",
+    outline: "white",
+    width: 1,
+  });
+  return [
+    line(top, mid),
+    line(mid, left),
+    line(mid, right),
+    dot(top),
+    dot(left),
+    dot(right),
+  ];
+}
+
+/**
+ * A Matter label (design C): a black band with the Matter mark, the device's
+ * Matter QR (for a Home app to scan), then the manual code large and the
+ * device's name, each sized down (then cut) to fit the label you've set.
  */
 export function matterLabelPayload(
   content: MatterLabelContent,
@@ -285,13 +343,9 @@ export function matterLabelPayload(
   const m = settings.leftMargin;
   const qrLeft = MATTER_BAND + 4 + m;
   const left = content.payload ? qrLeft + QR_SIZE + 6 : qrLeft;
-  const room = settings.labelWidth - left - 4;
-  // the name cut to fit beside the QR
-  let name = content.name;
-  while (name.length > 1 && textWidth(name, 15) > room)
-    name = name.slice(0, -1);
-  if (name !== content.name) name = `${name.slice(0, -1).trimEnd()}…`;
-  const codeSize = textWidth(content.matterCode, 20) <= room ? 20 : 16;
+  const room = Math.max(10, settings.labelWidth - left - 4);
+  const codeSize = fitMatterSize(content.matterCode, room, 24, 11);
+  const nameSize = fitMatterSize(content.name, room, 16, 11);
   return [
     {
       type: "rectangle",
@@ -303,16 +357,7 @@ export function matterLabelPayload(
       outline: "black",
       width: 1,
     },
-    {
-      type: "text",
-      value: "M",
-      x: m + MATTER_BAND / 2,
-      y: LABEL_HEIGHT / 2,
-      size: 22,
-      color: "white",
-      anchor: "mm",
-      font: "ppb.ttf",
-    },
+    ...matterMark(m + MATTER_BAND / 2, LABEL_HEIGHT / 2),
     ...(content.payload
       ? [
           {
@@ -328,9 +373,8 @@ export function matterLabelPayload(
           },
         ]
       : []),
-    text("MATTER", left, 22, 12),
-    text(content.matterCode, left, 50, codeSize),
-    text(name, left, 78, 15),
+    text(cutToFit(content.matterCode, room, codeSize), left, 46, codeSize),
+    text(cutToFit(content.name, room, nameSize), left, 74, nameSize),
   ];
 }
 
