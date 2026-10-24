@@ -1169,9 +1169,7 @@ export default function AssetOverview() {
               {/* QT-aware: shows total value (per-unit × quantity) below the
                   per-unit Value row. Hidden for INDIVIDUAL assets and QT with
                   qty=1 where it would be redundant. */}
-              {isQuantityTracked(asset) &&
-              asset.valuation != null &&
-              (asset.quantity ?? 1) > 1
+              {asset.valuation != null && (asset.quantity ?? 1) > 1
                 ? (() => {
                     const breakdown = formatAssetValueWithBreakdown(asset, {
                       currency: asset.organization.currency,

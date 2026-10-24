@@ -195,7 +195,7 @@ export function AdvancedIndexColumn({
                   >
                     {item.title}
                   </Link>
-                  {isQuantityTracked(item) ? (
+                  {isQuantityTracked(item) || (item.quantity ?? 1) > 1 ? (
                     <span className="inline-flex shrink-0 items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
                       QTY
                     </span>
@@ -390,7 +390,7 @@ export function AdvancedIndexColumn({
     case "type":
       return (
         <Td className="w-full max-w-none whitespace-nowrap">
-          {isQuantityTracked(item) ? (
+          {isQuantityTracked(item) || (item.quantity ?? 1) > 1 ? (
             <span className="inline-flex shrink-0 items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
               QTY
             </span>

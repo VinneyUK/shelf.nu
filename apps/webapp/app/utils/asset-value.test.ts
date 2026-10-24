@@ -170,3 +170,15 @@ describe("formatAssetValueWithBreakdown", () => {
     expect(result.suffix).toBe("× 10 kg");
   });
 });
+
+describe("any asset with more than one (fork)", () => {
+  it("shows its breakdown, not only the old quantity-tracked type", () => {
+    const out = formatAssetValueWithBreakdown(
+      { type: "INDIVIDUAL", valuation: 7, quantity: 2, unitOfMeasure: null } as never,
+      { currency: "GBP" as never, locale: "en-GB" }
+    );
+    expect(out.total).toBe("£14.00");
+    expect(out.unit).toBe("£7.00");
+    expect(out.suffix).toBe("× 2");
+  });
+});

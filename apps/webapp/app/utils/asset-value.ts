@@ -150,17 +150,21 @@ export function formatAssetValueWithBreakdown(
   const quantity = asset.quantity ?? 1;
   const hasValuation = asset.valuation != null;
 
-  if (!isQt || quantity <= 1 || !hasValuation) {
+  // fork: every asset has a quantity now, so any asset with more than one
+  // shows its breakdown, not only Shelf's old quantity-tracked type
+  if (quantity <= 1 || !hasValuation) {
     return { total: totalFormatted, unit: null, suffix: null };
   }
 
   // formatUnitCount returns null when not applicable; we've already gated
   // on type === QUANTITY_TRACKED and quantity > 0, so it should return a
   // string here, but the `?? null` keeps the type honest.
-  const suffix = formatUnitCount(
-    { type: asset.type as AssetType, unitOfMeasure: asset.unitOfMeasure },
-    quantity
-  );
+  const suffix = isQt
+    ? formatUnitCount(
+        { type: asset.type as AssetType, unitOfMeasure: asset.unitOfMeasure },
+        quantity
+      )
+    : String(quantity);
 
   return {
     total: totalFormatted,
