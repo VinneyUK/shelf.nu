@@ -18,7 +18,7 @@ import {
   getFilamentNumbers,
 } from "~/modules/filament/numbers.server";
 import { formatManualCode } from "~/modules/matter/payload";
-import { revealMatter } from "~/modules/matter/service.server";
+import { revealDevice } from "~/modules/matter/service.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { SERVER_URL } from "~/utils/env";
 import { ShelfError } from "~/utils/error";
@@ -636,7 +636,7 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
     const qrUrl = qrUrlFor(job.qrId);
     const body = printRequestBody(
       job.layout === "matter"
-        ? await matterLabelContent(job.organizationId, job.assetId, job.title)
+        ? await matterLabelContent(job.organizationId, job.subtitle, job.title)
         : job.layout === "filament"
         ? {
             filamentId: job.sequentialId,
@@ -653,6 +653,12 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
       where: { id: job.id, organizationId: job.organizationId },
       data: { status: "printed", printedAt: new Date(), lastError: null },
     });
+    // a Matter device's label: when it was printed, on the device (fork)
+    if (job.layout === "matter" && job.subtitle)
+      await db.matterDevice.updateMany({
+        where: { id: job.subtitle, organizationId: job.organizationId },
+        data: { labelPrintedAt: new Date() },
+      });
     if (job.assetId) {
       await addAssetActivity({
         organizationId: job.organizationId,
@@ -735,59 +741,82 @@ export function nudgeLabelPrinter() {
  * Done in that order so a crash in between prints twice rather than never.
  */
 /**
- * A Matter device's label (fork): queued for an asset with a Matter code. The
- * code itself isn't kept on the print job; it's read, decrypted, when the
- * label is printed.
+ * Matter labels (fork): one per device of an IoT asset; all of them, only the
+ * ones never printed, or the devices chosen. The codes aren't kept on the
+ * print jobs (each job names its device): they're read, decrypted, only as
+ * the label prints.
  */
-export async function queueMatterLabel({
+export async function queueMatterLabels({
   organizationId,
   userId,
-  assetId,
+  assetIds,
+  which = "all",
+  deviceIds,
 }: {
   organizationId: string;
   userId: string;
-  assetId: string;
+  assetIds: string[];
+  which?: "all" | "missing" | "chosen";
+  deviceIds?: string[];
 }) {
-  const asset = await db.asset.findFirst({
-    where: { id: assetId, organizationId },
-    select: { title: true, matter: { select: { productName: true } } },
+  const devices = await db.matterDevice.findMany({
+    where: {
+      organizationId,
+      assetId: { in: assetIds },
+      ...(which === "missing" ? { labelPrintedAt: null } : {}),
+      ...(which === "chosen" ? { id: { in: deviceIds ?? [] } } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      assetId: true,
+      productName: true,
+      place: true,
+      asset: { select: { title: true } },
+    },
   });
-  if (!asset?.matter)
+  if (devices.length === 0)
     throw new ShelfError({
       cause: null,
-      message: "Add the device's Matter code first.",
+      message:
+        which === "missing"
+          ? "Every device's Matter label is printed already."
+          : "No Matter devices to print.",
       label,
       shouldBeCaptured: false,
     });
-  await db.labelPrintJob.create({
-    data: {
+  await db.labelPrintJob.createMany({
+    data: devices.map((d) => ({
       organizationId,
-      assetId,
+      assetId: d.assetId,
       layout: "matter",
       sequentialId: "",
-      title: asset.matter.productName ?? asset.title,
+      // the name on the label: where it is, else the asset's name
+      title: d.place ?? d.asset.title,
+      subtitle: d.id,
       qrId: "matter",
       source: "manual",
       requestedById: userId,
-    },
+    })),
   });
   nudgeLabelPrinter();
+  return devices.length;
 }
 
 /** What a Matter label shows, decrypted only now, as it's printed. */
 async function matterLabelContent(
   organizationId: string,
-  assetId: string | null,
+  deviceId: string | null,
   name: string
 ) {
-  if (!assetId)
+  if (!deviceId)
     throw new ShelfError({
       cause: null,
       message: "The device is gone.",
       label,
       shouldBeCaptured: false,
     });
-  const code = await revealMatter(organizationId, assetId);
+  const code = await revealDevice(organizationId, deviceId);
   return {
     matterCode: formatManualCode(code.manualCode),
     name,

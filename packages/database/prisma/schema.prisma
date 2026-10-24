@@ -313,6 +313,8 @@ model Asset {
   @@index([userId])
   /// Its Matter device's setup code and details (fork)
   matter         AssetMatter?
+  /// Its Matter devices (fork)
+  matterDevices  MatterDevice[]
 }
 
 enum AssetStatus {
@@ -2721,6 +2723,8 @@ model WorkspaceCustomisation {
   soldBoxEnabled     Boolean @default(true)
   /// Which search engine the "Search the web" button on an asset uses
   searchEngine       String  @default("google")
+  /// How an IoT asset's Matter devices show on its page: "table" or "cards"
+  matterLayout       String  @default("table")
   updatedAt        DateTime @updatedAt
 }
 
@@ -3024,6 +3028,37 @@ model SpoolCandidate {
   updatedAt        DateTime  @updatedAt
 
   @@index([organizationId, status])
+}
+
+/// One Matter device of an IoT asset (fork): an asset can have several (each
+/// counts towards its quantity). The code is kept encrypted and shown only
+/// when asked for. Takes over from AssetMatter, which held one per asset.
+model MatterDevice {
+  id             String    @id @default(cuid())
+  organizationId String
+  assetId        String
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// The QR's "MT:…" text, encrypted; null when only the manual code is known
+  payload        String?
+  /// The 11- or 21-digit manual pairing code, encrypted
+  manualCode     String
+  vendorId       Int?
+  productId      Int?
+  vendorName     String?
+  productName    String?
+  /// Where it is or what it's on: "Kitchen · kettle"
+  place          String?
+  /// Thread, Wi-Fi or Ethernet
+  transport      String?
+  firmware       String?
+  mac            String?
+  controllers    String[]  @default([])
+  /// When its Matter label was last printed
+  labelPrintedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([organizationId, assetId])
 }
 
 /// A Matter device's setup code and details, for an asset (fork). The code

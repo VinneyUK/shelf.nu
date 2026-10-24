@@ -86,6 +86,7 @@ import { getCustodyCardHolderUserId } from "~/modules/custody/utils";
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
 import { useCustomisations } from "~/modules/customisation/use-customisations"; // customise feature
 import { moveAssetKitUnits } from "~/modules/kit/service.server";
+import { isIotCategory } from "~/modules/matter/iot"; // matter (fork)
 import { generateQrObj } from "~/modules/qr/utils.server";
 import { getLastScanForViewer } from "~/modules/scan/service.server";
 import { getTeamMembersForQuantityCustody } from "~/modules/team-member/service.server";
@@ -1476,7 +1477,9 @@ export default function AssetOverview() {
             </>
           ) : null}
           {/* matter (fork): the device's setup code and details, full width */}
-          {asset ? <MatterCard assetId={asset.id} /> : null}
+          {asset && isIotCategory(asset.category?.name) ? (
+            <MatterCard assetId={asset.id} />
+          ) : null}
         </div>
 
         <div className="w-full md:w-[360px] lg:ml-4">
@@ -1891,7 +1894,10 @@ export default function AssetOverview() {
             <PartSalesCard assetId={asset.id} quantity={asset.quantity} />
           ) : null}
           {/* labels feature: the printed label, when there is one, in place of Shelf's QR section */}
-          {asset ? <PrintedLabelCard assetId={asset.id} /> : null}
+          {/* not on IoT assets: their devices' Matter labels are in the Matter section */}
+          {asset && !isIotCategory(asset.category?.name) ? (
+            <PrintedLabelCard assetId={asset.id} />
+          ) : null}
           {SHOW_SHELF_QR_SECTION && asset && (
             <CodePreview
               qrObj={qrObj}

@@ -6,6 +6,7 @@
 import { db } from "~/database/db.server";
 import { ShelfError } from "~/utils/error";
 import { decryptSecret, encryptSecret } from "~/utils/secret-box.server";
+import { isIotCategory } from "./iot";
 import {
   formatManualCode,
   manualCode,
@@ -42,10 +43,10 @@ export async function lookupDevice(vendorId: number, productId: number) {
   };
 }
 
-async function ownAsset(organizationId: string, assetId: string) {
+async function iotAsset(organizationId: string, assetId: string) {
   const asset = await db.asset.findFirst({
     where: { id: assetId, organizationId },
-    select: { id: true, title: true },
+    select: { id: true, title: true, category: { select: { name: true } } },
   });
   if (!asset)
     throw new ShelfError({
@@ -54,36 +55,69 @@ async function ownAsset(organizationId: string, assetId: string) {
       status: 404,
       label,
     });
+  if (!isIotCategory(asset.category?.name))
+    throw new ShelfError({
+      cause: null,
+      message: "Matter devices are for assets in the IoT category.",
+      status: 400,
+      label,
+      shouldBeCaptured: false,
+    });
   return asset;
 }
 
-/** What's known about an asset's Matter device, without its code. */
-export async function getMatter(organizationId: string, assetId: string) {
-  const m = await db.assetMatter.findFirst({
+/** Each device counts towards the asset's quantity: it's as many as its devices. */
+async function syncQuantity(organizationId: string, assetId: string) {
+  const count = await db.matterDevice.count({
     where: { organizationId, assetId },
   });
-  if (!m) return null;
-  return {
-    hasQr: Boolean(m.payload),
-    vendorId: m.vendorId,
-    productId: m.productId,
-    vendorName: m.vendorName,
-    productName: m.productName,
-    transport: m.transport,
-    firmware: m.firmware,
-    mac: m.mac,
-    controllers: m.controllers,
-    createdAt: m.createdAt,
-  };
+  if (count > 0)
+    await db.asset.updateMany({
+      where: { id: assetId, organizationId },
+      data: { quantity: count },
+    });
+  return count;
 }
 
-/** Saves a device's code (either kind), and looks up what it is. */
-export async function saveMatterCode(
+const notFound = () =>
+  new ShelfError({
+    cause: null,
+    message: "That device isn't recorded.",
+    status: 404,
+    label,
+  });
+
+/** An asset's Matter devices, oldest first, without their codes. */
+export async function listDevices(organizationId: string, assetId: string) {
+  const devices = await db.matterDevice.findMany({
+    where: { organizationId, assetId },
+    orderBy: { createdAt: "asc" },
+  });
+  return devices.map((d, i) => ({
+    id: d.id,
+    number: i + 1,
+    hasQr: Boolean(d.payload),
+    vendorId: d.vendorId,
+    productId: d.productId,
+    vendorName: d.vendorName,
+    productName: d.productName,
+    place: d.place,
+    transport: d.transport,
+    firmware: d.firmware,
+    mac: d.mac,
+    controllers: d.controllers,
+    labelPrintedAt: d.labelPrintedAt,
+  }));
+}
+
+/** Adds a device by its code (either kind), and looks up what it is. */
+export async function addDevice(
   organizationId: string,
   assetId: string,
-  text: string
+  text: string,
+  place?: string | null
 ) {
-  await ownAsset(organizationId, assetId);
+  await iotAsset(organizationId, assetId);
   let setup;
   try {
     setup = parseMatterCode(text);
@@ -106,65 +140,56 @@ export async function saveMatterCode(
           productName: null,
         }))
       : { vendorName: null, productName: null };
-  const data = {
-    payload: payload ? encryptSecret(payload) : null,
-    manualCode: encryptSecret(manual),
-    vendorId: setup.vendorId,
-    productId: setup.productId,
-    vendorName: names.vendorName,
-    productName: names.productName,
-  };
-  await db.assetMatter.upsert({
-    where: { assetId },
-    create: { organizationId, assetId, ...data },
-    update: data,
+  await db.matterDevice.create({
+    data: {
+      organizationId,
+      assetId,
+      payload: payload ? encryptSecret(payload) : null,
+      manualCode: encryptSecret(manual),
+      vendorId: setup.vendorId,
+      productId: setup.productId,
+      vendorName: names.vendorName,
+      productName: names.productName,
+      place: place?.trim() || null,
+    },
   });
-  return { names, hasQr: Boolean(payload) };
+  const quantity = await syncQuantity(organizationId, assetId);
+  return { names, quantity };
 }
 
-/** The code itself, to show, copy or redraw as a QR. */
-export async function revealMatter(organizationId: string, assetId: string) {
-  const m = await db.assetMatter.findFirst({
-    where: { organizationId, assetId },
-  });
-  if (!m)
-    throw new ShelfError({
-      cause: null,
-      message: "This asset has no Matter code.",
-      status: 404,
-      label,
-    });
+/** A device's code itself, to show, copy or redraw as a QR. */
+export async function revealDevice(organizationId: string, id: string) {
+  const d = await db.matterDevice.findFirst({ where: { id, organizationId } });
+  if (!d) throw notFound();
   return {
-    manualCode: decryptSecret(m.manualCode),
-    payload: m.payload ? decryptSecret(m.payload) : null,
+    manualCode: decryptSecret(d.manualCode),
+    payload: d.payload ? decryptSecret(d.payload) : null,
   };
 }
 
-/** The details you fill in: how it connects, firmware, MAC, what it's paired with. */
-export async function updateMatterDetails(
+/** The details you fill in: where it is, how it connects, firmware, MAC, what it's paired with. */
+export async function updateDevice(
   organizationId: string,
-  assetId: string,
+  id: string,
   details: {
+    place?: string | null;
     transport?: string | null;
     firmware?: string | null;
     mac?: string | null;
     controllers?: string[];
   }
 ) {
-  const { count } = await db.assetMatter.updateMany({
-    where: { organizationId, assetId },
+  const { count } = await db.matterDevice.updateMany({
+    where: { id, organizationId },
     data: details,
   });
-  if (count === 0)
-    throw new ShelfError({
-      cause: null,
-      message: "Add its Matter code first.",
-      status: 400,
-      label,
-    });
+  if (count === 0) throw notFound();
 }
 
-/** Forgets an asset's Matter code and details. */
-export async function removeMatter(organizationId: string, assetId: string) {
-  await db.assetMatter.deleteMany({ where: { organizationId, assetId } });
+/** Forgets a device; the asset's quantity follows. */
+export async function removeDevice(organizationId: string, id: string) {
+  const d = await db.matterDevice.findFirst({ where: { id, organizationId } });
+  if (!d) throw notFound();
+  await db.matterDevice.deleteMany({ where: { id, organizationId } });
+  return syncQuantity(organizationId, d.assetId);
 }

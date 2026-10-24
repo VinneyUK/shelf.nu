@@ -18,6 +18,8 @@ import { Card } from "~/components/shared/card";
 import { HIDEABLE_MENU_ITEMS } from "~/modules/customisation/catalogue";
 import {
   SEARCH_ENGINE_IDS,
+  MATTER_LAYOUTS,
+  MATTER_LAYOUT_IDS,
   SEARCH_ENGINES,
 } from "~/modules/customisation/catalogue"; // customise feature
 import {
@@ -76,6 +78,7 @@ const CustomiseSchema = z.object({
   reuseLatestNumber: flag,
   soldBoxEnabled: flag,
   searchEngine: z.enum(SEARCH_ENGINE_IDS),
+  matterLayout: z.enum(MATTER_LAYOUT_IDS),
 
   labelsEnabled: flag,
   filamentEnabled: flag,
@@ -204,6 +207,9 @@ export default function CustomiseSettings() {
     settings.reuseLatestNumber
   );
   const [soldBox, setSoldBox] = useState<boolean>(settings.soldBoxEnabled);
+  const [matterLayout, setMatterLayout] = useState<string>(
+    settings.matterLayout
+  );
   const [searchEngine, setSearchEngine] = useState<string>(
     settings.searchEngine
   );
@@ -232,6 +238,7 @@ export default function CustomiseSettings() {
       />
       <input type="hidden" name="soldBoxEnabled" value={String(soldBox)} />
       <input type="hidden" name="searchEngine" value={searchEngine} />
+      <input type="hidden" name="matterLayout" value={matterLayout} />
 
       <Card className="mt-0">
         <h3 className="text-text-lg font-semibold text-gray-900">Features</h3>
@@ -412,6 +419,31 @@ export default function CustomiseSettings() {
             {SEARCH_ENGINES.map((engine) => (
               <option key={engine.id} value={engine.id}>
                 {engine.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </Card>
+
+      <Card>
+        <h3 className="text-text-lg font-semibold text-gray-900">
+          Matter devices
+        </h3>
+        <p className="text-sm text-gray-600">
+          How an IoT asset's Matter devices show on its page.
+        </p>
+        <label className="mt-3 flex flex-col gap-1 text-sm font-medium text-gray-900">
+          Layout
+          <select
+            value={matterLayout}
+            onChange={(e) => {
+              setMatterLayout(e.target.value);
+            }}
+            className="w-full max-w-xs rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            {MATTER_LAYOUTS.map((layout) => (
+              <option key={layout.id} value={layout.id}>
+                {layout.label}
               </option>
             ))}
           </select>

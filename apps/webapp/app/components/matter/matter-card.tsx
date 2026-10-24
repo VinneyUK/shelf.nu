@@ -9,6 +9,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   PencilIcon,
+  PlusIcon,
   PrinterIcon,
   QrCodeIcon,
   ScanLineIcon,
@@ -21,21 +22,6 @@ import { Card } from "~/components/shared/card";
 import { MATTER_LOGO_PATH, MATTER_LOGO_VIEWBOX } from "~/modules/matter/logo";
 import { formatManualCode } from "~/modules/matter/payload";
 import { isFormProcessing } from "~/utils/form";
-
-type Matter = {
-  hasQr: boolean;
-  vendorId: number | null;
-  productId: number | null;
-  vendorName: string | null;
-  productName: string | null;
-  transport: string | null;
-  firmware: string | null;
-  mac: string | null;
-  controllers: string[];
-  createdAt: string;
-} | null;
-
-type Revealed = { manualCode: string; payload: string | null };
 
 /** The Matter logo (the SVG Ant supplied), in the text colour. */
 export function MatterMark({
@@ -77,253 +63,393 @@ export function QrSvg({ text, size = 140 }: { text: string; size?: number }) {
 const hex = (n: number | null) =>
   n === null ? "—" : `0x${n.toString(16).toUpperCase().padStart(4, "0")}`;
 
+type Device = {
+  id: string;
+  number: number;
+  hasQr: boolean;
+  vendorId: number | null;
+  productId: number | null;
+  vendorName: string | null;
+  productName: string | null;
+  place: string | null;
+  transport: string | null;
+  firmware: string | null;
+  mac: string | null;
+  controllers: string[];
+  labelPrintedAt: string | null;
+};
+type Revealed = { manualCode: string; payload: string | null };
+type Act = { ok?: boolean; error?: { message: string } };
+
+/**
+ * An IoT asset's Matter devices (fork): each device's code, kept encrypted
+ * and shown when you ask; its QR to re-pair after a reset; its details; and
+ * its Matter label. As a table or as cards, chosen in Settings → Customise.
+ */
 export function MatterCard({ assetId }: { assetId: string }) {
   const url = `/api/assets/${assetId}/matter`;
-  const info = useFetcher<{ matter: Matter }>();
-  const reveal = useFetcher<{ code?: Revealed }>();
-  const act = useFetcher<{ ok?: boolean; error?: { message: string } }>();
-  const [shown, setShown] = useState(false);
-  const [repair, setRepair] = useState(false);
-  const [editing, setEditing] = useState(false);
-
-  // what's known, and again after any change
+  const info = useFetcher<{ devices: Device[]; layout: "table" | "cards" }>();
+  const act = useFetcher<Act>();
+  const [adding, setAdding] = useState(false);
   useEffect(() => {
     if (info.state === "idle" && !info.data) void info.load(url);
   }, [info, url]);
   useEffect(() => {
     if (act.state === "idle" && act.data?.ok) {
       void info.load(url);
-      setShown(false);
-      setEditing(false);
+      setAdding(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [act.state, act.data]);
-
-  const matter = info.data?.matter ?? null;
-  const code = reveal.data?.code;
-  const showCode = (then?: () => void) => {
-    if (!code)
-      void reveal.submit({ intent: "reveal" }, { method: "post", action: url });
-    setShown(true);
-    then?.();
-  };
-
   if (!info.data) return null;
-  if (!matter) return <MatterEmpty url={url} act={act} />;
-
-  const name = [matter.vendorName, matter.productName]
-    .filter(Boolean)
-    .join(" · ");
+  const { devices, layout } = info.data;
+  const first = devices[0];
+  const maker = first
+    ? [first.vendorName, first.productName].filter(Boolean).join(" · ")
+    : "";
+  const missing = devices.filter((d) => !d.labelPrintedAt).length;
+  const print = (which: "all" | "missing") =>
+    void act.submit(
+      { intent: "print", which },
+      { method: "post", action: url }
+    );
   return (
-    <Card className="my-3 md:border">
-      <div className="flex flex-wrap gap-6">
-        {matter.hasQr ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative rounded-lg border border-gray-200 p-2">
-              <div
-                style={{
-                  filter: shown && code?.payload ? "none" : "blur(6px)",
-                }}
-              >
-                <QrSvg
-                  text={code?.payload ?? "MT:0000000000000000000"}
-                  size={132}
-                />
-              </div>
-              {!(shown && code) ? (
-                <button
-                  type="button"
-                  onClick={() => showCode()}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  <span className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow">
-                    Reveal
-                  </span>
-                </button>
-              ) : null}
-            </div>
-            <span className="text-xs text-gray-400">
-              Scan with your phone to re-pair
-            </span>
-          </div>
+    <Card className="my-3 p-0 md:border">
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-5 py-3.5">
+        <h3 className="sr-only">Matter</h3>
+        <MatterMark className="h-4 w-auto text-gray-900" />
+        {maker ? <span className="text-sm text-gray-600">{maker}</span> : null}
+        {devices.length ? (
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+            {devices.length} {devices.length === 1 ? "device" : "devices"}
+          </span>
         ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <MatterMark className="h-4 w-auto text-gray-900" />
-            <h3 className="sr-only">Matter</h3>
-            {name ? (
-              <span className="text-sm text-gray-600">{name}</span>
-            ) : null}
-            <span className="inline-flex items-center gap-1 text-xs text-success-700">
-              <ShieldCheckIcon className="size-3.5" aria-hidden="true" /> Stored
-              encrypted
-            </span>
-            <span className="ml-auto flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  showCode(
-                    () =>
-                      void (
-                        code && navigator.clipboard?.writeText(code.manualCode)
-                      )
-                  )
-                }
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <CopyIcon className="size-4" aria-hidden="true" /> Copy code
-                </span>
-              </Button>
-              {matter.hasQr ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => showCode(() => setRepair(true))}
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    <QrCodeIcon className="size-4" aria-hidden="true" /> Re-pair
-                  </span>
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => (shown ? setShown(false) : showCode())}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  {shown ? (
-                    <EyeOffIcon className="size-4" aria-hidden="true" />
-                  ) : (
-                    <EyeIcon className="size-4" aria-hidden="true" />
-                  )}
-                  {shown ? "Hide" : "Reveal"}
-                </span>
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={isFormProcessing(act.state)}
-                onClick={() =>
-                  void act.submit(
-                    { intent: "print" },
-                    { method: "post", action: url }
-                  )
-                }
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <PrinterIcon className="size-4" aria-hidden="true" /> Print
-                  label
-                </span>
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setEditing(!editing)}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <PencilIcon className="size-4" aria-hidden="true" /> Details
-                </span>
-              </Button>
-            </span>
-          </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-xs font-medium text-gray-500">
-              Setup code
-            </span>
-            <span className="font-mono text-lg font-semibold tracking-wider text-gray-900">
-              {shown && code
-                ? formatManualCode(code.manualCode)
-                : "••••-•••-••••"}
-            </span>
-          </div>
-          {editing ? (
-            <MatterDetailsForm url={url} matter={matter} act={act} />
-          ) : (
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                ["Connects over", matter.transport ?? "—"],
-                ["Vendor ID", hex(matter.vendorId)],
-                ["Product ID", hex(matter.productId)],
-                ["Firmware", matter.firmware ?? "—"],
-                ["MAC", matter.mac ?? "—"],
-                [
-                  "Paired with",
-                  matter.controllers.length
-                    ? matter.controllers.join(", ")
-                    : "—",
-                ],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-xs font-medium text-gray-500">{k}</dt>
-                  <dd className="text-sm font-semibold text-gray-900">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-      </div>
-      {repair && code?.payload ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
-          onClick={() => setRepair(false)}
-          role="presentation"
-        >
-          <div
-            role="dialog"
-            aria-label="Re-pair"
-            className="flex w-[380px] flex-col items-center gap-4 rounded-2xl bg-white p-8 text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2 text-gray-900">
-              <MatterMark className="h-5 w-auto" />
-              <span className="text-lg font-semibold">
-                {matter.productName ?? "Matter device"}
-              </span>
-            </div>
-            <QrSvg text={code.payload} size={240} />
-            <div className="font-mono text-2xl font-bold tracking-wider text-gray-900">
-              {formatManualCode(code.manualCode)}
-            </div>
-            <p className="text-sm text-gray-600">
-              Put the device in pairing mode, then in your Home app choose to
-              add an accessory and scan this.
-            </p>
+        <span className="inline-flex items-center gap-1 text-xs text-success-700">
+          <ShieldCheckIcon className="size-3.5" aria-hidden="true" /> Stored
+          encrypted
+        </span>
+        <span className="ml-auto flex flex-wrap gap-2">
+          {devices.length ? (
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setRepair(false)}
+              size="sm"
+              disabled={isFormProcessing(act.state)}
+              onClick={() =>
+                print(missing && missing < devices.length ? "missing" : "all")
+              }
             >
-              Close
+              <span className="inline-flex items-center gap-1.5">
+                <PrinterIcon className="size-4" aria-hidden="true" />
+                {missing && missing < devices.length
+                  ? `Print the ${missing} missing ${
+                      missing === 1 ? "label" : "labels"
+                    }`
+                  : devices.length === 1
+                  ? "Print label"
+                  : "Print all labels"}
+              </span>
             </Button>
-          </div>
-        </div>
+          ) : null}
+          <Button type="button" size="sm" onClick={() => setAdding(!adding)}>
+            <span className="inline-flex items-center gap-1.5">
+              <PlusIcon className="size-4" aria-hidden="true" /> Add device
+            </span>
+          </Button>
+        </span>
+      </div>
+      {adding || devices.length === 0 ? (
+        <AddDevice url={url} act={act} first={devices.length === 0} />
       ) : null}
+      {devices.length === 0 ? null : layout === "cards" ? (
+        <div className="flex flex-col gap-3 p-4">
+          {devices.map((d) => (
+            <DeviceCard key={d.id} d={d} url={url} />
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-25">
+              <tr>
+                {[
+                  "#",
+                  "Setup code",
+                  "Where",
+                  "Connects",
+                  "Paired with",
+                  "Label",
+                  "",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-5 py-2 text-left text-xs font-medium text-gray-500"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {devices.map((d) => (
+                <DeviceRow key={d.id} d={d} url={url} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 }
 
-/** Before it has a code: scan it (a photo of the QR) or type it. */
-function MatterEmpty({
+/** Reveal, copy, re-pair, print and edit, for one device. */
+function useDevice(d: Device, url: string) {
+  const reveal = useFetcher<{ id?: string; code?: Revealed }>();
+  const act = useFetcher<Act>();
+  const [shown, setShown] = useState(false);
+  const [repair, setRepair] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const code = reveal.data?.code;
+  const ask = (then?: () => void) => {
+    if (!code)
+      void reveal.submit(
+        { intent: "reveal", id: d.id },
+        { method: "post", action: url }
+      );
+    setShown(true);
+    then?.();
+  };
+  return {
+    reveal,
+    act,
+    shown,
+    setShown,
+    repair,
+    setRepair,
+    editing,
+    setEditing,
+    code,
+    ask,
+  };
+}
+
+function DeviceButtons({
+  d,
+  url,
+  s,
+}: {
+  d: Device;
+  url: string;
+  s: ReturnType<typeof useDevice>;
+}) {
+  const icon = (label: string, Icon: typeof EyeIcon, onClick: () => void) => (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="p-2"
+      aria-label={label}
+      tooltip={label}
+      onClick={onClick}
+    >
+      <Icon className="size-4" aria-hidden="true" />
+    </Button>
+  );
+  return (
+    <span className="inline-flex gap-1.5">
+      {icon(s.shown ? "Hide" : "Reveal", s.shown ? EyeOffIcon : EyeIcon, () =>
+        s.shown ? s.setShown(false) : s.ask()
+      )}
+      {icon("Copy code", CopyIcon, () =>
+        s.ask(
+          () =>
+            void (s.code && navigator.clipboard?.writeText(s.code.manualCode))
+        )
+      )}
+      {d.hasQr
+        ? icon("Re-pair", QrCodeIcon, () => s.ask(() => s.setRepair(true)))
+        : null}
+      {icon(
+        "Print its label",
+        PrinterIcon,
+        () =>
+          void s.act.submit(
+            { intent: "print", id: d.id },
+            { method: "post", action: url }
+          )
+      )}
+      {icon("Details", PencilIcon, () => s.setEditing(!s.editing))}
+    </span>
+  );
+}
+
+const printedBadge = (d: Device) =>
+  d.labelPrintedAt ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700">
+      Label printed
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700">
+      No label yet
+    </span>
+  );
+
+const codeText = (s: ReturnType<typeof useDevice>) =>
+  s.shown && s.code ? formatManualCode(s.code.manualCode) : "••••-•••-••••";
+
+function DeviceRow({ d, url }: { d: Device; url: string }) {
+  const s = useDevice(d, url);
+  const cell = "px-5 py-2.5 align-middle text-sm";
+  return (
+    <>
+      <tr>
+        <td className={`${cell} text-gray-400`}>{d.number}</td>
+        <td
+          className={`${cell} font-mono font-semibold tracking-wide text-gray-900`}
+        >
+          {codeText(s)}
+        </td>
+        <td className={`${cell} text-gray-900`}>{d.place ?? "—"}</td>
+        <td className={`${cell} text-gray-600`}>{d.transport ?? "—"}</td>
+        <td className={`${cell} text-gray-600`}>
+          {d.controllers.join(", ") || "—"}
+        </td>
+        <td className={cell}>{printedBadge(d)}</td>
+        <td className={`${cell} text-right`}>
+          <DeviceButtons d={d} url={url} s={s} />
+        </td>
+      </tr>
+      {s.editing ? (
+        <tr>
+          <td colSpan={7} className="bg-gray-25 px-5 py-3">
+            <DetailsForm d={d} url={url} act={s.act} />
+          </td>
+        </tr>
+      ) : null}
+      {s.repair && s.code?.payload ? (
+        <Repair d={d} code={s.code} onClose={() => s.setRepair(false)} />
+      ) : null}
+    </>
+  );
+}
+
+function DeviceCard({ d, url }: { d: Device; url: string }) {
+  const s = useDevice(d, url);
+  return (
+    <div className="rounded-lg border border-gray-200 p-3">
+      <div className="flex flex-wrap items-center gap-4">
+        {d.hasQr ? (
+          <div
+            className="rounded-md border border-gray-200 p-1"
+            style={{
+              filter: s.shown && s.code?.payload ? "none" : "blur(4px)",
+            }}
+          >
+            <QrSvg
+              text={s.code?.payload ?? "MT:0000000000000000000"}
+              size={56}
+            />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-gray-900">
+              Device {d.number}
+            </span>
+            {d.place ? (
+              <span className="text-sm text-gray-600">{d.place}</span>
+            ) : null}
+            {printedBadge(d)}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+            <span className="font-mono text-sm font-semibold tracking-wide text-gray-900">
+              {codeText(s)}
+            </span>
+            {d.transport ? <span>{d.transport}</span> : null}
+            {d.controllers.length ? (
+              <span>{d.controllers.join(", ")}</span>
+            ) : null}
+            <span className="text-gray-400">
+              {hex(d.vendorId)} / {hex(d.productId)}
+            </span>
+          </div>
+        </div>
+        <DeviceButtons d={d} url={url} s={s} />
+      </div>
+      {s.editing ? (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <DetailsForm d={d} url={url} act={s.act} />
+        </div>
+      ) : null}
+      {s.repair && s.code?.payload ? (
+        <Repair d={d} code={s.code} onClose={() => s.setRepair(false)} />
+      ) : null}
+    </div>
+  );
+}
+
+/** The QR large, with the code under it, to scan from a Home app after a reset. */
+function Repair({
+  d,
+  code,
+  onClose,
+}: {
+  d: Device;
+  code: Revealed;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-label="Re-pair"
+        className="flex w-[380px] flex-col items-center gap-4 rounded-2xl bg-white p-8 text-center shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MatterMark className="h-5 w-auto text-gray-900" />
+        <div className="text-lg font-semibold text-gray-900">
+          {d.place ?? `Device ${d.number}`}
+        </div>
+        <QrSvg text={code.payload ?? ""} size={240} />
+        <div className="font-mono text-2xl font-bold tracking-wider text-gray-900">
+          {formatManualCode(code.manualCode)}
+        </div>
+        <p className="text-sm text-gray-600">
+          Put the device in pairing mode, then in your Home app choose to add an
+          accessory and scan this.
+        </p>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Add a device: scan its QR (a photo of the label) or type its code. */
+function AddDevice({
   url,
   act,
+  first,
 }: {
   url: string;
-  act: ReturnType<
-    typeof useFetcher<{ ok?: boolean; error?: { message: string } }>
-  >;
+  act: ReturnType<typeof useFetcher<Act>>;
+  first: boolean;
 }) {
   const [text, setText] = useState("");
+  const [place, setPlace] = useState("");
   const [reading, setReading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const save = (code: string) =>
-    void act.submit({ intent: "save", code }, { method: "post", action: url });
+    void act.submit(
+      { intent: "add", code, place },
+      { method: "post", action: url }
+    );
   const fromPhoto = async (f: File) => {
     setReading(true);
     setProblem(null);
@@ -346,89 +472,88 @@ function MatterEmpty({
     }
   };
   return (
-    <Card className="my-3 md:border">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <MatterMark className="h-4 w-auto text-gray-900" />
-          <h3 className="sr-only">Matter</h3>
-        </div>
+    <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4">
+      {first ? (
         <p className="text-sm text-gray-600">
-          Keep this device's setup code safe: you'll need it to pair it again
-          after a reset.
+          Keep each device's setup code safe: you'll need it to pair it again
+          after a reset. Each device you add counts towards the quantity.
         </p>
-        <div className="flex flex-wrap items-center gap-2">
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={place}
+          onChange={(e) => setPlace(e.target.value)}
+          placeholder="Where it is (optional): Kitchen · kettle"
+          className="h-10 w-64 rounded-lg border border-gray-300 px-3 text-sm"
+          aria-label="Where it is"
+        />
+        <input
+          ref={file}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void fromPhoto(f);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          type="button"
+          onClick={() => file.current?.click()}
+          disabled={reading || isFormProcessing(act.state)}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <ScanLineIcon className="size-4" aria-hidden="true" />{" "}
+            {reading ? "Reading…" : "Scan the QR"}
+          </span>
+        </Button>
+        <span className="text-sm text-gray-400">or</span>
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (text.trim()) save(text);
+          }}
+        >
           <input
-            ref={file}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void fromPhoto(f);
-              e.target.value = "";
-            }}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="The 11 digits, or the MT:… text"
+            className="h-10 w-64 rounded-lg border border-gray-300 px-3 font-mono text-sm"
+            aria-label="Matter setup code"
           />
           <Button
-            type="button"
-            onClick={() => file.current?.click()}
-            disabled={reading || isFormProcessing(act.state)}
+            type="submit"
+            variant="secondary"
+            disabled={!text.trim() || isFormProcessing(act.state)}
           >
-            <span className="inline-flex items-center gap-1.5">
-              <ScanLineIcon className="size-4" aria-hidden="true" />{" "}
-              {reading ? "Reading…" : "Scan the QR"}
-            </span>
+            Add
           </Button>
-          <span className="text-sm text-gray-400">or</span>
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (text.trim()) save(text);
-            }}
-          >
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="The 11 digits, or the MT:… text"
-              className="h-10 w-72 rounded-lg border border-gray-300 px-3 font-mono text-sm"
-              aria-label="Matter setup code"
-            />
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={!text.trim() || isFormProcessing(act.state)}
-            >
-              Save
-            </Button>
-          </form>
-        </div>
-        {problem || act.data?.error ? (
-          <p className="text-sm text-error-600">
-            {problem ?? act.data?.error?.message}
-          </p>
-        ) : null}
-        <p className="text-xs text-gray-400">
-          On a phone, Scan opens the camera; on a computer, choose a photo of
-          the label.
-        </p>
+        </form>
       </div>
-    </Card>
+      {problem || act.data?.error ? (
+        <p className="text-sm text-error-600">
+          {problem ?? act.data?.error?.message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
-/** How it connects, its firmware and MAC, and what it's paired with. */
-function MatterDetailsForm({
+/** Where it is, how it connects, its firmware and MAC, and what it's paired with. */
+function DetailsForm({
+  d,
   url,
-  matter,
   act,
 }: {
+  d: Device;
   url: string;
-  matter: NonNullable<Matter>;
-  act: ReturnType<typeof useFetcher<{ ok?: boolean }>>;
+  act: ReturnType<typeof useFetcher<Act>>;
 }) {
   const input = "h-9 rounded-lg border border-gray-300 px-2.5 text-sm";
-  const [controllers, setControllers] = useState(matter.controllers.join(", "));
+  const [controllers, setControllers] = useState(d.controllers.join(", "));
   return (
     <act.Form
       method="post"
@@ -436,11 +561,16 @@ function MatterDetailsForm({
       className="flex flex-wrap items-end gap-3"
     >
       <input type="hidden" name="intent" value="details" />
+      <input type="hidden" name="id" value={d.id} />
+      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+        Where it is
+        <input name="place" defaultValue={d.place ?? ""} className={input} />
+      </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
         Connects over
         <select
           name="transport"
-          defaultValue={matter.transport ?? ""}
+          defaultValue={d.transport ?? ""}
           className={input}
         >
           <option value="">—</option>
@@ -453,7 +583,7 @@ function MatterDetailsForm({
         Firmware
         <input
           name="firmware"
-          defaultValue={matter.firmware ?? ""}
+          defaultValue={d.firmware ?? ""}
           className={input}
         />
       </label>
@@ -461,7 +591,7 @@ function MatterDetailsForm({
         MAC
         <input
           name="mac"
-          defaultValue={matter.mac ?? ""}
+          defaultValue={d.mac ?? ""}
           className={`${input} font-mono`}
         />
       </label>
@@ -471,7 +601,7 @@ function MatterDetailsForm({
           value={controllers}
           onChange={(e) => setControllers(e.target.value)}
           placeholder="Apple Home, Home Assistant"
-          className={`${input} w-64`}
+          className={`${input} w-56`}
         />
       </label>
       {controllers
@@ -490,11 +620,15 @@ function MatterDetailsForm({
         value="remove"
         className="text-sm font-semibold text-error-600 hover:text-error-700"
         onClick={(e) => {
-          if (!window.confirm("Forget this device's Matter code?"))
+          if (
+            !window.confirm(
+              "Forget this device's Matter code? The quantity goes down by one."
+            )
+          )
             e.preventDefault();
         }}
       >
-        Remove code
+        Remove device
       </button>
     </act.Form>
   );

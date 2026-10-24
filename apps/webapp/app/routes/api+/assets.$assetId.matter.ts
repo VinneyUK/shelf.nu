@@ -1,19 +1,21 @@
 /**
- * An asset's Matter device (fork): what's known about it (GET), and saving,
- * revealing, filling in or removing its setup code (POST). The code itself is
- * only sent back on "reveal", to people who can change the asset.
+ * An IoT asset's Matter devices (fork): the list, without codes, and the
+ * layout chosen in Settings → Customise (GET); adding a device, revealing,
+ * changing or removing one, and printing their labels (POST). A code is only
+ * sent back on "reveal", to people who can change the asset.
  */
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { data } from "react-router";
 import { z } from "zod";
+import { db } from "~/database/db.server";
 import { done } from "~/modules/filament/notify.server";
-import { queueMatterLabel } from "~/modules/labels/service.server";
+import { queueMatterLabels } from "~/modules/labels/service.server";
 import {
-  getMatter,
-  removeMatter,
-  revealMatter,
-  saveMatterCode,
-  updateMatterDetails,
+  addDevice,
+  listDevices,
+  removeDevice,
+  revealDevice,
+  updateDevice,
 } from "~/modules/matter/service.server";
 import { makeShelfError } from "~/utils/error";
 import { error, getParams, payload } from "~/utils/http.server";
@@ -33,7 +35,16 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       entity: PermissionEntity.asset,
       action: PermissionAction.read,
     });
-    return payload({ matter: await getMatter(organizationId, assetId) });
+    const [devices, settings] = await Promise.all([
+      listDevices(organizationId, assetId),
+      db.workspaceCustomisation.findUnique({
+        where: { organizationId },
+        select: { matterLayout: true },
+      }),
+    ]);
+    // the layout chosen in Settings → Customise
+    const layout = settings?.matterLayout === "cards" ? "cards" : "table";
+    return payload({ devices, layout });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
     return data(error(reason), { status: reason.status });
@@ -53,32 +64,33 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
       action: PermissionAction.update,
     });
     const form = await request.formData();
+    const id = String(form.get("id") ?? "");
+    const text = (k: string) => {
+      const v = String(form.get(k) ?? "").trim();
+      return v || null;
+    };
     switch (form.get("intent")) {
-      case "save": {
-        const { names } = await saveMatterCode(
+      case "add": {
+        const { names, quantity } = await addDevice(
           organizationId,
           assetId,
-          String(form.get("code") ?? "")
+          String(form.get("code") ?? ""),
+          text("place")
         );
         return done(
           userId,
-          "Matter code saved",
-          names.productName
-            ? `${names.vendorName ?? ""} ${
-                names.productName
-              }: kept encrypted.`.trim()
-            : "Kept encrypted."
+          "Matter device added",
+          `${
+            names.productName ? `${names.productName}: ` : ""
+          }kept encrypted. Quantity is now ${quantity}.`
         );
       }
       case "reveal":
-        return payload({ code: await revealMatter(organizationId, assetId) });
+        return payload({ id, code: await revealDevice(organizationId, id) });
       case "details": {
-        const text = (k: string) => {
-          const v = String(form.get(k) ?? "").trim();
-          return v || null;
-        };
         const transport = text("transport");
-        await updateMatterDetails(organizationId, assetId, {
+        await updateDevice(organizationId, id, {
+          place: text("place"),
           transport:
             transport && TRANSPORTS.includes(transport) ? transport : null,
           firmware: text("firmware"),
@@ -88,16 +100,32 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
             .map((c) => String(c).trim())
             .filter(Boolean),
         });
-        return done(userId, "Matter details saved", "");
+        return done(userId, "Device updated", "");
       }
-      // a Matter label on the label printer
+      case "remove": {
+        const quantity = await removeDevice(organizationId, id);
+        return done(
+          userId,
+          "Matter device removed",
+          quantity ? `Quantity is now ${quantity}.` : ""
+        );
+      }
+      // Matter labels: all the asset's devices, those not printed yet, or one
       case "print": {
-        await queueMatterLabel({ organizationId, userId, assetId });
-        return done(userId, "Matter label queued", "It will print shortly.");
+        const which = String(form.get("which") ?? "all");
+        const count = await queueMatterLabels({
+          organizationId,
+          userId,
+          assetIds: [assetId],
+          which: which === "missing" ? "missing" : id ? "chosen" : "all",
+          deviceIds: id ? [id] : undefined,
+        });
+        return done(
+          userId,
+          count === 1 ? "Matter label queued" : `${count} Matter labels queued`,
+          "They will print shortly."
+        );
       }
-      case "remove":
-        await removeMatter(organizationId, assetId);
-        return done(userId, "Matter code removed", "");
       default:
         return payload({ ok: false });
     }

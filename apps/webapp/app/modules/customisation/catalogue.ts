@@ -61,6 +61,8 @@ export type Customisations = {
   soldBoxEnabled: boolean;
   /** Which search engine the "Search the web" button on an asset uses */
   searchEngine: SearchEngineId;
+  /** How an IoT asset's Matter devices show on its page (fork) */
+  matterLayout: MatterLayout;
   /** AI feature: switched on with a key saved (set in Settings → AI, not on the Customise page) */
   aiEnabled: boolean;
 };
@@ -84,8 +86,20 @@ export const DEFAULT_CUSTOMISATIONS: Customisations = {
   reuseLatestNumber: true,
   soldBoxEnabled: true,
   searchEngine: "google",
+  matterLayout: "table",
   aiEnabled: false,
 };
+
+/** How an IoT asset's Matter devices show: a table, or a card each (fork). */
+export const MATTER_LAYOUTS = [
+  { id: "table", label: "A table: a row per device" },
+  { id: "cards", label: "Cards: one per device, with its QR" },
+] as const;
+export type MatterLayout = (typeof MATTER_LAYOUTS)[number]["id"];
+export const MATTER_LAYOUT_IDS = MATTER_LAYOUTS.map((l) => l.id) as [
+  MatterLayout,
+  ...MatterLayout[],
+];
 
 type MenuMatch = { to?: string; title?: string };
 
