@@ -18,6 +18,7 @@ import QRCode from "qrcode-generator";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
+import { MATTER_LOGO_PATH, MATTER_LOGO_VIEWBOX } from "~/modules/matter/logo";
 import { formatManualCode } from "~/modules/matter/payload";
 import { isFormProcessing } from "~/utils/form";
 
@@ -36,22 +37,15 @@ type Matter = {
 
 type Revealed = { manualCode: string; payload: string | null };
 
-/** The Matter mark, roughly: three arms meeting. */
-export function MatterMark({ className = "size-4" }: { className?: string }) {
+/** The Matter logo (the SVG Ant supplied), in the text colour. */
+export function MatterMark({
+  className = "h-4 w-auto",
+}: {
+  className?: string;
+}) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M12 3v7M12 10l-7 7M12 10l7 7" />
-      <circle cx="12" cy="3" r="1.6" fill="currentColor" />
-      <circle cx="5" cy="17" r="1.6" fill="currentColor" />
-      <circle cx="19" cy="17" r="1.6" fill="currentColor" />
+    <svg viewBox={MATTER_LOGO_VIEWBOX} className={className} aria-hidden="true">
+      <path d={MATTER_LOGO_PATH} fill="currentColor" />
     </svg>
   );
 }
@@ -155,8 +149,8 @@ export function MatterCard({ assetId }: { assetId: string }) {
         ) : null}
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <MatterMark className="size-4 text-gray-900" />
-            <h3 className="text-text-md font-semibold text-gray-900">Matter</h3>
+            <MatterMark className="h-4 w-auto text-gray-900" />
+            <h3 className="sr-only">Matter</h3>
             {name ? (
               <span className="text-sm text-gray-600">{name}</span>
             ) : null}
@@ -287,7 +281,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 text-gray-900">
-              <MatterMark className="size-5" />
+              <MatterMark className="h-5 w-auto" />
               <span className="text-lg font-semibold">
                 {matter.productName ?? "Matter device"}
               </span>
@@ -355,8 +349,8 @@ function MatterEmpty({
     <Card className="my-3 md:border">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <MatterMark className="size-4 text-gray-900" />
-          <h3 className="text-text-md font-semibold text-gray-900">Matter</h3>
+          <MatterMark className="h-4 w-auto text-gray-900" />
+          <h3 className="sr-only">Matter</h3>
         </div>
         <p className="text-sm text-gray-600">
           Keep this device's setup code safe: you'll need it to pair it again

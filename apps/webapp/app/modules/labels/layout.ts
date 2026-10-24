@@ -9,6 +9,7 @@
  * Filament labels: QR code on the left; FIL-0001 along the top with the Bambu
  * code printed white on black at the right; the colour, large; the line.
  */
+import { type DotLogo, MATTER_LOGOS } from "~/modules/matter/logo";
 import { fitSize, fitText, textWidth, wrapToFit } from "./font-metrics";
 
 export const LABEL_HEIGHT = 96;
@@ -271,9 +272,6 @@ export type MatterLabelContent = {
   payload: string | null;
 };
 
-/** The black band down the left, with the Matter mark in it. */
-export const MATTER_BAND = 26;
-
 /** The biggest size, from max down to min, at which the text fits the room. */
 export function fitMatterSize(
   value: string,
@@ -294,70 +292,45 @@ export function cutToFit(value: string, room: number, size: number) {
   return `${v.trimEnd()}…`;
 }
 
-/**
- * The Matter mark in white on the band: a stem and two arms meeting, a dot
- * at each end (lines and circles, as the printer draws them).
- */
-function matterMark(cx: number, cy: number) {
-  const top = { x: cx, y: cy - 13 };
-  const mid = { x: cx, y: cy - 1 };
-  const left = { x: cx - 9, y: cy + 10 };
-  const right = { x: cx + 9, y: cy + 10 };
-  const line = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    type: "line",
-    x_start: a.x,
-    y_start: a.y,
-    x_end: b.x,
-    y_end: b.y,
-    fill: "white",
-    width: 3,
-  });
-  const dot = (p: { x: number; y: number }) => ({
-    type: "circle",
-    x: p.x,
-    y: p.y,
-    radius: 3,
-    fill: "white",
-    outline: "white",
-    width: 1,
-  });
-  return [
-    line(top, mid),
-    line(mid, left),
-    line(mid, right),
-    dot(top),
-    dot(left),
-    dot(right),
-  ];
+/** The Matter logo as printer dots: a filled rectangle for each run of black dots. */
+function matterLogo(logo: DotLogo, left: number, top: number) {
+  return logo.runs.map(([row, from, to]) => ({
+    type: "rectangle",
+    x_start: left + from,
+    y_start: top + row,
+    x_end: left + to + 1,
+    y_end: top + row + 1,
+    fill: "black",
+    outline: "black",
+    width: 0,
+  }));
 }
 
+/** Where the logo sits: beside the QR, a little down from its top. */
+export const MATTER_LOGO_TOP = 6;
+
 /**
- * A Matter label (design C): a black band with the Matter mark, the device's
- * Matter QR (for a Home app to scan), then the manual code large and the
- * device's name, each sized down (then cut) to fit the label you've set.
+ * A Matter label: the device's Matter QR at the left (for a Home app to scan),
+ * the Matter logo beside it near the top, and under the logo the code and the
+ * device's name, one beneath the other, each sized down (then cut) to fit the
+ * label width set in Labels → Settings.
  */
 export function matterLabelPayload(
   content: MatterLabelContent,
   settings: LabelLayoutSettings
 ) {
   const m = settings.leftMargin;
-  const qrLeft = MATTER_BAND + 4 + m;
+  const qrLeft = 2 + m;
   const left = content.payload ? qrLeft + QR_SIZE + 6 : qrLeft;
   const room = Math.max(10, settings.labelWidth - left - 4);
-  const codeSize = fitMatterSize(content.matterCode, room, 24, 11);
-  const nameSize = fitMatterSize(content.name, room, 16, 11);
+  const codeSize = fitMatterSize(content.matterCode, room, 22, 11);
+  const nameSize = fitMatterSize(content.name, room, 15, 10);
+  // the largest logo that fits beside the QR
+  const logo =
+    MATTER_LOGOS.find((l) => l.width <= room) ??
+    MATTER_LOGOS[MATTER_LOGOS.length - 1];
+  const textTop = MATTER_LOGO_TOP + logo.height;
   return [
-    {
-      type: "rectangle",
-      x_start: m,
-      y_start: 0,
-      x_end: MATTER_BAND + m,
-      y_end: LABEL_HEIGHT,
-      fill: "black",
-      outline: "black",
-      width: 1,
-    },
-    ...matterMark(m + MATTER_BAND / 2, LABEL_HEIGHT / 2),
     ...(content.payload
       ? [
           {
@@ -373,8 +346,14 @@ export function matterLabelPayload(
           },
         ]
       : []),
-    text(cutToFit(content.matterCode, room, codeSize), left, 46, codeSize),
-    text(cutToFit(content.name, room, nameSize), left, 74, nameSize),
+    ...matterLogo(logo, left, MATTER_LOGO_TOP),
+    text(
+      cutToFit(content.matterCode, room, codeSize),
+      left,
+      textTop + 25,
+      codeSize
+    ),
+    text(cutToFit(content.name, room, nameSize), left, textTop + 47, nameSize),
   ];
 }
 
