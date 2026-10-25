@@ -16,7 +16,14 @@ export default function ProfilePicture({
   className?: string;
 }) {
   const user = useUserData();
-  const styles = tw(width, height, "rounded-[4px]", className);
+  // fork: never squeezed out of shape when its space is narrower (the
+  // collapsed menu): no max-width, and the photo cropped to fill, not stretched
+  const styles = tw(
+    width,
+    height,
+    "max-w-none shrink-0 rounded-[4px] object-cover",
+    className
+  );
 
   return user ? (
     <img

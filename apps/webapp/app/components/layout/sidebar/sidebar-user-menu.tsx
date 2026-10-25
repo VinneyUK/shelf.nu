@@ -41,12 +41,13 @@ export default function SidebarUserMenu() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="!h-auto border !p-1 data-[state=open]:bg-gray-50 data-[state=open]:text-sidebar-accent-foreground hover:bg-gray-50"
+              className="!h-auto border !p-1 data-[state=open]:bg-gray-50 data-[state=open]:text-sidebar-accent-foreground hover:bg-gray-50 group-data-[collapsible=icon]:!border-0 group-data-[collapsible=icon]:!p-0"
             >
+              {/* fork: no gap beside it in the collapsed menu, so it keeps its square */}
               <ProfilePicture
                 width="w-8"
                 height="h-8"
-                className="mr-3 shrink-0"
+                className="mr-3 shrink-0 group-data-[collapsible=icon]:mr-0"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.username}</span>
