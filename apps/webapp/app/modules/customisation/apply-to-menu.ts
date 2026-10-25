@@ -17,6 +17,18 @@ export const AI_PAGE = "/settings/ai";
 export const DRAFTS_PAGE = "/drafts";
 export const FILAMENT_PAGE = "/filament";
 export const PRINTER_PAGE = "/settings/printer";
+export const IOT_PAGE = "/iot";
+
+/** IoT (fork): IoT goes straight after Filament (or Drafts, Labels, Reports). */
+function withIotItem(items: NavItem[], Icon: LucideIcon): NavItem[] {
+  if (items.some((i) => i.type === "child" && i.to === IOT_PAGE)) return items;
+  const iot = { type: "child", title: "IoT", to: IOT_PAGE, Icon } as NavItem;
+  const anchor = [FILAMENT_PAGE, DRAFTS_PAGE, LABELS_PAGE, "/reports"]
+    .map((to) => items.findIndex((i) => i.type === "child" && i.to === to))
+    .find((i) => i >= 0);
+  if (anchor === undefined) return [...items, iot];
+  return [...items.slice(0, anchor + 1), iot, ...items.slice(anchor + 1)];
+}
 
 /**
  * labels feature: Labels goes after Reports, or at the end of the first
@@ -159,7 +171,8 @@ export function applyCustomisationsToMenu(
   c: Customisations,
   labelsIcon?: LucideIcon,
   draftsIcon?: LucideIcon,
-  filamentIcon?: LucideIcon
+  filamentIcon?: LucideIcon,
+  iotIcon?: LucideIcon
 ) {
   const withLabels = labelsIcon
     ? withLabelsItem(menu.topMenuItems, labelsIcon)
@@ -168,10 +181,11 @@ export function applyCustomisationsToMenu(
     draftsIcon && c.aiEnabled
       ? withDraftsItem(withLabels, draftsIcon)
       : withLabels;
-  const top =
+  const withFilament =
     filamentIcon && c.filamentEnabled
       ? withFilamentItem(withDrafts, filamentIcon)
       : withDrafts;
+  const top = iotIcon ? withIotItem(withFilament, iotIcon) : withFilament;
   return {
     // as you dragged it (fork)
     topMenuItems: orderMenu(tidy(withoutHidden(top, c)), c.menuOrder ?? []),

@@ -53,3 +53,26 @@ describe("the menu's order", () => {
     ).toEqual(["/assets", "/home"]);
   });
 });
+
+describe("the IoT menu item (fork)", () => {
+  it("goes straight after Filament", async () => {
+    const { applyCustomisationsToMenu } = await import("./apply-to-menu");
+    const { DEFAULT_CUSTOMISATIONS } = await import("./catalogue");
+    const Icon = (() => null) as never;
+    const out = applyCustomisationsToMenu(
+      {
+        topMenuItems: [
+          { type: "child", title: "Assets", to: "/assets", Icon } as never,
+        ],
+        bottomMenuItems: [],
+      },
+      { ...DEFAULT_CUSTOMISATIONS, filamentEnabled: true },
+      undefined,
+      undefined,
+      Icon,
+      Icon
+    );
+    const tos = out.topMenuItems.map((i) => ("to" in i ? i.to : i.title));
+    expect(tos.indexOf("/iot")).toBe(tos.indexOf("/filament") + 1);
+  });
+});
