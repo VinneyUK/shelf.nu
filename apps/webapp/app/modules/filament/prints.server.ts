@@ -304,3 +304,34 @@ export function listPrints(
     include: { uses: true },
   });
 }
+
+/**
+ * Whether a print used a filament: measured grams for it, or (when the grams
+ * couldn't be measured) a slot holding it fed the print. With no feeding
+ * slots recorded, a print with that filament as its only AMS spool counts.
+ */
+export function printUsedKey(
+  print: {
+    uses: { key: string }[];
+    fedSlots?: number[] | null;
+    startLevels?: unknown;
+  },
+  key: string
+) {
+  if (print.uses.some((u) => u.key === key)) return true;
+  const start = (print.startLevels ?? {}) as Record<string, { key?: string }>;
+  const slots = Object.entries(start);
+  const fed = print.fedSlots ?? [];
+  if (fed.length) return fed.some((slot) => start[String(slot)]?.key === key);
+  return slots.length === 1 && slots[0][1]?.key === key;
+}
+
+/** The prints that used a filament since a date, measured or not, newest first. */
+export async function printsForFilament(
+  organizationId: string,
+  key: string,
+  since: Date
+) {
+  const prints = await listPrints(organizationId, { since });
+  return prints.filter((p) => printUsedKey(p, key));
+}

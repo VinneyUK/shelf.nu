@@ -212,3 +212,45 @@ describe("setPrintUses", () => {
     });
   });
 });
+
+describe("printUsedKey (a filament's prints, measured or not)", () => {
+  it("counts measured grams, or a slot holding it that fed the print", async () => {
+    const { printUsedKey } = await import("./prints.server");
+    const start = {
+      "1": { key: "pla basic|red" },
+      "2": { key: "pla basic|black" },
+    };
+    expect(
+      printUsedKey({ uses: [{ key: "pla basic|red" }] }, "pla basic|red")
+    ).toBe(true);
+    expect(
+      printUsedKey(
+        { uses: [], fedSlots: [2], startLevels: start },
+        "pla basic|black"
+      )
+    ).toBe(true);
+    expect(
+      printUsedKey(
+        { uses: [], fedSlots: [2], startLevels: start },
+        "pla basic|red"
+      )
+    ).toBe(false);
+    // no feeding slots recorded: only when it's the only spool in the AMS
+    expect(
+      printUsedKey(
+        { uses: [], fedSlots: [], startLevels: start },
+        "pla basic|red"
+      )
+    ).toBe(false);
+    expect(
+      printUsedKey(
+        {
+          uses: [],
+          fedSlots: [],
+          startLevels: { "3": { key: "pla basic|red" } },
+        },
+        "pla basic|red"
+      )
+    ).toBe(true);
+  });
+});

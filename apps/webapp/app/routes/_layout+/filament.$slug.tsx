@@ -35,7 +35,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from "react-router";
-import { data, redirect, useFetcher, useLoaderData } from "react-router";
+import { data, Link, redirect, useFetcher, useLoaderData } from "react-router";
 import {
   Area,
   CartesianGrid,
@@ -120,7 +120,7 @@ import {
   refreshPrice,
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
-import { listPrints } from "~/modules/filament/prints.server";
+import { printsForFilament } from "~/modules/filament/prints.server";
 import { daysOnHand, usageRate } from "~/modules/filament/run-out";
 import {
   changeSpoolState,
@@ -203,10 +203,12 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     await recordLevels(organizationId, key).catch(() => undefined);
     const levels = await getLevels(organizationId, key);
     // the prints that used it, the last 30 days (fork)
-    const prints = await listPrints(organizationId, {
+    // measured or not: a print counts if a slot holding it fed the print
+    const prints = await printsForFilament(
+      organizationId,
       key,
-      since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    });
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    );
     const entry = catalogueEntry(first.type);
     // its label: FIL-0001 and what the printed label looks like
     const labelsOff = await isFeatureSwitchedOff(
@@ -2000,7 +2002,17 @@ function PrintsCard({ prints }: { prints: PageData["prints"] }) {
                         "text-right tabular-nums text-gray-900"
                       )}
                     >
-                      {used} g
+                      {p.uses.length ? (
+                        `${used} g`
+                      ) : (
+                        <Link
+                          to="/filament/prints"
+                          className="text-xs font-medium text-warning-700 hover:underline"
+                          title="Its grams weren't read from the print's file: Read from printer, or Change…, on the Prints page"
+                        >
+                          Not measured
+                        </Link>
+                      )}
                     </td>
                     <td
                       className={tw(
