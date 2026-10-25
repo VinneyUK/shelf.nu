@@ -25,7 +25,7 @@ import { ShelfError } from "~/utils/error";
 import type { ErrorLabel } from "~/utils/error";
 import { Logger } from "~/utils/logger";
 import { printRequestBody } from "./layout";
-import { retryDelayMs } from "./retry";
+import { afterFailure, HELD_UNTIL } from "./retry";
 
 const label: ErrorLabel = "Assets";
 
@@ -649,6 +649,30 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
       s
     );
     await callHomeAssistant(s, "/api/services/niimbot/print", body, 120_000);
+  } catch (cause) {
+    const attempts = job.attempts + 1;
+    const message =
+      cause instanceof ShelfError
+        ? cause.message
+        : "Printing failed unexpectedly.";
+    // fork: tried again on its own only when nothing can have printed;
+    // otherwise it waits for you (see afterFailure)
+    const { nextAttemptAt, held } = afterFailure(message, attempts);
+    await db.labelPrintJob.updateMany({
+      where: { id: job.id, organizationId: job.organizationId },
+      data: {
+        status: "queued",
+        attempts,
+        lastError: held
+          ? `${message} Not tried again on its own: it may have printed. Check the printer, then Try again now or Cancel.`
+          : message,
+        nextAttemptAt,
+      },
+    });
+    return false;
+  }
+  // printed: from here nothing may put it back in the queue (fork)
+  try {
     await db.labelPrintJob.updateMany({
       where: { id: job.id, organizationId: job.organizationId },
       data: { status: "printed", printedAt: new Date(), lastError: null },
@@ -669,24 +693,16 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
         }.`,
       });
     }
-    return true;
   } catch (cause) {
-    const attempts = job.attempts + 1;
-    const message =
-      cause instanceof ShelfError
-        ? cause.message
-        : "Printing failed unexpectedly.";
-    await db.labelPrintJob.updateMany({
-      where: { id: job.id, organizationId: job.organizationId },
-      data: {
-        status: "queued",
-        attempts,
-        lastError: message,
-        nextAttemptAt: new Date(Date.now() + retryDelayMs(attempts)),
-      },
-    });
-    return false;
+    Logger.error(
+      new ShelfError({
+        cause,
+        message: "A printed label's record failed",
+        label,
+      })
+    );
   }
+  return true;
 }
 
 /** Jobs left "printing" by a restart mid-print go back in the queue. */
@@ -696,7 +712,13 @@ async function recoverInterruptedJobs() {
       status: "printing",
       startedAt: { lt: new Date(Date.now() - 5 * 60_000) },
     },
-    data: { status: "queued" },
+    // fork: it may have printed before the restart, so it waits for you
+    data: {
+      status: "queued",
+      nextAttemptAt: HELD_UNTIL,
+      lastError:
+        "Shelf restarted while printing it. Not tried again on its own: it may have printed. Check the printer, then Try again now or Cancel.",
+    },
   });
 }
 

@@ -32,6 +32,7 @@ import { isFeatureSwitchedOff } from "~/modules/customisation/service.server";
 import { filamentKey, filamentSlug } from "~/modules/filament/catalogue";
 import { parseFilamentNumber } from "~/modules/filament/numbers";
 import { getFilamentNumbers } from "~/modules/filament/numbers.server";
+import { isHeld } from "~/modules/labels/retry"; // fork
 import {
   cancelLabelJob,
   getLabelledAssets,
@@ -540,7 +541,7 @@ export default function LabelsQueue() {
                   {job.lastError ? (
                     <p className="text-error-600">
                       {job.lastError}
-                      {job.nextAttemptAt ? (
+                      {job.nextAttemptAt && !isHeld(job.nextAttemptAt) ? (
                         <>
                           {" "}
                           Trying again at{" "}
