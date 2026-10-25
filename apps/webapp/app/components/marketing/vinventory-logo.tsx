@@ -13,6 +13,10 @@ export function VinventorySymbol(props: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 1192 1192"
+      // a size of its own, so it's small from the first frame, before the
+      // page's styles arrive (it flashed full-screen on the login page)
+      width={32}
+      height={32}
       role="img"
       aria-label="Vinventory"
       {...props}
@@ -39,6 +43,8 @@ export function VinventoryWordmark(props: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 3669 735"
+      width={90}
+      height={18}
       role="img"
       aria-label="Vinventory"
       {...props}
