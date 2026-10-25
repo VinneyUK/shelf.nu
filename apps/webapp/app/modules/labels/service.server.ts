@@ -785,6 +785,8 @@ export async function queueMatterLabels({
     where: {
       organizationId,
       assetId: { in: assetIds },
+      // only Matter devices have a Matter code to print
+      protocol: "Matter",
       ...(which === "missing" ? { labelPrintedAt: null } : {}),
       ...(which === "chosen" ? { id: { in: deviceIds ?? [] } } : {}),
     },

@@ -3048,6 +3048,17 @@ model MatterDevice {
   productName    String?
   /// The device's own name: "Kettle plug" (for its label, and Home Assistant)
   name           String?
+  /// How it talks: Matter, Zigbee, Z-Wave, Thread, Wi-Fi, Bluetooth, Ethernet
+  protocol       String    @default("Matter")
+  /// What it is: Smart plug, Switch, Bulb, Lock… (modules/iot/catalogue.ts)
+  deviceType     String?
+  /// Zigbee's IEEE address, or Thread's extended address
+  address        String?
+  /// Zigbee's install code or Z-Wave's DSK, encrypted
+  secret         String?
+  /// Wi-Fi or Ethernet: its IP, and the Wi-Fi network
+  ip             String?
+  network        String?
   /// Where it is or what it's on: "Kitchen · kettle"
   place          String?
   /// Thread, Wi-Fi or Ethernet

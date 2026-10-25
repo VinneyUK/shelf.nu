@@ -23,8 +23,10 @@ import {
 } from "lucide-react";
 import QRCode from "qrcode-generator";
 import { useFetcher } from "react-router";
+import { DeviceTypeIcon, ProtocolBadge } from "~/components/iot/icons";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
+import { DEVICE_TYPES, PROTOCOLS, protocolOf } from "~/modules/iot/catalogue";
 import { MATTER_LOGO_PATH, MATTER_LOGO_VIEWBOX } from "~/modules/matter/logo";
 import { formatManualCode } from "~/modules/matter/payload";
 import { isFormProcessing } from "~/utils/form";
@@ -84,8 +86,18 @@ type Device = {
   mac: string | null;
   controllers: string[];
   labelPrintedAt: string | null;
+  protocol: string;
+  deviceType: string | null;
+  address: string | null;
+  ip: string | null;
+  network: string | null;
+  hasSecret: boolean;
 };
-type Revealed = { manualCode: string; payload: string | null };
+type Revealed = {
+  manualCode: string;
+  payload: string | null;
+  secret: string | null;
+};
 type Act = { ok?: boolean; error?: { message: string } };
 
 /**
@@ -123,8 +135,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
   return (
     <Card className="my-3 p-0 md:border">
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-5 py-3.5">
-        <h3 className="sr-only">Matter</h3>
-        <MatterMark className="h-4 w-auto text-gray-900" />
+        <h3 className="text-text-md font-semibold text-gray-900">Devices</h3>
         {maker ? <span className="text-sm text-gray-600">{maker}</span> : null}
         {devices.length ? (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
@@ -179,16 +190,22 @@ export function MatterCard({ assetId }: { assetId: string }) {
           <table className="w-full">
             <thead className="bg-gray-25">
               <tr>
-                {["#", "Name", "Setup code", "Connects", "Paired with", ""].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {[
+                  "",
+                  "Name",
+                  "Type",
+                  "Protocol",
+                  "Code / address",
+                  "Paired with",
+                  "",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -269,27 +286,44 @@ function DeviceButtons({
   );
   return (
     <span className="inline-flex gap-1.5">
-      {icon(s.shown ? "Hide" : "Reveal", s.shown ? EyeOffIcon : EyeIcon, () =>
-        s.shown ? s.setShown(false) : s.ask()
-      )}
-      {icon("Copy code", CopyIcon, () =>
-        s.ask(
-          () =>
-            void (s.code && navigator.clipboard?.writeText(s.code.manualCode))
-        )
-      )}
+      {!hasSecretToShow(d)
+        ? null
+        : icon(
+            s.shown ? "Hide" : "Reveal",
+            s.shown ? EyeOffIcon : EyeIcon,
+            () => (s.shown ? s.setShown(false) : s.ask())
+          )}
+      {!hasSecretToShow(d)
+        ? null
+        : icon("Copy code", CopyIcon, () =>
+            s.ask(
+              () =>
+                void (
+                  s.code &&
+                  navigator.clipboard?.writeText(
+                    d.protocol === "Matter"
+                      ? s.code.manualCode
+                      : s.code.secret ?? ""
+                  )
+                )
+            )
+          )}
       {d.hasQr
         ? icon("Re-pair", QrCodeIcon, () => s.ask(() => s.setRepair(true)))
         : null}
-      {icon(
-        d.labelPrintedAt ? "Re-print its label (printed)" : "Print its label",
-        PrinterIcon,
-        () =>
-          void s.act.submit(
-            { intent: "print", id: d.id },
-            { method: "post", action: url }
-          )
-      )}
+      {d.protocol !== "Matter"
+        ? null
+        : icon(
+            d.labelPrintedAt
+              ? "Re-print its label (printed)"
+              : "Print its label",
+            PrinterIcon,
+            () =>
+              void s.act.submit(
+                { intent: "print", id: d.id },
+                { method: "post", action: url }
+              )
+          )}
       {icon(
         "Remove device",
         Trash2Icon,
@@ -305,6 +339,77 @@ function DeviceButtons({
         true
       )}
     </span>
+  );
+}
+
+/** Whether a device has a code to reveal: Matter's setup code, or an install code / DSK. */
+const hasSecretToShow = (d: Device) => d.protocol === "Matter" || d.hasSecret;
+
+/** What identifies it: Matter's code, Zigbee's address and install code, a MAC and IP… */
+function CodeOrAddress({
+  d,
+  s,
+}: {
+  d: Device;
+  s: ReturnType<typeof useDevice>;
+}) {
+  const secret = d.hasSecret
+    ? s.shown && s.code
+      ? s.code.secret ?? ""
+      : "•••• ••••"
+    : null;
+  const bits: (string | null)[] =
+    d.protocol === "Matter"
+      ? [codeText(s)]
+      : d.protocol === "Zigbee"
+      ? [d.address, secret]
+      : d.protocol === "Z-Wave"
+      ? [secret]
+      : d.protocol === "Thread"
+      ? [d.address]
+      : [d.mac, d.ip];
+  const shown = bits.filter(Boolean);
+  if (!shown.length) return <span className="text-gray-400">—</span>;
+  return (
+    <div className="flex flex-col text-xs leading-5">
+      {shown.map((b, i) => (
+        <span
+          key={i}
+          className={
+            i === 0 ? "text-sm font-semibold tracking-wide" : "text-gray-500"
+          }
+        >
+          {b}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** What it is: a plug, a bulb, a sensor… */
+function TypeCell({
+  value,
+  onSave,
+}: {
+  value: string | null;
+  onSave: (v: string) => void;
+}) {
+  const [v, setV] = useState(value ?? "");
+  return (
+    <select
+      value={v}
+      onChange={(e) => {
+        setV(e.target.value);
+        onSave(e.target.value);
+      }}
+      aria-label="Type"
+      className="rounded border border-transparent bg-transparent py-0.5 pl-1 pr-6 text-sm text-gray-700 hover:border-gray-300"
+    >
+      <option value="">—</option>
+      {DEVICE_TYPES.map((t) => (
+        <option key={t.id}>{t.id}</option>
+      ))}
+    </select>
   );
 }
 
@@ -512,7 +617,9 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
   return (
     <>
       <tr>
-        <td className={`${cell} pl-5 text-gray-400`}>{d.number}</td>
+        <td className={`${cell} pl-5`}>
+          <DeviceTypeIcon type={d.deviceType} />
+        </td>
         <td className={cell}>
           <div className="flex flex-col items-start">
             <TextCell
@@ -529,16 +636,25 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
             />
           </div>
         </td>
-        <td
-          className={`${cell} whitespace-nowrap font-mono font-semibold tracking-wide text-gray-900`}
-        >
-          {codeText(s)}
+        <td className={cell}>
+          <TypeCell
+            value={d.deviceType}
+            onSave={(v) => save("deviceType", v)}
+          />
         </td>
         <td className={cell}>
-          <TransportCell
-            value={d.transport}
-            onSave={(v) => save("transport", v)}
-          />
+          <div className="flex flex-col items-start gap-0.5">
+            <ProtocolBadge protocol={d.protocol} />
+            {d.protocol === "Matter" ? (
+              <TransportCell
+                value={d.transport}
+                onSave={(v) => save("transport", v)}
+              />
+            ) : null}
+          </div>
+        </td>
+        <td className={`${cell} font-mono text-gray-900`}>
+          <CodeOrAddress d={d} s={s} />
         </td>
         <td className={`${cell} max-w-44`}>
           <PairedCell
@@ -693,6 +809,179 @@ function AddDevice({
   act: ReturnType<typeof useFetcher<Act>>;
   first: boolean;
 }) {
+  const [type, setType] = useState<string | null>(null);
+  const [protocol, setProtocol] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const step = !type ? 1 : !protocol ? 2 : 3;
+  const tile =
+    "flex items-center gap-2.5 rounded-lg border border-gray-200 p-2.5 text-left hover:shadow-sm";
+  return (
+    <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4">
+      {first ? (
+        <p className="text-sm text-gray-600">
+          Add each device: what it is, how it connects, and its details. Each
+          device counts towards the quantity.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {["What is it?", "How does it connect?", "Its details"].map((l, i) => (
+          <span
+            key={l}
+            className={
+              step === i + 1 ? "font-semibold text-gray-900" : "text-gray-400"
+            }
+          >
+            {i + 1}. {l}
+            {i < 2 ? <span className="ml-2 text-gray-300">›</span> : null}
+          </span>
+        ))}
+      </div>
+      {step === 1 ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+          {DEVICE_TYPES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={tile}
+              onClick={() => setType(t.id)}
+            >
+              <DeviceTypeIcon type={t.id} size={30} />
+              <span className="text-sm font-semibold text-gray-900">
+                {t.id}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : step === 2 ? (
+        <>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <DeviceTypeIcon type={type} size={24} /> {type}
+            <button
+              type="button"
+              className="text-xs font-semibold text-primary-600"
+              onClick={() => setType(null)}
+            >
+              Change
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            {PROTOCOLS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`${tile} flex-col items-start`}
+                onClick={() => setProtocol(p.id)}
+              >
+                <ProtocolBadge protocol={p.id} />
+                <span className="text-xs text-gray-500">{p.note}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+            <DeviceTypeIcon type={type} size={24} /> {type}{" "}
+            <ProtocolBadge protocol={protocol!} />
+            <button
+              type="button"
+              className="text-xs font-semibold text-primary-600"
+              onClick={() => setProtocol(null)}
+            >
+              Change
+            </button>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name: Kettle plug"
+              aria-label="Name"
+              className="ml-2 h-9 w-48 rounded-lg border border-gray-300 px-2.5 text-sm"
+            />
+          </div>
+          {protocol === "Matter" ? (
+            <MatterAdd
+              url={url}
+              act={act}
+              extra={{ deviceType: type!, name }}
+            />
+          ) : (
+            <OtherAdd
+              url={url}
+              act={act}
+              protocol={protocol!}
+              extra={{ deviceType: type!, name }}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Any other protocol: the fields it has, all optional. */
+function OtherAdd({
+  url,
+  act,
+  protocol,
+  extra,
+}: {
+  url: string;
+  act: ReturnType<typeof useFetcher<Act>>;
+  protocol: string;
+  extra: { deviceType: string; name: string };
+}) {
+  const p = protocolOf(protocol);
+  const input = "h-9 rounded-lg border border-gray-300 px-2.5 text-sm";
+  return (
+    <act.Form
+      method="post"
+      action={url}
+      className="flex flex-wrap items-end gap-3"
+    >
+      <input type="hidden" name="intent" value="add" />
+      <input type="hidden" name="protocol" value={protocol} />
+      <input type="hidden" name="deviceType" value={extra.deviceType} />
+      <input type="hidden" name="name" value={extra.name} />
+      <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+        Where it is
+        <input name="place" placeholder="Kitchen" className={`${input} w-36`} />
+      </label>
+      {p.fields.map((f) => (
+        <label
+          key={f.key}
+          className="flex flex-col gap-1 text-xs font-medium text-gray-600"
+        >
+          {f.label}
+          {f.kind === "secret" ? " (kept encrypted)" : ""}
+          <input
+            name={f.key}
+            placeholder={f.example}
+            className={`${input} w-56 font-mono`}
+          />
+        </label>
+      ))}
+      <Button type="submit" size="sm" disabled={isFormProcessing(act.state)}>
+        Add device
+      </Button>
+      {act.data?.error ? (
+        <p className="w-full text-sm text-error-600">
+          {act.data.error.message}
+        </p>
+      ) : null}
+    </act.Form>
+  );
+}
+
+/** Matter: scan its QR, or type its code. */
+function MatterAdd({
+  url,
+  act,
+  extra,
+}: {
+  url: string;
+  act: ReturnType<typeof useFetcher<Act>>;
+  extra: { deviceType: string; name: string };
+}) {
   const [text, setText] = useState("");
   const [place, setPlace] = useState("");
   const [reading, setReading] = useState(false);
@@ -700,7 +989,7 @@ function AddDevice({
   const file = useRef<HTMLInputElement>(null);
   const save = (code: string) =>
     void act.submit(
-      { intent: "add", code, place },
+      { intent: "add", protocol: "Matter", code, place, ...extra },
       { method: "post", action: url }
     );
   const fromPhoto = async (f: File) => {
@@ -725,13 +1014,7 @@ function AddDevice({
     }
   };
   return (
-    <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4">
-      {first ? (
-        <p className="text-sm text-gray-600">
-          Keep each device's setup code safe: you'll need it to pair it again
-          after a reset. Each device you add counts towards the quantity.
-        </p>
-      ) : null}
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={place}

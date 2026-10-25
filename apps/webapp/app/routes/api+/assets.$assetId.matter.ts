@@ -71,15 +71,22 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
     };
     switch (form.get("intent")) {
       case "add": {
-        const { names, quantity } = await addDevice(
-          organizationId,
-          assetId,
-          String(form.get("code") ?? ""),
-          text("place")
-        );
+        const { names, quantity } = await addDevice(organizationId, assetId, {
+          protocol: text("protocol") ?? "Matter",
+          deviceType: text("deviceType"),
+          name: text("name"),
+          place: text("place"),
+          code: text("code"),
+          transport: text("transport"),
+          address: text("address"),
+          secret: text("secret"),
+          mac: text("mac"),
+          ip: text("ip"),
+          network: text("network"),
+        });
         return done(
           userId,
-          "Matter device added",
+          "Device added",
           `${
             names.productName ? `${names.productName}: ` : ""
           }kept encrypted. Quantity is now ${quantity}.`
@@ -102,7 +109,18 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
           await updateDevice(organizationId, id, {
             transport: value && TRANSPORTS.includes(value) ? value : null,
           });
-        else if (["name", "place", "firmware", "mac"].includes(field))
+        else if (
+          [
+            "name",
+            "place",
+            "firmware",
+            "mac",
+            "deviceType",
+            "address",
+            "ip",
+            "network",
+          ].includes(field)
+        )
           await updateDevice(organizationId, id, { [field]: value });
         else return payload({ ok: false });
         return payload({ ok: true });
@@ -111,7 +129,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         const quantity = await removeDevice(organizationId, id);
         return done(
           userId,
-          "Matter device removed",
+          "Device removed",
           quantity ? `Quantity is now ${quantity}.` : ""
         );
       }

@@ -104,6 +104,7 @@ describe("Matter devices", () => {
     expect(await revealDevice("o1", "d2")).toEqual({
       manualCode: "1535-511-0751",
       payload: null,
+      secret: null,
     });
   });
   it("takes the quantity down when a device is removed", async () => {
@@ -111,5 +112,42 @@ describe("Matter devices", () => {
     m.device.count.mockResolvedValue(2);
     expect(await removeDevice("o1", "d2")).toBe(2);
     expect(m.asset.updateMany.mock.calls[0][0].data).toEqual({ quantity: 2 });
+  });
+});
+
+describe("devices of other protocols (fork)", () => {
+  it("adds a Zigbee bulb with its address, its install code encrypted", async () => {
+    m.asset.findFirst.mockResolvedValue(iot);
+    m.device.count.mockResolvedValue(1);
+    await addDevice("o1", "a1", {
+      protocol: "Zigbee",
+      deviceType: "Bulb",
+      name: "Hall bulb",
+      address: "00:17:88:01:0b:2c:4f:91",
+      secret: "83FE D340",
+    });
+    expect(m.device.create.mock.calls[0][0].data).toMatchObject({
+      protocol: "Zigbee",
+      deviceType: "Bulb",
+      name: "Hall bulb",
+      address: "00:17:88:01:0b:2c:4f:91",
+      secret: "enc(83FE D340)",
+      manualCode: "enc()",
+    });
+  });
+
+  it("keeps to the known protocols and types", async () => {
+    m.asset.findFirst.mockResolvedValue(iot);
+    m.device.count.mockResolvedValue(1);
+    await addDevice("o1", "a1", {
+      protocol: "Wi-Fi",
+      deviceType: "Toaster",
+      mac: "A4:CF",
+    });
+    expect(m.device.create.mock.calls[0][0].data).toMatchObject({
+      protocol: "Wi-Fi",
+      deviceType: null,
+      mac: "A4:CF",
+    });
   });
 });

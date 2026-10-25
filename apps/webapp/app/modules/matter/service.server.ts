@@ -4,6 +4,7 @@
  * someone with the right to change the asset asks to see it.
  */
 import { db } from "~/database/db.server";
+import { DEVICE_TYPE_IDS, PROTOCOL_IDS } from "~/modules/iot/catalogue";
 import { ShelfError } from "~/utils/error";
 import { decryptSecret, encryptSecret } from "~/utils/secret-box.server";
 import { isIotCategory } from "./iot";
@@ -103,6 +104,12 @@ export async function listDevices(organizationId: string, assetId: string) {
     productName: d.productName,
     name: d.name,
     place: d.place,
+    protocol: d.protocol,
+    deviceType: d.deviceType,
+    address: d.address,
+    ip: d.ip,
+    network: d.network,
+    hasSecret: Boolean(d.secret),
     transport: d.transport,
     firmware: d.firmware,
     mac: d.mac,
@@ -111,49 +118,103 @@ export async function listDevices(organizationId: string, assetId: string) {
   }));
 }
 
-/** Adds a device by its code (either kind), and looks up what it is. */
+export type NewDevice = {
+  protocol?: string | null;
+  deviceType?: string | null;
+  name?: string | null;
+  place?: string | null;
+  /** Matter: the setup code (either kind) */
+  code?: string | null;
+  /** Matter: Thread, Wi-Fi or Ethernet */
+  transport?: string | null;
+  /** Zigbee's IEEE address, Thread's extended address */
+  address?: string | null;
+  /** Zigbee's install code, Z-Wave's DSK (kept encrypted) */
+  secret?: string | null;
+  mac?: string | null;
+  ip?: string | null;
+  network?: string | null;
+};
+
+const clean = (v: string | null | undefined) => v?.trim() || null;
+
+/**
+ * Adds a device of any protocol: a Matter device by its code (and looks up
+ * what it is), any other with the details its protocol has.
+ */
 export async function addDevice(
   organizationId: string,
   assetId: string,
-  text: string,
+  input: NewDevice | string,
   place?: string | null
 ) {
+  // (the Matter-only form: a code and where it is)
+  const d: NewDevice =
+    typeof input === "string"
+      ? { protocol: "Matter", code: input, place }
+      : input;
+  const protocol = PROTOCOL_IDS.includes(d.protocol ?? "")
+    ? d.protocol!
+    : "Matter";
   await iotAsset(organizationId, assetId);
-  let setup;
-  try {
-    setup = parseMatterCode(text);
-  } catch (cause) {
-    throw new ShelfError({
-      cause,
-      message:
-        cause instanceof Error ? cause.message : "That isn't a Matter code.",
-      status: 400,
-      label,
-      shouldBeCaptured: false,
+  const common = {
+    organizationId,
+    assetId,
+    protocol,
+    deviceType:
+      d.deviceType && DEVICE_TYPE_IDS.includes(d.deviceType)
+        ? d.deviceType
+        : null,
+    name: clean(d.name),
+    place: clean(d.place),
+    address: clean(d.address),
+    secret: clean(d.secret) ? encryptSecret(clean(d.secret)!) : null,
+    mac: clean(d.mac),
+    ip: clean(d.ip),
+    network: clean(d.network),
+    transport: clean(d.transport),
+  };
+  let names: { vendorName: string | null; productName: string | null } = {
+    vendorName: null,
+    productName: null,
+  };
+  if (protocol === "Matter") {
+    let setup;
+    try {
+      setup = parseMatterCode(d.code ?? "");
+    } catch (cause) {
+      throw new ShelfError({
+        cause,
+        message:
+          cause instanceof Error ? cause.message : "That isn't a Matter code.",
+        status: 400,
+        label,
+        shouldBeCaptured: false,
+      });
+    }
+    const payload = setup.shortDiscriminator ? null : qrPayload(setup);
+    const manual = formatManualCode(manualCode(setup));
+    if (setup.vendorId !== null && setup.productId !== null)
+      names = await lookupDevice(setup.vendorId, setup.productId).catch(
+        () => names
+      );
+    await db.matterDevice.create({
+      data: {
+        ...common,
+        payload: payload ? encryptSecret(payload) : null,
+        manualCode: encryptSecret(manual),
+        vendorId: setup.vendorId,
+        productId: setup.productId,
+        vendorName: names.vendorName,
+        productName: names.productName,
+      },
+    });
+  } else {
+    // other protocols have no Matter code: an empty one, encrypted like the rest
+    await db.matterDevice.create({
+      data: { ...common, manualCode: encryptSecret("") },
     });
   }
-  const payload = setup.shortDiscriminator ? null : qrPayload(setup);
-  const manual = formatManualCode(manualCode(setup));
-  const names =
-    setup.vendorId !== null && setup.productId !== null
-      ? await lookupDevice(setup.vendorId, setup.productId).catch(() => ({
-          vendorName: null,
-          productName: null,
-        }))
-      : { vendorName: null, productName: null };
-  await db.matterDevice.create({
-    data: {
-      organizationId,
-      assetId,
-      payload: payload ? encryptSecret(payload) : null,
-      manualCode: encryptSecret(manual),
-      vendorId: setup.vendorId,
-      productId: setup.productId,
-      vendorName: names.vendorName,
-      productName: names.productName,
-      place: place?.trim() || null,
-    },
-  });
   const quantity = await syncQuantity(organizationId, assetId);
   return { names, quantity };
 }
@@ -165,6 +226,7 @@ export async function revealDevice(organizationId: string, id: string) {
   return {
     manualCode: decryptSecret(d.manualCode),
     payload: d.payload ? decryptSecret(d.payload) : null,
+    secret: d.secret ? decryptSecret(d.secret) : null,
   };
 }
 
@@ -173,6 +235,10 @@ export async function updateDevice(
   organizationId: string,
   id: string,
   details: {
+    deviceType?: string | null;
+    address?: string | null;
+    ip?: string | null;
+    network?: string | null;
     name?: string | null;
     place?: string | null;
     transport?: string | null;
@@ -194,4 +260,24 @@ export async function removeDevice(organizationId: string, id: string) {
   if (!d) throw notFound();
   await db.matterDevice.deleteMany({ where: { id, organizationId } });
   return syncQuantity(organizationId, d.assetId);
+}
+
+/** Every IoT device in the workspace, with its asset, for the IoT page. */
+export async function listAllDevices(organizationId: string) {
+  const devices = await db.matterDevice.findMany({
+    where: { organizationId },
+    orderBy: [{ assetId: "asc" }, { createdAt: "asc" }],
+    include: { asset: { select: { id: true, title: true } } },
+  });
+  return devices.map((d) => ({
+    id: d.id,
+    assetId: d.asset.id,
+    assetTitle: d.asset.title,
+    name: d.name,
+    place: d.place,
+    protocol: d.protocol,
+    deviceType: d.deviceType,
+    controllers: d.controllers,
+    labelPrintedAt: d.labelPrintedAt,
+  }));
 }
