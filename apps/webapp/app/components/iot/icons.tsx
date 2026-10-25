@@ -1,22 +1,18 @@
 /**
  * IoT icons (fork): a device type's icon in a soft tinted square, and a
  * protocol's badge. Lucide's line icons, as Shelf uses; Matter uses Ant's
- * own Matter mark. (Other protocols' official logos are their owners'; an
- * official SVG supplied later drops into PROTOCOL_ICONS the same way.)
+ * protocol icons and logos (public/static/images/iot), which he supplied.
  */
 import type { ComponentType, CSSProperties } from "react";
 import {
   BellRingIcon,
   BlindsIcon,
-  BluetoothIcon,
-  CableIcon,
   CameraIcon,
   CpuIcon,
   DoorOpenIcon,
   DropletsIcon,
   FanIcon,
   GaugeIcon,
-  HexagonIcon,
   LightbulbIcon,
   LockIcon,
   PlugIcon,
@@ -27,11 +23,10 @@ import {
   ThermometerIcon,
   ToggleRightIcon,
   TvIcon,
-  WavesIcon,
-  WifiIcon,
 } from "lucide-react";
 import { protocolOf, typeTint } from "~/modules/iot/catalogue";
 import { MATTER_MARK_PATH } from "~/modules/matter/logo";
+import { tw } from "~/utils/tw";
 
 type IconLike = ComponentType<{
   className?: string;
@@ -66,15 +61,25 @@ export function MatterIcon({ className = "size-3.5" }: { className?: string }) {
   );
 }
 
-const PROTOCOL_ICONS: Record<string, IconLike> = {
-  Matter: MatterIcon,
-  Zigbee: HexagonIcon,
-  "Z-Wave": WavesIcon,
-  Thread: RadioIcon,
-  "Wi-Fi": WifiIcon,
-  Bluetooth: BluetoothIcon,
-  Ethernet: CableIcon,
+/** Ant's protocol icons and logos (public/static/images/iot). "mono" ones are
+ * one colour, turned white in dark mode (styles/fork.css). */
+const PROTOCOL_FILES: Record<
+  string,
+  { icon: string; logo: string | null; mono: boolean }
+> = {
+  Matter: { icon: "matter-icon.svg", logo: "matter-logo.svg", mono: true },
+  Zigbee: { icon: "zigbee-icon.svg", logo: "zigbee-logo.svg", mono: true },
+  "Z-Wave": { icon: "z-wave-icon.svg", logo: "z-wave-logo.svg", mono: true },
+  Thread: { icon: "thread-icon.png", logo: "thread-logo.png", mono: false },
+  "Wi-Fi": { icon: "wi-fi-icon.svg", logo: "wi-fi-logo.png", mono: true },
+  Bluetooth: {
+    icon: "bluetooth-icon.svg",
+    logo: "bluetooth-logo.svg",
+    mono: false,
+  },
+  Ethernet: { icon: "ethernet-icon.svg", logo: null, mono: true },
 };
+const IOT_IMAGES = "/static/images/iot/";
 
 /** A device type's icon in a soft square of its tint (an unknown type: a chip). */
 export function DeviceTypeIcon({
@@ -105,7 +110,7 @@ export function DeviceTypeIcon({
   );
 }
 
-/** A protocol's icon on its own. */
+/** A protocol's icon on its own (Ant's image). */
 export function ProtocolIcon({
   protocol,
   className = "size-3.5",
@@ -113,8 +118,49 @@ export function ProtocolIcon({
   protocol: string;
   className?: string;
 }) {
-  const Icon = PROTOCOL_ICONS[protocol] ?? RadioIcon;
-  return <Icon className={className} />;
+  const f = PROTOCOL_FILES[protocol];
+  if (!f) return <RadioIcon className={className} />;
+  return (
+    <img
+      src={`${IOT_IMAGES}${f.icon}`}
+      alt={protocol}
+      title={protocol}
+      className={tw(
+        "inline-block shrink-0 object-contain",
+        f.mono && "iot-icon-mono",
+        className
+      )}
+    />
+  );
+}
+
+/** A protocol's logo on its own, no tile or border (Ethernet: its icon and name). */
+export function ProtocolLogo({
+  protocol,
+  className = "h-7",
+}: {
+  protocol: string;
+  className?: string;
+}) {
+  const f = PROTOCOL_FILES[protocol];
+  if (!f?.logo)
+    return (
+      <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <ProtocolIcon protocol={protocol} className="size-6" />
+        {protocol}
+      </span>
+    );
+  return (
+    <img
+      src={`${IOT_IMAGES}${f.logo}`}
+      alt={protocol}
+      title={protocol}
+      className={tw(
+        "iot-logo inline-block w-auto max-w-40 object-contain",
+        className
+      )}
+    />
+  );
 }
 
 /** A protocol's badge: its icon and name in its colours. */
@@ -131,7 +177,7 @@ export function ProtocolBadge({ protocol }: { protocol: string }) {
   );
 }
 
-/** The protocol's logo in a large tile with its name under it: the asset's title bar. */
+/** The protocol's logo at the right of the asset's title bar: no tile or border, in from the edge. */
 export function IotProtocolTile({
   protocol,
   type,
@@ -139,21 +185,12 @@ export function IotProtocolTile({
   protocol: string;
   type?: string | null;
 }) {
-  const p = protocolOf(protocol);
   return (
     <span
-      className="ml-auto flex shrink-0 flex-col items-center gap-1 pl-4"
-      title={[p.id, type].filter(Boolean).join(" · ")}
+      className="ml-auto mr-2 flex shrink-0 items-center pl-4"
+      title={[protocol, type].filter(Boolean).join(" · ")}
     >
-      <span
-        className="flex size-12 items-center justify-center rounded-xl"
-        style={{ background: p.background, color: p.colour }}
-      >
-        <ProtocolIcon protocol={p.id} className="size-7" />
-      </span>
-      <span className="text-xs font-semibold" style={{ color: p.colour }}>
-        {p.id}
-      </span>
+      <ProtocolLogo protocol={protocol} className="h-8" />
     </span>
   );
 }

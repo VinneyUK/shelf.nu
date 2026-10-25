@@ -12,7 +12,7 @@ import { createSetReminderSchema } from "~/components/asset-reminder/set-or-edit
 import ActionsDropdown from "~/components/assets/actions-dropdown";
 import { AssetImage } from "~/components/assets/asset-image/component";
 import BookingActionsDropdown from "~/components/assets/booking-actions-dropdown";
-import { IotProtocolTile } from "~/components/iot/icons"; // IoT (fork)
+import { IotProtocolTile, ProtocolIcon } from "~/components/iot/icons"; // IoT (fork)
 
 import { AssetIdChip } from "~/components/labels/asset-id-chip"; // labels feature
 import Header from "~/components/layout/header";
@@ -594,6 +594,13 @@ export default function AssetDetailsPage() {
           // IoT (fork): the asset's protocol logo, at the far right of the title bar
           ...(asset.iotProtocol
             ? {
+                // the protocol's icon beside the name
+                "append-to-title": (
+                  <ProtocolIcon
+                    protocol={asset.iotProtocol}
+                    className="ml-2 inline-block size-6 align-middle"
+                  />
+                ),
                 "right-of-title": (
                   <IotProtocolTile
                     protocol={asset.iotProtocol}

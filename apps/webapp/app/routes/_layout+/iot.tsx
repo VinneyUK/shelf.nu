@@ -10,7 +10,12 @@ import { MapPinIcon, PrinterIcon, SearchIcon } from "lucide-react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { data, Link, useFetcher, useLoaderData } from "react-router";
 import { ErrorContent } from "~/components/errors";
-import { DeviceTypeIcon, ProtocolBadge } from "~/components/iot/icons";
+import {
+  DeviceTypeIcon,
+  ProtocolBadge,
+  ProtocolIcon,
+  ProtocolLogo,
+} from "~/components/iot/icons";
 import Header from "~/components/layout/header";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
@@ -318,13 +323,19 @@ export default function IotPage() {
                       >
                         {a.title}
                       </Link>
+                      {a.protocol ? (
+                        <ProtocolIcon
+                          protocol={a.protocol}
+                          className="ml-1.5 inline-block size-4 align-middle"
+                        />
+                      ) : null}
                       <div className="text-xs text-gray-500">
                         {a.type ?? "No type"} · {a.devices.length}{" "}
                         {a.devices.length === 1 ? "device" : "devices"}
                       </div>
                     </div>
                     {a.protocol ? (
-                      <ProtocolBadge protocol={a.protocol} />
+                      <ProtocolLogo protocol={a.protocol} className="h-6" />
                     ) : null}
                   </div>
                   {mine.length ? (

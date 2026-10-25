@@ -58,3 +58,13 @@ html.dark .ams-slot-outline {
 html.dark .usage-chart .recharts-cartesian-axis-tick-value {
   fill: #9aa3af;
 }
+
+/* IoT (fork): Ant's protocol icons and logos. In dark mode the one-colour
+   icons turn white, and the logos' dark parts turn light with their colours
+   turned back (black lettering stays readable, Zigbee stays red). */
+html.dark .iot-icon-mono {
+  filter: invert(1);
+}
+html.dark .iot-logo {
+  filter: invert(1) hue-rotate(180deg);
+}
