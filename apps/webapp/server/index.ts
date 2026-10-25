@@ -236,6 +236,7 @@ export default createHonoServer<ServerEnv>({
           "/.well-known/apple-app-site-association",
           "/.well-known/assetlinks.json",
           "/api/public-stats",
+          "/api/homepage", // fork: Homepage dashboard widget (optional X-API-Key)
           "/api/oss-friends",
           "/api/stripe-webhook",
           "/api/scim/v2/*path", // SCIM API (bearer-token auth, not cookie); *path is a named wildcard
