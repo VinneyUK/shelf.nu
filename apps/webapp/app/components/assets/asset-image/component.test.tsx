@@ -370,7 +370,13 @@ describe("AssetImage model-image inheritance", () => {
       "src",
       "/static/images/asset-placeholder.jpg"
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    // no image request; the only request is the fork's one shared question
+    // "which assets are IoT?" (for a type icon in place of the placeholder)
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url]) => !String(url).includes("/api/matter/assets")
+      )
+    ).toHaveLength(0);
   });
   // why: fetch is the external network boundary; a refresh response is stubbed
   // so the component stores a refreshed URL before the tier changes.

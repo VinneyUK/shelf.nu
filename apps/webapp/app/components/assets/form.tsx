@@ -49,6 +49,7 @@ import Input from "../forms/input";
 import { RefererRedirectInput } from "../forms/referer-redirect-input";
 import ImageWithPreview from "../image-with-preview/image-with-preview";
 import InlineEntityCreationDialog from "../inline-entity-creation-dialog/inline-entity-creation-dialog";
+import { IotPanel } from "../iot/iot-panel"; // IoT (fork)
 import { Button } from "../shared/button";
 import { ButtonGroup } from "../shared/button-group";
 import { Card } from "../shared/card";
@@ -198,6 +199,8 @@ type Props = Partial<
     | "mainImage"
     | "mainImageExpiration"
     | "categoryId"
+    | "iotType"
+    | "iotProtocol"
     | "assetModelId"
     | "description"
     | "valuation"
@@ -248,6 +251,8 @@ export const AssetForm = ({
   mainImage,
   mainImageExpiration,
   categoryId,
+  iotType, // IoT (fork)
+  iotProtocol, // IoT (fork)
   assetModelId,
   locationId,
   description,
@@ -448,6 +453,10 @@ export const AssetForm = ({
   >(assetModelId ?? undefined);
   const navigate = useNavigate();
   const location = useLocation();
+  // IoT (fork): the chosen category, for the IoT panel
+  const [chosenCategory, setChosenCategory] = useState<string | null>(
+    new URLSearchParams(location.search).get("category") || categoryId || null
+  );
 
   /**
    * Snapshot of the referer as it was when this form first mounted.
@@ -1045,6 +1054,7 @@ export const AssetForm = ({
               undefined
             }
             model={{ name: "category", queryKey: "name" }}
+            onChange={(id) => setChosenCategory(id ?? null)} // IoT (fork)
             triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
             contentLabel="Categories"
             label="Category"
@@ -1074,6 +1084,13 @@ export const AssetForm = ({
             )}
           />
         </FormRow>
+
+        {/* IoT (fork): on IoT assets, what the devices are and how they connect */}
+        <IotPanel
+          categoryId={chosenCategory}
+          iotType={iotType}
+          iotProtocol={iotProtocol}
+        />
 
         <FormRow
           rowLabel="Tags"

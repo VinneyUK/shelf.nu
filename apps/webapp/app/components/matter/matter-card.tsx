@@ -22,11 +22,11 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import QRCode from "qrcode-generator";
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { DeviceTypeIcon, ProtocolBadge } from "~/components/iot/icons";
 import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
-import { DEVICE_TYPES, PROTOCOLS, protocolOf } from "~/modules/iot/catalogue";
+import { protocolOf } from "~/modules/iot/catalogue";
 import { MATTER_LOGO_PATH, MATTER_LOGO_VIEWBOX } from "~/modules/matter/logo";
 import { formatManualCode } from "~/modules/matter/payload";
 import { isFormProcessing } from "~/utils/form";
@@ -93,6 +93,9 @@ type Device = {
   network: string | null;
   hasSecret: boolean;
 };
+/** The asset's type and protocol: its devices take them. */
+type Iot = { type: string | null; protocol: string | null };
+
 type Revealed = {
   manualCode: string;
   payload: string | null;
@@ -107,7 +110,11 @@ type Act = { ok?: boolean; error?: { message: string } };
  */
 export function MatterCard({ assetId }: { assetId: string }) {
   const url = `/api/assets/${assetId}/matter`;
-  const info = useFetcher<{ devices: Device[]; layout: "table" | "cards" }>();
+  const info = useFetcher<{
+    devices: Device[];
+    layout: "table" | "cards";
+    iot?: Iot;
+  }>();
   const act = useFetcher<Act>();
   const [adding, setAdding] = useState(false);
   useEffect(() => {
@@ -122,6 +129,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
   }, [act.state, act.data]);
   if (!info.data) return null;
   const { devices, layout } = info.data;
+  const iot: Iot = info.data.iot ?? { type: null, protocol: null };
   const first = devices[0];
   const maker = first
     ? [first.vendorName, first.productName].filter(Boolean).join(" · ")
@@ -136,6 +144,10 @@ export function MatterCard({ assetId }: { assetId: string }) {
     <Card className="my-3 p-0 md:border">
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-5 py-3.5">
         <h3 className="text-text-md font-semibold text-gray-900">Devices</h3>
+        {iot.protocol ? <ProtocolBadge protocol={iot.protocol} /> : null}
+        {iot.type ? (
+          <span className="text-sm text-gray-600">{iot.type}</span>
+        ) : null}
         {maker ? <span className="text-sm text-gray-600">{maker}</span> : null}
         {devices.length ? (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
@@ -177,12 +189,18 @@ export function MatterCard({ assetId }: { assetId: string }) {
         </span>
       </div>
       {adding || devices.length === 0 ? (
-        <AddDevice url={url} act={act} first={devices.length === 0} />
+        <AddDevice
+          url={url}
+          act={act}
+          first={devices.length === 0}
+          iot={iot}
+          assetId={assetId}
+        />
       ) : null}
       {devices.length === 0 ? null : layout === "cards" ? (
         <div className="flex flex-col gap-3 p-4">
           {devices.map((d) => (
-            <DeviceCard key={d.id} d={d} url={url} />
+            <DeviceCard key={d.id} d={d} url={url} iot={iot} />
           ))}
         </div>
       ) : (
@@ -190,15 +208,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
           <table className="w-full">
             <thead className="bg-gray-25">
               <tr>
-                {[
-                  "",
-                  "Name",
-                  "Type",
-                  "Protocol",
-                  "Code / address",
-                  "Paired with",
-                  "",
-                ].map((h) => (
+                {["", "Name", "Code / address", "Paired with", ""].map((h) => (
                   <th
                     key={h}
                     className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500 first:pl-5"
@@ -210,7 +220,7 @@ export function MatterCard({ assetId }: { assetId: string }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {devices.map((d) => (
-                <DeviceRow key={d.id} d={d} url={url} />
+                <DeviceRow key={d.id} d={d} url={url} iot={iot} />
               ))}
             </tbody>
           </table>
@@ -383,33 +393,6 @@ function CodeOrAddress({
         </span>
       ))}
     </div>
-  );
-}
-
-/** What it is: a plug, a bulb, a sensor… */
-function TypeCell({
-  value,
-  onSave,
-}: {
-  value: string | null;
-  onSave: (v: string) => void;
-}) {
-  const [v, setV] = useState(value ?? "");
-  return (
-    <select
-      value={v}
-      onChange={(e) => {
-        setV(e.target.value);
-        onSave(e.target.value);
-      }}
-      aria-label="Type"
-      className="rounded border border-transparent bg-transparent py-0.5 pl-1 pr-6 text-sm text-gray-700 hover:border-gray-300"
-    >
-      <option value="">—</option>
-      {DEVICE_TYPES.map((t) => (
-        <option key={t.id}>{t.id}</option>
-      ))}
-    </select>
   );
 }
 
@@ -610,7 +593,7 @@ function PairedCell({
   );
 }
 
-function DeviceRow({ d, url }: { d: Device; url: string }) {
+function DeviceRow({ d, url, iot }: { d: Device; url: string; iot: Iot }) {
   const s = useDevice(d, url);
   const save = useField(d, url);
   const cell = "whitespace-nowrap px-2.5 py-2.5 align-middle text-sm";
@@ -618,7 +601,7 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
     <>
       <tr>
         <td className={`${cell} pl-5`}>
-          <DeviceTypeIcon type={d.deviceType} />
+          <DeviceTypeIcon type={iot.type ?? d.deviceType} />
         </td>
         <td className={cell}>
           <div className="flex flex-col items-start">
@@ -636,25 +619,14 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
             />
           </div>
         </td>
-        <td className={cell}>
-          <TypeCell
-            value={d.deviceType}
-            onSave={(v) => save("deviceType", v)}
-          />
-        </td>
-        <td className={cell}>
-          <div className="flex flex-col items-start gap-0.5">
-            <ProtocolBadge protocol={d.protocol} />
-            {d.protocol === "Matter" ? (
-              <TransportCell
-                value={d.transport}
-                onSave={(v) => save("transport", v)}
-              />
-            ) : null}
-          </div>
-        </td>
         <td className={`${cell} font-mono text-gray-900`}>
           <CodeOrAddress d={d} s={s} />
+          {d.protocol === "Matter" ? (
+            <TransportCell
+              value={d.transport}
+              onSave={(v) => save("transport", v)}
+            />
+          ) : null}
         </td>
         <td className={`${cell} max-w-44`}>
           <PairedCell
@@ -673,7 +645,7 @@ function DeviceRow({ d, url }: { d: Device; url: string }) {
   );
 }
 
-function DeviceCard({ d, url }: { d: Device; url: string }) {
+function DeviceCard({ d, url, iot }: { d: Device; url: string; iot: Iot }) {
   const s = useDevice(d, url);
   const save = useField(d, url);
   return (
@@ -804,115 +776,59 @@ function AddDevice({
   url,
   act,
   first,
+  iot,
+  assetId,
 }: {
   url: string;
   act: ReturnType<typeof useFetcher<Act>>;
   first: boolean;
+  iot: Iot;
+  assetId: string;
 }) {
-  const [type, setType] = useState<string | null>(null);
-  const [protocol, setProtocol] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const step = !type ? 1 : !protocol ? 2 : 3;
-  const tile =
-    "flex items-center gap-2.5 rounded-lg border border-gray-200 p-2.5 text-left hover:shadow-sm";
+  // the asset says what they are and how they connect: straight to the details
+  if (!iot.protocol)
+    return (
+      <div className="border-b border-gray-200 px-5 py-4 text-sm text-gray-600">
+        First say what this asset's devices are and how they connect:{" "}
+        <Link
+          to={`/assets/${assetId}/edit`}
+          className="font-semibold text-primary-600 underline"
+        >
+          Edit
+        </Link>{" "}
+        the asset and choose them in its IoT panel.
+      </div>
+    );
   return (
     <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4">
-      {first ? (
-        <p className="text-sm text-gray-600">
-          Add each device: what it is, how it connects, and its details. Each
-          device counts towards the quantity.
-        </p>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {["What is it?", "How does it connect?", "Its details"].map((l, i) => (
-          <span
-            key={l}
-            className={
-              step === i + 1 ? "font-semibold text-gray-900" : "text-gray-400"
-            }
-          >
-            {i + 1}. {l}
-            {i < 2 ? <span className="ml-2 text-gray-300">›</span> : null}
-          </span>
-        ))}
+      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+        {first ? (
+          <span>Add each device; each counts towards the quantity.</span>
+        ) : null}
+        <DeviceTypeIcon type={iot.type} size={24} />
+        {iot.type ?? "Device"} <ProtocolBadge protocol={iot.protocol} />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name: Kettle plug"
+          aria-label="Name"
+          className="ml-2 h-9 w-48 rounded-lg border border-gray-300 px-2.5 text-sm"
+        />
       </div>
-      {step === 1 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-          {DEVICE_TYPES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={tile}
-              onClick={() => setType(t.id)}
-            >
-              <DeviceTypeIcon type={t.id} size={30} />
-              <span className="text-sm font-semibold text-gray-900">
-                {t.id}
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : step === 2 ? (
-        <>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <DeviceTypeIcon type={type} size={24} /> {type}
-            <button
-              type="button"
-              className="text-xs font-semibold text-primary-600"
-              onClick={() => setType(null)}
-            >
-              Change
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-            {PROTOCOLS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`${tile} flex-col items-start`}
-                onClick={() => setProtocol(p.id)}
-              >
-                <ProtocolBadge protocol={p.id} />
-                <span className="text-xs text-gray-500">{p.note}</span>
-              </button>
-            ))}
-          </div>
-        </>
+      {iot.protocol === "Matter" ? (
+        <MatterAdd
+          url={url}
+          act={act}
+          extra={{ deviceType: iot.type ?? "", name }}
+        />
       ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-            <DeviceTypeIcon type={type} size={24} /> {type}{" "}
-            <ProtocolBadge protocol={protocol!} />
-            <button
-              type="button"
-              className="text-xs font-semibold text-primary-600"
-              onClick={() => setProtocol(null)}
-            >
-              Change
-            </button>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name: Kettle plug"
-              aria-label="Name"
-              className="ml-2 h-9 w-48 rounded-lg border border-gray-300 px-2.5 text-sm"
-            />
-          </div>
-          {protocol === "Matter" ? (
-            <MatterAdd
-              url={url}
-              act={act}
-              extra={{ deviceType: type!, name }}
-            />
-          ) : (
-            <OtherAdd
-              url={url}
-              act={act}
-              protocol={protocol!}
-              extra={{ deviceType: type!, name }}
-            />
-          )}
-        </>
+        <OtherAdd
+          url={url}
+          act={act}
+          protocol={iot.protocol}
+          extra={{ deviceType: iot.type ?? "", name }}
+        />
       )}
     </div>
   );

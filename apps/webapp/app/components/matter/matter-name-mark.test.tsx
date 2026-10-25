@@ -16,7 +16,10 @@ describe("MatterNameMark", () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ assetIds: ["plug"] }),
+        json: () =>
+          Promise.resolve({
+            assets: [{ id: "plug", protocol: "Matter", type: "Smart plug" }],
+          }),
       })
     );
     vi.stubGlobal("fetch", fetchMock);

@@ -315,6 +315,9 @@ model Asset {
   matter         AssetMatter?
   /// Its Matter devices (fork)
   matterDevices  MatterDevice[]
+  /// IoT (fork): what its devices are, and how they connect (modules/iot/catalogue.ts)
+  iotType        String?
+  iotProtocol    String?
 }
 
 enum AssetStatus {

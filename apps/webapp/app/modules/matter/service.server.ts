@@ -47,7 +47,13 @@ export async function lookupDevice(vendorId: number, productId: number) {
 async function iotAsset(organizationId: string, assetId: string) {
   const asset = await db.asset.findFirst({
     where: { id: assetId, organizationId },
-    select: { id: true, title: true, category: { select: { name: true } } },
+    select: {
+      id: true,
+      title: true,
+      iotType: true,
+      iotProtocol: true,
+      category: { select: { name: true } },
+    },
   });
   if (!asset)
     throw new ShelfError({
@@ -153,10 +159,14 @@ export async function addDevice(
     typeof input === "string"
       ? { protocol: "Matter", code: input, place }
       : input;
-  const protocol = PROTOCOL_IDS.includes(d.protocol ?? "")
+  // the asset says what its devices are and how they connect (fork)
+  const asset = await iotAsset(organizationId, assetId);
+  const protocol = PROTOCOL_IDS.includes(asset.iotProtocol ?? "")
+    ? asset.iotProtocol!
+    : PROTOCOL_IDS.includes(d.protocol ?? "")
     ? d.protocol!
     : "Matter";
-  await iotAsset(organizationId, assetId);
+  if (asset.iotType) d.deviceType = asset.iotType;
   const common = {
     organizationId,
     assetId,
@@ -279,5 +289,49 @@ export async function listAllDevices(organizationId: string) {
     deviceType: d.deviceType,
     controllers: d.controllers,
     labelPrintedAt: d.labelPrintedAt,
+  }));
+}
+
+/**
+ * The IoT page (fork): every IoT asset (by category), its type and protocol,
+ * and its devices.
+ */
+export async function listIotAssets(organizationId: string) {
+  const assets = await db.asset.findMany({
+    where: {
+      organizationId,
+      OR: [
+        { category: { name: { equals: "IoT", mode: "insensitive" } } },
+        {
+          category: {
+            name: { equals: "Internet of Things", mode: "insensitive" },
+          },
+        },
+      ],
+    },
+    orderBy: { title: "asc" },
+    select: {
+      id: true,
+      title: true,
+      iotType: true,
+      iotProtocol: true,
+      matterDevices: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          place: true,
+          controllers: true,
+          labelPrintedAt: true,
+        },
+      },
+    },
+  });
+  return assets.map((a) => ({
+    id: a.id,
+    title: a.title,
+    type: a.iotType,
+    protocol: a.iotProtocol,
+    devices: a.matterDevices,
   }));
 }

@@ -130,3 +130,30 @@ export function ProtocolBadge({ protocol }: { protocol: string }) {
     </span>
   );
 }
+
+/** The protocol's logo in a large tile with its name under it: the asset's title bar. */
+export function IotProtocolTile({
+  protocol,
+  type,
+}: {
+  protocol: string;
+  type?: string | null;
+}) {
+  const p = protocolOf(protocol);
+  return (
+    <span
+      className="ml-auto flex shrink-0 flex-col items-center gap-1 pl-4"
+      title={[p.id, type].filter(Boolean).join(" · ")}
+    >
+      <span
+        className="flex size-12 items-center justify-center rounded-xl"
+        style={{ background: p.background, color: p.colour }}
+      >
+        <ProtocolIcon protocol={p.id} className="size-7" />
+      </span>
+      <span className="text-xs font-semibold" style={{ color: p.colour }}>
+        {p.id}
+      </span>
+    </span>
+  );
+}

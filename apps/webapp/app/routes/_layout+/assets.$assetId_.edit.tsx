@@ -25,6 +25,7 @@ import { claimStagedAttachments } from "~/modules/asset-attachment/service.serve
 import { getAssetModels } from "~/modules/asset-model/service.server";
 
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
+import { saveIotSettings } from "~/modules/iot/asset-settings.server"; // IoT (fork)
 import { applySoldFromForm } from "~/modules/sold/service.server"; // sold feature
 import { buildTagsSet } from "~/modules/tag/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
@@ -259,6 +260,16 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
       ? extractBarcodesFromFormData(formData)
       : [];
 
+    // IoT (fork): its type and protocol, and their tags, after the rest is saved
+    const saveIot = () =>
+      saveIotSettings({
+        organizationId,
+        userId: authSession.userId,
+        assetId: id,
+        iotType: String(formData.get("iotType") ?? "") || null,
+        iotProtocol: String(formData.get("iotProtocol") ?? "") || null,
+      });
+
     await updateAsset({
       id,
       title,
@@ -288,6 +299,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         thumbnailImage: null,
       }),
     });
+    await saveIot();
 
     // attachments feature: files added in the form before saving
     await claimStagedAttachments({ formData, assetId: id, organizationId });
@@ -348,6 +360,8 @@ export default function AssetEditPage() {
           }
           title={asset.title}
           categoryId={asset.categoryId}
+          iotType={asset.iotType}
+          iotProtocol={asset.iotProtocol}
           assetModelId={asset.assetModelId}
           locationId={getPrimaryLocation(asset)?.id ?? null}
           description={asset.description}

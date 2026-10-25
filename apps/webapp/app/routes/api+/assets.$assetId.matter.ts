@@ -44,7 +44,19 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     ]);
     // the layout chosen in Settings → Customise
     const layout = settings?.matterLayout === "cards" ? "cards" : "table";
-    return payload({ devices, layout });
+    // the asset's type and protocol: its devices take them (fork)
+    const asset = await db.asset.findFirst({
+      where: { id: assetId, organizationId },
+      select: { iotType: true, iotProtocol: true },
+    });
+    return payload({
+      devices,
+      layout,
+      iot: {
+        type: asset?.iotType ?? null,
+        protocol: asset?.iotProtocol ?? null,
+      },
+    });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId });
     return data(error(reason), { status: reason.status });

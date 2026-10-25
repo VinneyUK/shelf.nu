@@ -24,6 +24,7 @@ import {
   getAssetModels,
 } from "~/modules/asset-model/service.server";
 import { getActiveCustomFields } from "~/modules/custom-field/service.server";
+import { saveIotSettings } from "~/modules/iot/asset-settings.server"; // IoT (fork)
 import { createNote } from "~/modules/note/service.server";
 import { assertWhetherQrBelongsToCurrentOrganization } from "~/modules/qr/service.server";
 import { buildTagsSet } from "~/modules/tag/service.server";
@@ -298,6 +299,14 @@ export async function action({ context, request }: LoaderFunctionArgs) {
       minQuantity,
       consumptionType,
       unitOfMeasure,
+    });
+    // IoT (fork): its type and protocol, and their tags
+    await saveIotSettings({
+      organizationId,
+      userId: authSession.userId,
+      assetId: asset.id,
+      iotType: String(formData.get("iotType") ?? "") || null,
+      iotProtocol: String(formData.get("iotProtocol") ?? "") || null,
     });
 
     // `asset.user` is the full User row (createAsset includes `user: true`), so

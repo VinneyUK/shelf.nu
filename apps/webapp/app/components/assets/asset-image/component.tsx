@@ -1,6 +1,8 @@
 import { useEffect, useReducer, useState, useCallback, useRef } from "react";
 
 import { Link } from "react-router";
+import { DeviceTypeIcon } from "~/components/iot/icons"; // IoT (fork)
+import { useIotInfo } from "~/components/iot/iot-info"; // IoT (fork)
 import { Dialog, DialogPortal } from "~/components/layout/dialog";
 import { Button } from "~/components/shared/button";
 import {
@@ -525,6 +527,20 @@ export const AssetImage = ({
       />
     </div>
   );
+
+  // IoT (fork): with no picture of its own, an IoT asset shows its type's icon
+  const iot = useIotInfo(resolved.source === "placeholder" ? asset.id : null);
+  if (resolved.source === "placeholder" && iot?.type)
+    return (
+      <span
+        className={tw(
+          "inline-flex shrink-0 items-center justify-center overflow-hidden",
+          className
+        )}
+      >
+        <DeviceTypeIcon type={iot.type} size={40} />
+      </span>
+    );
 
   return (
     <>
