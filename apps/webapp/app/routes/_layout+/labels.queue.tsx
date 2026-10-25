@@ -393,7 +393,15 @@ function printerSummary(entities: PrinterEntity[] | null) {
     total && used && !isNaN(Number(total.state)) && !isNaN(Number(used.state))
       ? Number(total.state) - Number(used.state)
       : null;
+  // when the count was last reported: the later of its two sensors (fork)
+  const times = [total?.updated, used?.updated]
+    .map((u) => (u ? Date.parse(u) : NaN))
+    .filter((n) => !isNaN(n));
+  const labelsAsOf = times.length
+    ? new Date(Math.max(...times)).toISOString()
+    : null;
   return {
+    labelsAsOf,
     connected: connection ? connection.state === "on" : null,
     battery:
       battery && !isNaN(Number(battery.state))
@@ -481,7 +489,10 @@ export default function LabelsQueue() {
                 <span>Battery {summary.battery}%</span>
               ) : null}
               {summary.labelsLeft !== null ? (
-                <span>{summary.labelsLeft} labels left</span>
+                <LabelsLeft
+                  left={summary.labelsLeft}
+                  asOf={summary.labelsAsOf}
+                />
               ) : null}
             </>
           )}
@@ -832,5 +843,49 @@ function SearchAndPrint({
         </>
       ) : null}
     </Card>
+  );
+}
+
+/** "an hour ago", "9 hours ago", "2 days ago". */
+function ago(iso: string, now = Date.now()) {
+  const mins = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} ${mins === 1 ? "minute" : "minutes"} ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+}
+
+/** The printer's count stays reliable this long after it last reported it. */
+const LABELS_LEFT_FRESH_MS = 60 * 60 * 1000;
+
+/**
+ * Labels left, and how old the figure is (fork): the printer reports it
+ * through Home Assistant, so after an hour without a report it greys out and
+ * says it may be out of date (an empty roll could still show 48).
+ */
+function LabelsLeft({ left, asOf }: { left: number; asOf: string | null }) {
+  const stale = asOf
+    ? Date.now() - Date.parse(asOf) > LABELS_LEFT_FRESH_MS
+    : false;
+  return (
+    <span className={stale ? "text-gray-400" : undefined}>
+      {left} labels left
+      {asOf ? (
+        <span
+          className={
+            stale
+              ? "ml-1.5 rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700"
+              : "ml-1.5 text-xs text-gray-500"
+          }
+          title={new Date(asOf).toLocaleString("en-GB")}
+        >
+          {stale
+            ? `as of ${ago(asOf)}: may be out of date`
+            : `as of ${ago(asOf)}`}
+        </span>
+      ) : null}
+    </span>
   );
 }

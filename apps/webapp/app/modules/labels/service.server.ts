@@ -166,6 +166,8 @@ export type PrinterEntity = {
   state: string;
   unit: string | null;
   device_class: string | null;
+  /** When the printer last reported it (fork): last reported, else last changed */
+  updated?: string | null;
 };
 
 /** Every sensor on the printer, from Home Assistant. Null if it can't be asked. */
@@ -174,7 +176,7 @@ export async function getPrinterStatus(
 ): Promise<PrinterEntity[] | null> {
   const s = await getSettingsWithToken(organizationId);
   if (!s.haUrl || !s.haToken || !/^[A-Za-z0-9]+$/.test(s.deviceId)) return null;
-  const template = `{% set ns = namespace(items=[]) %}{% for e in device_entities('${s.deviceId}') %}{% set ns.items = ns.items + [{'entity': e, 'name': state_attr(e, 'friendly_name'), 'state': states(e), 'unit': state_attr(e, 'unit_of_measurement'), 'device_class': state_attr(e, 'device_class')}] %}{% endfor %}{{ ns.items | tojson }}`;
+  const template = `{% set ns = namespace(items=[]) %}{% for e in device_entities('${s.deviceId}') %}{% set ns.items = ns.items + [{'entity': e, 'name': state_attr(e, 'friendly_name'), 'state': states(e), 'unit': state_attr(e, 'unit_of_measurement'), 'device_class': state_attr(e, 'device_class'), 'updated': ((states[e].last_reported or states[e].last_updated).isoformat() if states[e] else none)}] %}{% endfor %}{{ ns.items | tojson }}`;
   try {
     const text = await callHomeAssistant(
       s,
