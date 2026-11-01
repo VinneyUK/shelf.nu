@@ -183,13 +183,14 @@ describe("a filament's page", () => {
     // 1 kg + 1 kg sealed, 270 g + 640 g open
     expect(await screen.findByText("2.91 kg")).toBeTruthy();
     expect(screen.getByText("2 open · 2 sealed")).toBeTruthy();
-    expect(screen.getByText(/lasts .+ at the rate it.s being used/)).toBeTruthy();
+    expect(
+      screen.getByText(/lasts .+ at the rate it.s being used/)
+    ).toBeTruthy();
   });
 
   it("puts the spool in the AMS in the In use card, with its run-out estimate", async () => {
     show();
-    // the In the AMS tab shows each spool's full card
-    fireEvent.click(await screen.findByRole("tab", { name: /In the AMS/ }));
+    // the spool in the AMS starts with its detail open
     const heading = await screen.findByRole("heading", { name: "In use" });
     const card = heading.closest("div.my-0") as HTMLElement;
     expect(within(card).getByText("#3 · Spool")).toBeTruthy();
@@ -208,21 +209,23 @@ describe("a filament's page", () => {
     ).toContain("Delete");
   });
 
-  it("lists every unit on the All tab with its state, and the sealed ones in the Sealed tab's table", async () => {
+  it("lists every unit in one view with its state, and opens a sealed one to its details", async () => {
     show();
-    // All: one row each, its state as a chip (one in the AMS, one open, two sealed)
-    expect(await screen.findByRole("tab", { name: /All\s*4/ })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: /In the AMS\s*1/ })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: /Open\s*1/ })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: /Sealed\s*2/ })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Units" })).toBeTruthy();
+    expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getAllByText("In AMS").length).toBeGreaterThan(0);
     expect(screen.getByText("On the shelf")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: /Sealed/ }));
+    // a sealed unit's row opens to its details, to change in place
+    const sealedRow = screen
+      .getAllByRole("button", { name: /#\d+ · (Refill|Spool)/ })
+      .filter((b) => b.getAttribute("aria-expanded") === "false")
+      .pop();
+    fireEvent.click(sealedRow!);
     const table = screen
       .getByRole("heading", { name: "Sealed stock" })
       .closest("div.my-0") as HTMLElement;
-    expect(within(table).getAllByRole("row")).toHaveLength(3); // heading + 2
-    expect(within(table).getAllByText("Add date")).toHaveLength(2);
+    expect(within(table).getAllByRole("row")).toHaveLength(2); // heading + the one opened
+    expect(within(table).getAllByText("Add date")).toHaveLength(1);
   });
 
   it("brings a finished spool back as it was", async () => {
@@ -248,23 +251,22 @@ describe("a filament's page", () => {
 
   it("puts the open spool in an AMS slot, saying what's in each", async () => {
     show();
-    fireEvent.click(await screen.findByRole("button", { name: /AMS 2/ }));
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: /AMS 2/ }))[0]
+    );
     expect(await screen.findByText(/Red: swaps out/)).toBeTruthy();
     expect(screen.getByText("Take it out (keep it open)")).toBeTruthy();
   });
 
-  it("has every action out on the rows, and a handle to reorder sealed stock", async () => {
+  it("has every action out on the rows", async () => {
     show();
     expect(
       await screen.findAllByRole("button", { name: "Open it" })
     ).toHaveLength(2);
-    fireEvent.click(screen.getByRole("tab", { name: /Sealed/ }));
-    expect(screen.getAllByRole("button", { name: /^Move #/ })).toHaveLength(2);
-    fireEvent.click(screen.getByRole("tab", { name: /All/ }));
     // both open units (the one in the AMS and the one on the shelf) can go back
     expect(
-      screen.getAllByRole("button", { name: "Back to New (sealed)" })
-    ).toHaveLength(2);
+      screen.getAllByRole("button", { name: "Back to New (sealed)" }).length
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("lists the prints that used it, with what each used and cost", async () => {

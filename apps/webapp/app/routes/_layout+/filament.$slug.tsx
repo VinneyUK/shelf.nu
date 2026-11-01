@@ -20,6 +20,7 @@ import { Reorder, useDragControls } from "framer-motion";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
+  ChevronRightIcon,
   PackageIcon,
   CheckIcon,
   CpuIcon,
@@ -1650,10 +1651,11 @@ function StateChip({ state }: { state: UnitState }) {
 }
 
 /**
- * The filament's units (fork, Ant's choice 7): tabs for All, In the AMS,
- * Open and Sealed, each with its count. All lists every unit as one row with
- * its state; In the AMS and Open show each spool's full card (level, used,
- * runs out…); Sealed is the sealed stock you can reorder and change in place.
+ * The filament's units (fork): one view, no tabs. A line of counts (in the
+ * AMS, open, sealed), then every unit as a row in fixed columns (State,
+ * Unit, Where, Level, Left, buttons). A row opens to its detail: an open
+ * spool's card (level, used, runs out, paid, bought, tare), or a sealed
+ * unit's details to change in place. The spool in the AMS starts open.
  */
 function SpoolsCard({
   ams,
@@ -1670,122 +1672,102 @@ function SpoolsCard({
   tare: number | null;
   inAms: PageData["inAms"];
 }) {
-  const [tab, setTab] = useState<"all" | UnitState>("all");
-  const tabs: ["all" | UnitState, string, number][] = [
-    ["all", "All", ams.length + shelf.length + sealed.length],
-    ["ams", UNIT_STATES.ams.label, ams.length],
-    ["shelf", UNIT_STATES.shelf.label, shelf.length],
-    ["sealed", UNIT_STATES.sealed.label, sealed.length],
-  ];
+  const [opened, setOpened] = useState<string | null>(ams[0]?.id ?? null);
   const rows: [Spool, UnitState][] = [
     ...ams.map((x) => [x, "ams"] as [Spool, UnitState]),
     ...shelf.map((x) => [x, "shelf"] as [Spool, UnitState]),
     ...sealed.map((x) => [x, "sealed"] as [Spool, UnitState]),
   ];
+  const counts: [UnitState, number][] = [
+    ["ams", ams.length],
+    ["shelf", shelf.length],
+    ["sealed", sealed.length],
+  ];
   return (
-    <div className="flex flex-col gap-3">
-      <Card className="my-0 p-0">
-        <div
-          className="flex flex-wrap gap-1 px-3"
-          role="tablist"
-          aria-label="Units"
-        >
-          {tabs.map(([k, l, n]) => {
-            const Icon = k === "all" ? null : UNIT_STATES[k].Icon;
-            return (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={tab === k}
-                onClick={() => setTab(k)}
-                className={tw(
-                  "flex items-center gap-1.5 border-b-2 p-3 text-sm font-semibold",
-                  tab === k
-                    ? "border-primary-500 text-gray-900"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                )}
+    <Card className="my-0 p-0">
+      <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+        <h3 className="text-text-md font-semibold text-gray-900">Units</h3>
+        <span className="text-sm text-gray-500">{rows.length}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          {counts.map(([state, n]) => (
+            <span
+              key={state}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-600"
+            >
+              <StateChip state={state} />
+              {n}
+            </span>
+          ))}
+        </span>
+      </div>
+      {rows.length ? (
+        <div className="overflow-x-auto border-t border-gray-200">
+          {/* fixed columns, so the level bars line up */}
+          <div
+            className="grid min-w-[52rem] items-center gap-4 bg-gray-25 px-5 py-2 text-xs font-medium text-gray-500"
+            style={{ gridTemplateColumns: UNIT_COLUMNS }}
+          >
+            <span>State</span>
+            <span>Unit</span>
+            <span>Where</span>
+            <span>Level</span>
+            <span className="text-right">Left</span>
+            <span />
+          </div>
+          <div className="divide-y divide-gray-100">
+            {rows.map(([x, state]) => (
+              <UnitRow
+                key={x.id}
+                spool={x}
+                state={state}
+                number={numbers.get(x.id) ?? 0}
+                tare={tare}
+                inAms={inAms}
+                open={opened === x.id}
+                onToggle={() => setOpened(opened === x.id ? null : x.id)}
               >
-                {Icon ? <Icon className="size-4" aria-hidden="true" /> : null}
-                {l}
-                <span className="rounded-full bg-gray-100 px-1.5 text-xs text-gray-600">
-                  {n}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {tab === "all" ? (
-          rows.length ? (
-            <div className="overflow-x-auto border-t border-gray-200">
-              {/* Ant's choice 4: fixed columns, so the level bars line up */}
-              <div
-                className="grid min-w-[52rem] items-center gap-4 bg-gray-25 px-5 py-2 text-xs font-medium text-gray-500"
-                style={{ gridTemplateColumns: UNIT_COLUMNS }}
-              >
-                <span>State</span>
-                <span>Unit</span>
-                <span>Where</span>
-                <span>Level</span>
-                <span className="text-right">Left</span>
-                <span />
-              </div>
-              <div className="divide-y divide-gray-100">
-                {rows.map(([x, state]) => (
-                  <UnitRow
-                    key={x.id}
+                {state === "sealed" ? (
+                  <SealedCard items={[x]} numbers={numbers} tare={tare} />
+                ) : (
+                  <InUseCard
                     spool={x}
-                    state={state}
                     number={numbers.get(x.id) ?? 0}
                     tare={tare}
                     inAms={inAms}
                   />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="border-t border-gray-200 px-5 py-4 text-sm text-gray-500">
-              None on hand.
-            </p>
-          )
-        ) : null}
-      </Card>
-      {tab === "ams" || tab === "shelf"
-        ? (tab === "ams" ? ams : shelf).map((x) => (
-            <InUseCard
-              key={x.id}
-              spool={x}
-              number={numbers.get(x.id) ?? 0}
-              tare={tare}
-              inAms={inAms}
-            />
-          ))
-        : null}
-      {(tab === "ams" && !ams.length) || (tab === "shelf" && !shelf.length) ? (
-        <p className="px-1 text-sm text-gray-500">
-          {tab === "ams" ? "None in the AMS." : "None open on the shelf."}
+                )}
+              </UnitRow>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="border-t border-gray-200 px-5 py-4 text-sm text-gray-500">
+          None on hand.
         </p>
-      ) : null}
-      {tab === "sealed" ? (
-        <SealedCard items={sealed} numbers={numbers} tare={tare} />
-      ) : null}
-    </div>
+      )}
+    </Card>
   );
 }
 
-/** One unit in the All tab: its state, number, where, level and its actions. */
+/** One unit: its state, number, where, level and its actions; it opens to its detail. */
 function UnitRow({
   spool,
   state,
   number,
   tare,
   inAms,
+  open,
+  onToggle,
+  children,
 }: {
   spool: Spool;
   state: UnitState;
   number: number;
   tare: number | null;
   inAms: PageData["inAms"];
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
 }) {
   const label = `#${number} of ${spool.colourName}`;
   const where =
@@ -1795,60 +1777,76 @@ function UnitRow({
       ? "On the shelf"
       : "Sealed";
   return (
-    <div
-      className="grid min-w-[52rem] items-center gap-4 px-5 py-3"
-      style={{ gridTemplateColumns: UNIT_COLUMNS }}
-    >
-      <span>
-        <StateChip state={state} />
-      </span>
-      <span className="whitespace-nowrap text-sm font-semibold text-gray-900">
-        #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
-      </span>
-      <span className="whitespace-nowrap text-sm text-gray-500">{where}</span>
-      <span
-        className="h-1.5 rounded-full"
-        style={barTrack(spool.remainingPercent)}
+    <div>
+      <div
+        className="grid min-w-[52rem] items-center gap-4 px-5 py-3"
+        style={{ gridTemplateColumns: UNIT_COLUMNS }}
       >
-        <span
-          className="block h-1.5 rounded-full"
-          style={barFill(spool.remainingPercent)}
-        />
-      </span>
-      {/* grams for every unit, so the column is one width */}
-      <span className="text-right text-sm font-semibold tabular-nums text-gray-900">
-        {Math.round(gramsLeft(spool)).toLocaleString("en-GB")} g
-      </span>
-      {/* the buttons from the left of their column, in the same order on every row */}
-      <span className="flex items-center gap-2">
-        <WeighButton
-          spool={spool}
-          number={number}
-          tare={spool.spoolWeightGrams ?? tare}
-        />
-        <AmsPicker spool={spool} label={label} inAms={inAms} compact />
-        {state === "sealed" ? (
-          <ActIcon
-            icon={PackageOpenIcon}
-            label="Open it"
-            form={{ intent: "open", id: spool.id, label }}
+        <span>
+          <StateChip state={state} />
+        </span>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          title={open ? "Hide its detail" : "Show its detail"}
+          className="inline-flex items-center gap-1 whitespace-nowrap text-left text-sm font-semibold text-gray-900 hover:text-primary-700"
+        >
+          <ChevronRightIcon
+            className={tw(
+              "size-4 text-gray-400 transition-transform",
+              open && "rotate-90"
+            )}
+            aria-hidden="true"
           />
-        ) : (
-          <>
+          #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
+        </button>
+        <span className="whitespace-nowrap text-sm text-gray-500">{where}</span>
+        <span
+          className="h-1.5 rounded-full"
+          style={barTrack(spool.remainingPercent)}
+        >
+          <span
+            className="block h-1.5 rounded-full"
+            style={barFill(spool.remainingPercent)}
+          />
+        </span>
+        {/* grams for every unit, so the column is one width */}
+        <span className="text-right text-sm font-semibold tabular-nums text-gray-900">
+          {Math.round(gramsLeft(spool)).toLocaleString("en-GB")} g
+        </span>
+        {/* the buttons from the left of their column, in the same order on every row */}
+        <span className="flex items-center gap-2">
+          <WeighButton
+            spool={spool}
+            number={number}
+            tare={spool.spoolWeightGrams ?? tare}
+          />
+          <AmsPicker spool={spool} label={label} inAms={inAms} compact />
+          {state === "sealed" ? (
             <ActIcon
-              icon={PackageIcon}
-              label="Back to New (sealed)"
-              form={{ intent: "state", id: spool.id, target: "new", label }}
+              icon={PackageOpenIcon}
+              label="Open it"
+              form={{ intent: "open", id: spool.id, label }}
             />
-            <ActIcon
-              icon={CheckCircle2Icon}
-              label="Mark finished"
-              form={{ intent: "retire", id: spool.id }}
-            />
-          </>
-        )}
-        <DeleteIcon spool={spool} label={label} />
-      </span>
+          ) : (
+            <>
+              <ActIcon
+                icon={PackageIcon}
+                label="Back to New (sealed)"
+                form={{ intent: "state", id: spool.id, target: "new", label }}
+              />
+              <ActIcon
+                icon={CheckCircle2Icon}
+                label="Mark finished"
+                form={{ intent: "retire", id: spool.id }}
+              />
+            </>
+          )}
+          <DeleteIcon spool={spool} label={label} />
+        </span>
+      </div>
+      {open ? <div className="bg-gray-25 px-5 py-4">{children}</div> : null}
     </div>
   );
 }
