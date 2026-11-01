@@ -121,7 +121,12 @@ import {
   refreshStalePrices,
 } from "~/modules/filament/prices.server";
 import { printsForFilament } from "~/modules/filament/prints.server";
-import { daysOnHand, usageRate } from "~/modules/filament/run-out";
+import {
+  daysOnHand,
+  lastsText,
+  runOutDate,
+  usageRate,
+} from "~/modules/filament/run-out";
 import {
   changeSpoolState,
   createSpools,
@@ -1440,7 +1445,7 @@ function SummaryCard({
           </dd>
           {daysLeft !== null ? (
             <dd className="text-xs text-gray-500">
-              ≈ {daysLeft} days at your recent rate
+              lasts {lastsText(daysLeft)} at the rate it's being used
             </dd>
           ) : null}
         </div>
@@ -1521,11 +1526,8 @@ function InUseCard({
     rate.runsOut
       ? [
           "Runs out",
-          `≈ ${rate.runsOut.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-          })}`,
-          "at this rate",
+          `≈ ${runOutDate(rate.runsOut)}`,
+          "this spool, at this rate",
         ]
       : ["Where", where],
     ["Paid", spool.pricePaid !== null ? money(spool.pricePaid) : "—"],
@@ -2227,7 +2229,9 @@ function UsageCard({ levels }: { levels: PageData["levels"] }) {
           <span>
             <span className="text-gray-500">Runs out </span>
             <b className="text-primary-600">
-              {runsOut ? `≈ ${fmt(runsOut)}` : "—"}
+              {runsOut
+                ? `≈ ${runOutDate(new Date(`${runsOut}T00:00:00Z`))}`
+                : "—"}
             </b>
           </span>
         </span>

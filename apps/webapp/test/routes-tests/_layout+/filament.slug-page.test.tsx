@@ -183,7 +183,7 @@ describe("a filament's page", () => {
     // 1 kg + 1 kg sealed, 270 g + 640 g open
     expect(await screen.findByText("2.91 kg")).toBeTruthy();
     expect(screen.getByText("2 open · 2 sealed")).toBeTruthy();
-    expect(screen.getByText(/≈ \d+ days at your recent rate/)).toBeTruthy();
+    expect(screen.getByText(/lasts .+ at the rate it.s being used/)).toBeTruthy();
   });
 
   it("puts the spool in the AMS in the In use card, with its run-out estimate", async () => {

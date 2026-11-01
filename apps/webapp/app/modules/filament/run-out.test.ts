@@ -58,3 +58,21 @@ describe("daysOnHand", () => {
     expect(daysOnHand(4270, null)).toBeNull();
   });
 });
+
+describe("run-out in words (fork)", () => {
+  it("gives the year when it isn't this year", async () => {
+    const { runOutDate } = await import("./run-out");
+    const now = new Date("2026-11-01T12:00:00Z");
+    expect(runOutDate(new Date("2026-11-20T12:00:00Z"), now)).toBe("20 Nov");
+    expect(runOutDate(new Date("2027-11-05T12:00:00Z"), now)).toBe(
+      "5 Nov 2027"
+    );
+  });
+  it("says how long in plain words", async () => {
+    const { lastsText } = await import("./run-out");
+    expect(lastsText(12)).toBe("12 days");
+    expect(lastsText(49)).toBe("about 7 weeks");
+    expect(lastsText(330)).toBe("about 11 months");
+    expect(lastsText(1042)).toBe("about 2.9 years");
+  });
+});
