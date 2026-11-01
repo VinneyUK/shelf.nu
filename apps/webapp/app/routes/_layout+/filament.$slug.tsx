@@ -1631,6 +1631,9 @@ const UNIT_STATES = {
 } as const;
 type UnitState = keyof typeof UNIT_STATES;
 
+/** The All tab's columns: State, Unit, Where, Level, Left, then the buttons. */
+const UNIT_COLUMNS = "6.5rem 6.5rem 7rem minmax(8rem, 1fr) 5.5rem 16rem";
+
 function StateChip({ state }: { state: UnitState }) {
   const x = UNIT_STATES[state];
   return (
@@ -1714,17 +1717,31 @@ function SpoolsCard({
         </div>
         {tab === "all" ? (
           rows.length ? (
-            <div className="divide-y divide-gray-100 border-t border-gray-200">
-              {rows.map(([x, state]) => (
-                <UnitRow
-                  key={x.id}
-                  spool={x}
-                  state={state}
-                  number={numbers.get(x.id) ?? 0}
-                  tare={tare}
-                  inAms={inAms}
-                />
-              ))}
+            <div className="overflow-x-auto border-t border-gray-200">
+              {/* Ant's choice 4: fixed columns, so the level bars line up */}
+              <div
+                className="grid min-w-[52rem] items-center gap-4 bg-gray-25 px-5 py-2 text-xs font-medium text-gray-500"
+                style={{ gridTemplateColumns: UNIT_COLUMNS }}
+              >
+                <span>State</span>
+                <span>Unit</span>
+                <span>Where</span>
+                <span>Level</span>
+                <span className="text-right">Left</span>
+                <span />
+              </div>
+              <div className="divide-y divide-gray-100">
+                {rows.map(([x, state]) => (
+                  <UnitRow
+                    key={x.id}
+                    spool={x}
+                    state={state}
+                    number={numbers.get(x.id) ?? 0}
+                    tare={tare}
+                    inAms={inAms}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <p className="border-t border-gray-200 px-5 py-4 text-sm text-gray-500">
@@ -1778,34 +1795,38 @@ function UnitRow({
       ? "On the shelf"
       : "Sealed";
   return (
-    <div className="flex flex-wrap items-center gap-4 px-5 py-3">
-      <span className="w-20">
+    <div
+      className="grid min-w-[52rem] items-center gap-4 px-5 py-3"
+      style={{ gridTemplateColumns: UNIT_COLUMNS }}
+    >
+      <span>
         <StateChip state={state} />
       </span>
-      <span className="text-sm font-semibold text-gray-900">
+      <span className="whitespace-nowrap text-sm font-semibold text-gray-900">
         #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
       </span>
-      <span className="w-28 text-sm text-gray-500">{where}</span>
-      <span className="flex min-w-40 flex-1 items-center gap-3">
+      <span className="whitespace-nowrap text-sm text-gray-500">{where}</span>
+      <span
+        className="h-1.5 rounded-full"
+        style={barTrack(spool.remainingPercent)}
+      >
         <span
-          className="h-1.5 flex-1 rounded-full"
-          style={barTrack(spool.remainingPercent)}
-        >
-          <span
-            className="block h-1.5 rounded-full"
-            style={barFill(spool.remainingPercent)}
-          />
-        </span>
-        <span className="text-sm font-semibold tabular-nums text-gray-900">
-          {weightText(gramsLeft(spool))}
-        </span>
+          className="block h-1.5 rounded-full"
+          style={barFill(spool.remainingPercent)}
+        />
       </span>
+      {/* grams for every unit, so the column is one width */}
+      <span className="text-right text-sm font-semibold tabular-nums text-gray-900">
+        {Math.round(gramsLeft(spool)).toLocaleString("en-GB")} g
+      </span>
+      {/* the buttons from the left of their column, in the same order on every row */}
       <span className="flex items-center gap-2">
         <WeighButton
           spool={spool}
           number={number}
           tare={spool.spoolWeightGrams ?? tare}
         />
+        <AmsPicker spool={spool} label={label} inAms={inAms} compact />
         {state === "sealed" ? (
           <ActIcon
             icon={PackageOpenIcon}
@@ -1814,7 +1835,6 @@ function UnitRow({
           />
         ) : (
           <>
-            <AmsPicker spool={spool} label={label} inAms={inAms} compact />
             <ActIcon
               icon={PackageIcon}
               label="Back to New (sealed)"
