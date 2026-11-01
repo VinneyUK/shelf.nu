@@ -48,7 +48,7 @@ export function FilamentCell({
    * "field" for one item; "filament-field" (code, empty spool) or
    * "filament-name" (line, colour) for every item of the filament
    */
-  intent?: "field" | "filament-field" | "filament-name";
+  intent?: "field" | "filament-field" | "filament-name" | "where";
   field: string;
   /** What the cell is, for the editor's heading and screen readers */
   label: string;

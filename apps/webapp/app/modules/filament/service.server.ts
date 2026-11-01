@@ -861,6 +861,7 @@ export const SPOOL_FIELDS = [
   "packaging",
   "left",
   "leftKg",
+  "leftGrams",
   "pricePaid",
   "purchasedOn",
   "openedOn",
@@ -936,10 +937,15 @@ export async function updateSpoolField(
         ? "Now a refill."
         : "Now a spool.";
     case "left":
-    case "leftKg": {
+    case "leftKg":
+    case "leftGrams": {
       const percent =
         field === "left"
           ? clampPercent(numberIn(raw, "Left (%)", 0, 100))
+          : field === "leftGrams"
+          ? clampPercent(
+              (numberIn(raw, "Left (g)", 0, 10000) * 100) / spool.weightGrams
+            )
           : clampPercent(
               (numberIn(raw, "Left (kg)", 0, 10) * 1000 * 100) /
                 spool.weightGrams

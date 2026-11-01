@@ -195,23 +195,29 @@ describe("a filament's page", () => {
     expect(screen.getAllByText(/^AMS \d/).length).toBeGreaterThan(0);
   });
 
-  it("lists every unit in one view with its state, and opens a sealed one to its details", async () => {
+  it("lists every unit in one table, its details changed in their cells", async () => {
     show();
     expect(await screen.findByRole("heading", { name: "Units" })).toBeTruthy();
     expect(screen.queryByRole("tab")).toBeNull();
-    expect(screen.getAllByText("In AMS").length).toBeGreaterThan(0);
-    expect(screen.getByText("On the shelf")).toBeTruthy();
-    // a sealed unit's row opens to its details, to change in place
-    const sealedRow = screen
-      .getAllByRole("button", { name: /#\d+ · (Refill|Spool)/ })
-      .filter((b) => b.getAttribute("aria-expanded") === "false")
-      .pop();
-    fireEvent.click(sealedRow!);
-    const table = screen
-      .getByRole("heading", { name: "Sealed stock" })
-      .closest("div.my-0") as HTMLElement;
-    expect(within(table).getAllByRole("row")).toHaveLength(2); // heading + the one opened
-    expect(within(table).getAllByText("Add date")).toHaveLength(1);
+    // every unit's Type, Where, Left, Paid and Bought are click-to-edit cells
+    expect(screen.getAllByRole("button", { name: "Change Type" })).toHaveLength(
+      4
+    );
+    expect(
+      screen.getAllByRole("button", { name: /^Change Where is #/ })
+    ).toHaveLength(4);
+    expect(
+      screen.getAllByRole("button", { name: "Change Left (g)" })
+    ).toHaveLength(4);
+    expect(
+      screen.getAllByRole("button", { name: "Change Bought on" })
+    ).toHaveLength(4);
+    // a sealed unit has no Opened date to change; open ones do
+    expect(
+      screen.getAllByRole("button", { name: "Change Opened on" })
+    ).toHaveLength(2);
+    // sealed units keep their handle
+    expect(screen.getAllByRole("button", { name: /^Move #/ })).toHaveLength(2);
   });
 
   it("brings a finished spool back as it was", async () => {
@@ -235,24 +241,32 @@ describe("a filament's page", () => {
     expect(await screen.findByText(/How much is left/)).toBeTruthy();
   });
 
-  it("puts the open spool in an AMS slot, saying what's in each", async () => {
+  it("moves a unit with its Where cell, saying what's in each AMS slot", async () => {
     show();
-    fireEvent.click(
-      (await screen.findAllByRole("button", { name: /AMS 2/ }))[0]
+    const where = (
+      await screen.findAllByRole("button", { name: /^Change Where is #/ })
+    )[1];
+    fireEvent.click(where);
+    expect(await screen.findByRole("option", { name: "Sealed" })).toBeTruthy();
+    expect(
+      screen.getByRole("option", { name: "On the shelf (open)" })
+    ).toBeTruthy();
+    expect(screen.getAllByRole("option", { name: /^AMS [1-4]/ })).toHaveLength(
+      4
     );
-    expect(await screen.findByText(/Red: swaps out/)).toBeTruthy();
-    expect(screen.getByText("Take it out (keep it open)")).toBeTruthy();
   });
 
-  it("has every action out on the rows", async () => {
+  it("has the same three buttons on every row", async () => {
     show();
     expect(
       await screen.findAllByRole("button", { name: "Open it" })
     ).toHaveLength(2);
-    // both open units (the one in the AMS and the one on the shelf) can go back
     expect(
-      screen.getAllByRole("button", { name: "Back to New (sealed)" }).length
-    ).toBeGreaterThanOrEqual(2);
+      screen.getAllByRole("button", { name: "Mark finished" })
+    ).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: "Back to New (sealed)" })
+    ).toBeNull();
   });
 
   it("lists the prints that used it, with what each used and cost", async () => {

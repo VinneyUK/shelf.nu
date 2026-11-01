@@ -20,9 +20,7 @@ import { Reorder, useDragControls } from "framer-motion";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
-  ChevronRightIcon,
   PackageIcon,
-  CheckIcon,
   CpuIcon,
   GripVerticalIcon,
   PackageOpenIcon,
@@ -545,6 +543,42 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
         );
       }
       // put it in an AMS slot by hand, or take it out (fork)
+      // where a unit is, from its Where cell (fork): sealed, on the shelf, or AMS 1–4
+      case "where": {
+        const value = String(form.get("value") ?? "");
+        const label = String(form.get("label") ?? "The filament");
+        const now = await db.spool.findFirst({
+          where: { id, organizationId },
+          select: { openedOn: true, amsSlot: true, status: true },
+        });
+        if (!now)
+          throw new ShelfError({
+            cause: null,
+            message: "That unit isn't here.",
+            status: 404,
+            label: "Assets",
+          });
+        if (value === "sealed") {
+          if (now.amsSlot !== null) await setAmsSlot(organizationId, id, null);
+          await changeSpoolState(organizationId, id, "new");
+          return done(userId, "Back to sealed", `${label}: sealed again.`);
+        }
+        if (value === "shelf") {
+          if (now.amsSlot !== null) await setAmsSlot(organizationId, id, null);
+          if (!now.openedOn) await openSpool(organizationId, id);
+          return done(userId, "On the shelf", `${label}: open, on the shelf.`);
+        }
+        const slot = /^ams([1-4])$/.exec(value);
+        if (!slot)
+          throw new ShelfError({
+            cause: null,
+            message: "Choose Sealed, On the shelf or an AMS slot.",
+            status: 400,
+            label: "Assets",
+          });
+        const message = await setAmsSlot(organizationId, id, Number(slot[1]));
+        return done(userId, "In the AMS", `${label}: ${message}`);
+      }
       case "slot": {
         const raw = String(form.get("slot") ?? "");
         const message = await setAmsSlot(
@@ -1348,44 +1382,6 @@ function primaryOpen(open: Spool[]) {
   );
 }
 
-/** What's left, as a ring: orange, red at a tenth or less. */
-function LevelRing({ spool, size = 140 }: { spool: Spool; size?: number }) {
-  const percent = Math.max(0, Math.min(100, spool.remainingPercent));
-  const stroke = 12;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={stroke}
-          style={{ stroke: "var(--level-track)" }}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${(c * percent) / 100} ${c}`}
-          style={{ stroke: levelColour(percent) }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[24px] font-bold tabular-nums text-gray-900">
-          {weightText(gramsLeft(spool))}
-        </span>
-        <span className="text-xs text-gray-500">{percent}% left</span>
-      </div>
-    </div>
-  );
-}
-
 /** The summary across the top: the filament, and its three figures. */
 function SummaryCard({
   filament,
@@ -1522,9 +1518,6 @@ const UNIT_STATES = {
 } as const;
 type UnitState = keyof typeof UNIT_STATES;
 
-/** The All tab's columns: State, Unit, Where, Level, Left, then the buttons. */
-const UNIT_COLUMNS = "6.5rem 6.5rem 7rem minmax(8rem, 1fr) 5.5rem 16rem";
-
 function StateChip({ state }: { state: UnitState }) {
   const x = UNIT_STATES[state];
   return (
@@ -1541,10 +1534,11 @@ function StateChip({ state }: { state: UnitState }) {
 }
 
 /**
- * The filament's units (fork): one view, no tabs. A line of counts (in the
- * AMS, open, sealed), then every unit as a row in fixed columns (State,
- * Unit, Where, Level, Left, buttons). A sealed unit's name opens its
- * details to change in place; open spools have no detail panel.
+ * The filament's units (fork): one table, nothing expands. Every unit (in
+ * the AMS, open, sealed) is a row, and its details are changed in their
+ * cells with the site's click-to-edit cells: Type, Where (Sealed, On the
+ * shelf, AMS 1–4), Left, Paid, Bought, Opened. Sealed units, last, keep
+ * their handle to reorder which opens next.
  */
 function SpoolsCard({
   ams,
@@ -1561,139 +1555,257 @@ function SpoolsCard({
   tare: number | null;
   inAms: PageData["inAms"];
 }) {
-  const [opened, setOpened] = useState<string | null>(null);
-  const rows: [Spool, UnitState][] = [
-    ...ams.map((x) => [x, "ams"] as [Spool, UnitState]),
-    ...shelf.map((x) => [x, "shelf"] as [Spool, UnitState]),
-    ...sealed.map((x) => [x, "sealed"] as [Spool, UnitState]),
-  ];
+  const save = useFetcher<Result>();
+  // the sealed order as dragged, kept until the page's data catches up
+  const signature = sealed
+    .map((s) => `${s.id}:${s.updatedAt}:${s.stockOrder ?? ""}`)
+    .join("|");
+  const [order, setOrder] = useState(sealed);
+  const [prevSignature, setPrevSignature] = useState(signature);
+  if (signature !== prevSignature) {
+    setPrevSignature(signature);
+    setOrder(sealed);
+  }
+  const persist = (next: Spool[]) =>
+    void save.submit(
+      { intent: "reorder", ids: next.map((s) => s.id).join(",") },
+      { method: "post" }
+    );
+  const { handleKeyDown, announcement, itemRefs } = useKeyboardReorder({
+    items: order,
+    onReorder: (next) => {
+      setOrder(next);
+      persist(next);
+    },
+    getItemName: (s) => `#${numbers.get(s.id)}`,
+  });
   const counts: [UnitState, number][] = [
     ["ams", ams.length],
     ["shelf", shelf.length],
     ["sealed", sealed.length],
   ];
+  const total = ams.length + shelf.length + sealed.length;
+  const head =
+    "whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-500";
+  const props = { numbers, tare, inAms };
   return (
     <Card className="my-0 p-0">
       <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
         <h3 className="text-text-md font-semibold text-gray-900">Units</h3>
-        <span className="text-sm text-gray-500">{rows.length}</span>
-        <span className="flex flex-wrap items-center gap-2">
-          {counts.map(([state, n]) => (
-            <span
-              key={state}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-600"
-            >
-              <StateChip state={state} />
-              {n}
-            </span>
-          ))}
-        </span>
-      </div>
-      {rows.length ? (
-        <div className="overflow-x-auto border-t border-gray-200">
-          {/* fixed columns, so the level bars line up */}
-          <div
-            className="grid min-w-[52rem] items-center gap-4 bg-gray-25 px-5 py-2 text-xs font-medium text-gray-500"
-            style={{ gridTemplateColumns: UNIT_COLUMNS }}
+        <span className="text-sm text-gray-500">{total}</span>
+        {counts.map(([state, n]) => (
+          <span
+            key={state}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600"
           >
-            <span>State</span>
-            <span>Unit</span>
-            <span>Where</span>
-            <span>Level</span>
-            <span className="text-right">Left</span>
-            <span />
-          </div>
-          <div className="divide-y divide-gray-100">
-            {rows.map(([x, state]) => (
-              <UnitRow
-                key={x.id}
-                spool={x}
-                state={state}
-                number={numbers.get(x.id) ?? 0}
-                tare={tare}
-                inAms={inAms}
-                open={opened === x.id}
-                onToggle={() => setOpened(opened === x.id ? null : x.id)}
-              >
-                {/* a sealed unit opens to its details, to change in place; an
-                    open spool has no detail panel (Ant: too messy) */}
-                {state === "sealed" ? (
-                  <SealedCard items={[x]} numbers={numbers} tare={tare} />
-                ) : null}
-              </UnitRow>
-            ))}
-          </div>
-        </div>
-      ) : (
+            <StateChip state={state} />
+            {n}
+          </span>
+        ))}
+        {sealed.length > 1 ? (
+          <span className="ml-auto text-xs text-gray-400">
+            Drag a sealed unit's handle to put them in the order you'll use them
+          </span>
+        ) : null}
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
+      {total === 0 ? (
         <p className="border-t border-gray-200 px-5 py-4 text-sm text-gray-500">
           None on hand.
         </p>
+      ) : (
+        <div className="overflow-x-auto border-t border-gray-200">
+          <table className="w-full">
+            <thead className="bg-gray-25">
+              <tr>
+                <th className={tw(head, "w-8 px-2")} />
+                <th className={head}>State</th>
+                <th className={head}>#</th>
+                <th className={head}>Type</th>
+                <th className={head}>Where</th>
+                <th className={tw(head, "w-1/4")}>Level</th>
+                <th className={tw(head, "text-right")}>Left</th>
+                <th className={tw(head, "text-right")}>Paid</th>
+                <th className={head}>Bought</th>
+                <th className={head}>Opened</th>
+                <th className={head} />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {[
+                ...ams.map((x) => [x, "ams"] as const),
+                ...shelf.map((x) => [x, "shelf"] as const),
+              ].map(([x, state]) => (
+                <tr key={x.id}>
+                  <td className="px-2" />
+                  <UnitCells spool={x} state={state} {...props} />
+                </tr>
+              ))}
+            </tbody>
+            <Reorder.Group
+              as="tbody"
+              axis="y"
+              values={order}
+              onReorder={setOrder}
+              className="divide-y divide-gray-100 border-t border-gray-100"
+            >
+              {order.map((x, index) => (
+                <SealedUnitRow
+                  key={x.id}
+                  spool={x}
+                  {...props}
+                  onDragEnd={() => persist(order)}
+                  onHandleKeyDown={(e) => handleKeyDown(e, index)}
+                  handleRef={(el) => {
+                    itemRefs.current[index] = el;
+                  }}
+                />
+              ))}
+            </Reorder.Group>
+          </table>
+        </div>
       )}
     </Card>
   );
 }
 
-/** One unit: its state, number, where, level and its actions; it opens to its detail. */
-function UnitRow({
+/** A sealed unit's row: dragged by its handle (or moved with Alt+↑↓ on it). */
+function SealedUnitRow({
   spool,
-  state,
-  number,
+  numbers,
   tare,
   inAms,
-  open,
-  onToggle,
-  children,
+  onDragEnd,
+  onHandleKeyDown,
+  handleRef,
+}: {
+  spool: Spool;
+  numbers: Map<string, number>;
+  tare: number | null;
+  inAms: PageData["inAms"];
+  onDragEnd: () => void;
+  onHandleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  handleRef: (el: HTMLButtonElement | null) => void;
+}) {
+  const controls = useDragControls();
+  const number = numbers.get(spool.id) ?? 0;
+  return (
+    <Reorder.Item
+      as="tr"
+      value={spool}
+      dragListener={false}
+      dragControls={controls}
+      onDragEnd={onDragEnd}
+      className="bg-white"
+    >
+      <td className="px-2 py-2.5">
+        <button
+          type="button"
+          ref={handleRef}
+          onPointerDown={(e) => controls.start(e)}
+          onKeyDown={onHandleKeyDown}
+          aria-label={`Move #${number}`}
+          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+          title="Drag to reorder, or Alt+↑↓"
+          className="flex cursor-grab touch-none items-center rounded p-1 text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <GripVerticalIcon className="size-4" aria-hidden="true" />
+        </button>
+      </td>
+      <UnitCells
+        spool={spool}
+        state="sealed"
+        numbers={numbers}
+        tare={tare}
+        inAms={inAms}
+      />
+    </Reorder.Item>
+  );
+}
+
+/** A unit's cells after the handle: each detail changed in its cell, then its buttons. */
+function UnitCells({
+  spool,
+  state,
+  numbers,
+  tare,
+  inAms,
 }: {
   spool: Spool;
   state: UnitState;
-  number: number;
+  numbers: Map<string, number>;
   tare: number | null;
   inAms: PageData["inAms"];
-  open: boolean;
-  onToggle: () => void;
-  children?: ReactNode;
 }) {
+  const money = useMoney();
+  const number = numbers.get(spool.id) ?? 0;
   const label = `#${number} of ${spool.colourName}`;
+  const cell = "px-3 py-2.5 align-middle text-sm";
   const where =
     state === "ams"
       ? `AMS ${spool.amsSlot}`
       : state === "shelf"
       ? "On the shelf"
       : "Sealed";
+  const slotLabel = (n: number) => {
+    const there = inAms.find((x) => x.amsSlot === n && x.id !== spool.id);
+    return there ? `AMS ${n} · ${there.colourName} (swaps out)` : `AMS ${n}`;
+  };
+  const addDate = (
+    <span className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
+      Add date
+    </span>
+  );
   return (
-    <div>
-      <div
-        className="grid min-w-[52rem] items-center gap-4 px-5 py-3"
-        style={{ gridTemplateColumns: UNIT_COLUMNS }}
-      >
-        <span>
-          <StateChip state={state} />
-        </span>
-        {children ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={open}
-            title={open ? "Hide its detail" : "Show its detail"}
-            className="inline-flex items-center gap-1 whitespace-nowrap text-left text-sm font-semibold text-gray-900 hover:text-primary-700"
-          >
-            <ChevronRightIcon
-              className={tw(
-                "size-4 text-gray-400 transition-transform",
-                open && "rotate-90"
-              )}
-              aria-hidden="true"
-            />
-            #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
-          </button>
-        ) : (
-          <span className="whitespace-nowrap text-sm font-semibold text-gray-900">
-            #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
-          </span>
-        )}
-        <span className="whitespace-nowrap text-sm text-gray-500">{where}</span>
+    <>
+      <td className={cell}>
+        <StateChip state={state} />
+      </td>
+      <td className={tw(cell, "font-mono text-gray-400")}>#{number}</td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="packaging"
+          label="Type"
+          editor={{
+            kind: "select",
+            value: spool.packaging === "refill" ? "refill" : "spool",
+            options: [
+              { value: "spool", label: "Spool" },
+              { value: "refill", label: "Refill" },
+            ],
+          }}
+        >
+          {spool.packaging === "refill" ? "Refill" : "Spool"}
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          intent="where"
+          field="where"
+          label={`Where is ${label}?`}
+          editor={{
+            kind: "select",
+            value: state === "ams" ? `ams${spool.amsSlot}` : state,
+            options: [
+              { value: "sealed", label: "Sealed" },
+              { value: "shelf", label: "On the shelf (open)" },
+              ...[1, 2, 3, 4].map((n) => ({
+                value: `ams${n}`,
+                label: slotLabel(n),
+              })),
+            ],
+          }}
+        >
+          <span className="whitespace-nowrap">{where}</span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
         <span
-          className="h-1.5 rounded-full"
+          className="block h-1.5 rounded-full"
           style={barTrack(spool.remainingPercent)}
         >
           <span
@@ -1701,18 +1813,77 @@ function UnitRow({
             style={barFill(spool.remainingPercent)}
           />
         </span>
-        {/* grams for every unit, so the column is one width */}
-        <span className="text-right text-sm font-semibold tabular-nums text-gray-900">
-          {Math.round(gramsLeft(spool)).toLocaleString("en-GB")} g
-        </span>
-        {/* the buttons from the left of their column, in the same order on every row */}
-        <span className="flex items-center gap-2">
+      </td>
+      <td className={tw(cell, "text-right")}>
+        <FilamentCell
+          id={spool.id}
+          field="leftGrams"
+          label="Left (g)"
+          editor={{
+            kind: "number",
+            value: Math.round(gramsLeft(spool)),
+            min: 0,
+            max: spool.weightGrams,
+            suffix: "g",
+          }}
+        >
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {Math.round(gramsLeft(spool)).toLocaleString("en-GB")} g
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={tw(cell, "text-right")}>
+        <FilamentCell
+          id={spool.id}
+          field="pricePaid"
+          label="Price paid (£)"
+          editor={{
+            kind: "number",
+            value: spool.pricePaid,
+            min: 0,
+            step: 0.01,
+          }}
+        >
+          <span className="tabular-nums">
+            {spool.pricePaid !== null ? (
+              money(spool.pricePaid)
+            ) : (
+              <span className="text-gray-400">—</span>
+            )}
+          </span>
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        <FilamentCell
+          id={spool.id}
+          field="purchasedOn"
+          label="Bought on"
+          editor={{ kind: "date", value: spool.purchasedOn }}
+        >
+          {spool.purchasedOn ? <DateText date={spool.purchasedOn} /> : addDate}
+        </FilamentCell>
+      </td>
+      <td className={cell}>
+        {state === "sealed" ? (
+          <span className="text-gray-400">—</span>
+        ) : (
+          <FilamentCell
+            id={spool.id}
+            field="openedOn"
+            label="Opened on"
+            editor={{ kind: "date", value: spool.openedOn }}
+          >
+            {spool.openedOn ? <DateText date={spool.openedOn} /> : addDate}
+          </FilamentCell>
+        )}
+      </td>
+      <td className={tw(cell, "text-right")}>
+        <span className="inline-flex items-center gap-2">
           <WeighButton
             spool={spool}
             number={number}
             tare={spool.spoolWeightGrams ?? tare}
           />
-          <AmsPicker spool={spool} label={label} inAms={inAms} compact />
           {state === "sealed" ? (
             <ActIcon
               icon={PackageOpenIcon}
@@ -1720,135 +1891,16 @@ function UnitRow({
               form={{ intent: "open", id: spool.id, label }}
             />
           ) : (
-            <>
-              <ActIcon
-                icon={PackageIcon}
-                label="Back to New (sealed)"
-                form={{ intent: "state", id: spool.id, target: "new", label }}
-              />
-              <ActIcon
-                icon={CheckCircle2Icon}
-                label="Mark finished"
-                form={{ intent: "retire", id: spool.id }}
-              />
-            </>
+            <ActIcon
+              icon={CheckCircle2Icon}
+              label="Mark finished"
+              form={{ intent: "retire", id: spool.id }}
+            />
           )}
           <DeleteIcon spool={spool} label={label} />
         </span>
-      </div>
-      {open && children ? (
-        <div className="bg-gray-25 px-5 py-4">{children}</div>
-      ) : null}
-    </div>
-  );
-}
-
-function AmsPicker({
-  spool,
-  label,
-  inAms,
-  compact = false,
-}: {
-  spool: Spool;
-  label: string;
-  inAms: PageData["inAms"];
-  compact?: boolean;
-}) {
-  const act = useFetcher<Result>();
-  const [open, setOpen] = useState(false);
-  const busy = isFormProcessing(act.state);
-  const pick = (slot: number | null) => {
-    void act.submit(
-      {
-        intent: "slot",
-        id: spool.id,
-        slot: slot === null ? "" : String(slot),
-        label,
-      },
-      { method: "post" }
-    );
-    setOpen(false);
-  };
-  const text = spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "Put in AMS";
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {compact ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="p-2"
-            aria-label={text}
-            tooltip={text}
-            disabled={busy}
-          >
-            <CpuIcon className="size-4" aria-hidden="true" />
-          </Button>
-        ) : (
-          <Button type="button" variant="secondary" disabled={busy}>
-            <span className="inline-flex items-center gap-1.5">
-              <CpuIcon className="size-4" aria-hidden="true" />
-              {text}
-              <ChevronDownIcon className="size-4" aria-hidden="true" />
-            </span>
-          </Button>
-        )}
-      </PopoverTrigger>
-      <PopoverPortal>
-        <PopoverContent
-          align="end"
-          sideOffset={4}
-          className="z-[60] w-72 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
-        >
-          <div className="px-2.5 py-1.5 text-xs font-medium text-gray-400">
-            Load it into a slot
-          </div>
-          {[1, 2, 3, 4].map((n) => {
-            const there = inAms.find(
-              (s) => s.amsSlot === n && s.id !== spool.id
-            );
-            return (
-              <button
-                key={n}
-                type="button"
-                onClick={() => pick(n)}
-                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-gray-900 hover:bg-gray-50"
-              >
-                <span className="w-12 font-medium">Slot {n}</span>
-                {spool.amsSlot === n ? (
-                  <span className="text-gray-500">This one</span>
-                ) : there ? (
-                  <>
-                    <Swatch hex={there.colourHex} size="size-3" />
-                    <span className="truncate text-gray-500">
-                      {there.colourName}: swaps out
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-gray-500">Empty</span>
-                )}
-                {spool.amsSlot === n ? (
-                  <CheckIcon
-                    className="ml-auto size-4 text-primary-600"
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </button>
-            );
-          })}
-          {spool.amsSlot !== null ? (
-            <button
-              type="button"
-              onClick={() => pick(null)}
-              className="mt-1 flex w-full items-center gap-2 rounded border-t border-gray-200 px-2.5 py-2 text-left text-sm text-gray-900 hover:bg-gray-50"
-            >
-              Take it out (keep it open)
-            </button>
-          ) : null}
-        </PopoverContent>
-      </PopoverPortal>
-    </Popover>
+      </td>
+    </>
   );
 }
 
@@ -2216,249 +2268,6 @@ function UsageCard({ levels }: { levels: PageData["levels"] }) {
         your last 14 days' average.
       </p>
     </Card>
-  );
-}
-
-/** Sealed stock: click a cell to change it; drag the handle to put them in your order. */
-function SealedCard({
-  items,
-  numbers,
-  tare,
-}: {
-  items: Spool[];
-  numbers: Map<string, number>;
-  tare: number | null;
-}) {
-  const save = useFetcher<Result>();
-  // the order as dragged, kept here until the page's data catches up; the
-  // page's list is new on every render, so it's compared by what's in it
-  const signature = items
-    .map((s) => `${s.id}:${s.updatedAt}:${s.stockOrder ?? ""}`)
-    .join("|");
-  const [order, setOrder] = useState(items);
-  const [prevSignature, setPrevSignature] = useState(signature);
-  if (signature !== prevSignature) {
-    setPrevSignature(signature);
-    setOrder(items);
-  }
-  const persist = (next: Spool[]) =>
-    void save.submit(
-      { intent: "reorder", ids: next.map((s) => s.id).join(",") },
-      { method: "post" }
-    );
-  const { handleKeyDown, announcement, itemRefs } = useKeyboardReorder({
-    items: order,
-    onReorder: (next) => {
-      setOrder(next);
-      persist(next);
-    },
-    getItemName: (s) => `#${numbers.get(s.id)}`,
-  });
-  const grams = items.reduce((n, s) => n + gramsLeft(s), 0);
-  const head = "px-5 py-2 text-left text-xs font-medium text-gray-500";
-  return (
-    <Card className="my-0 p-0">
-      <div className={sectionHead}>
-        <h3 className="text-text-md font-semibold text-gray-900">
-          Sealed stock
-        </h3>
-        <span className="text-sm text-gray-500">
-          {items.length} {items.length === 1 ? "unit" : "units"} ·{" "}
-          {(grams / 1000).toFixed(2)} kg
-        </span>
-        {items.length > 1 ? (
-          <span className="ml-auto text-xs text-gray-400">
-            Drag the handle to put them in the order you'll use them
-          </span>
-        ) : null}
-      </div>
-      <div role="status" aria-live="polite" className="sr-only">
-        {announcement}
-      </div>
-      {items.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-gray-500">Nothing sealed left.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-25">
-              <tr>
-                <th className={tw(head, "w-8 px-2")} />
-                <th className={head}>#</th>
-                <th className={head}>Type</th>
-                <th className={head}>Size</th>
-                <th className={head}>Paid</th>
-                <th className={head}>Bought</th>
-                <th className={head} />
-              </tr>
-            </thead>
-            <Reorder.Group
-              as="tbody"
-              axis="y"
-              values={order}
-              onReorder={setOrder}
-              className="divide-y divide-gray-100"
-            >
-              {order.map((s, index) => (
-                <SealedRow
-                  key={s.id}
-                  spool={s}
-                  number={numbers.get(s.id) ?? 0}
-                  tare={tare}
-                  onDragEnd={() => persist(order)}
-                  onHandleKeyDown={(e) => handleKeyDown(e, index)}
-                  handleRef={(el) => {
-                    itemRefs.current[index] = el;
-                  }}
-                />
-              ))}
-            </Reorder.Group>
-          </table>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-/** One sealed row: dragged by its handle (or moved with Alt+↑↓ on it). */
-function SealedRow({
-  spool,
-  number,
-  tare,
-  onDragEnd,
-  onHandleKeyDown,
-  handleRef,
-}: {
-  spool: Spool;
-  number: number;
-  tare: number | null;
-  onDragEnd: () => void;
-  onHandleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
-  handleRef: (el: HTMLButtonElement | null) => void;
-}) {
-  const money = useMoney();
-  const controls = useDragControls();
-  const cell = "px-5 py-2.5 align-middle text-sm";
-  return (
-    <Reorder.Item
-      as="tr"
-      value={spool}
-      dragListener={false}
-      dragControls={controls}
-      onDragEnd={onDragEnd}
-      className="bg-white"
-    >
-      <td className="px-2 py-2.5">
-        <button
-          type="button"
-          ref={handleRef}
-          onPointerDown={(e) => controls.start(e)}
-          onKeyDown={onHandleKeyDown}
-          aria-label={`Move #${number}`}
-          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-          title="Drag to reorder, or Alt+↑↓"
-          className="flex cursor-grab touch-none items-center rounded p-1 text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <GripVerticalIcon className="size-4" aria-hidden="true" />
-        </button>
-      </td>
-      <td className={tw(cell, "font-mono text-gray-400")}>#{number}</td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="packaging"
-          label="Type"
-          editor={{
-            kind: "select",
-            value: spool.packaging === "refill" ? "refill" : "spool",
-            options: [
-              { value: "spool", label: "Spool" },
-              { value: "refill", label: "Refill" },
-            ],
-          }}
-        >
-          {spool.packaging === "refill" ? "Refill" : "Spool"}
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="weightGrams"
-          label="Size (filament, g)"
-          editor={{
-            kind: "number",
-            value: spool.weightGrams,
-            min: 1,
-            max: 10000,
-            suffix: "g",
-          }}
-        >
-          <span className="whitespace-nowrap tabular-nums">
-            {spool.weightGrams >= 1000
-              ? `${spool.weightGrams / 1000} kg`
-              : `${spool.weightGrams} g`}
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="pricePaid"
-          label="Price paid (£)"
-          editor={{
-            kind: "number",
-            value: spool.pricePaid,
-            min: 0,
-            step: 0.01,
-          }}
-        >
-          <span className="tabular-nums">
-            {spool.pricePaid !== null ? (
-              money(spool.pricePaid)
-            ) : (
-              <span className="text-gray-400">—</span>
-            )}
-          </span>
-        </FilamentCell>
-      </td>
-      <td className={cell}>
-        <FilamentCell
-          id={spool.id}
-          field="purchasedOn"
-          label="Bought on"
-          editor={{ kind: "date", value: spool.purchasedOn }}
-        >
-          {spool.purchasedOn ? (
-            <DateText date={spool.purchasedOn} />
-          ) : (
-            <span className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
-              Add date
-            </span>
-          )}
-        </FilamentCell>
-      </td>
-      <td className={tw(cell, "text-right")}>
-        <span className="inline-flex items-center gap-2">
-          <WeighButton
-            spool={spool}
-            number={number}
-            tare={spool.spoolWeightGrams ?? tare}
-          />
-          <ActIcon
-            icon={PackageOpenIcon}
-            label="Open it"
-            form={{
-              intent: "open",
-              id: spool.id,
-              label: `#${number} of ${spool.colourName}`,
-            }}
-          />
-          <DeleteIcon
-            spool={spool}
-            label={`#${number} of ${spool.colourName}`}
-          />
-        </span>
-      </td>
-    </Reorder.Item>
   );
 }
 
