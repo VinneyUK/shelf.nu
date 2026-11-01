@@ -113,6 +113,7 @@ import {
   ensureFilamentQr,
   getFilamentNumber,
 } from "~/modules/filament/numbers.server";
+import { palettesWith } from "~/modules/filament/palette.server";
 import { priceSummary } from "~/modules/filament/prices";
 import {
   priceStatuses,
@@ -206,6 +207,8 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     const key = filamentKey(first.type, first.colourName);
     await recordLevels(organizationId, key).catch(() => undefined);
     const levels = await getLevels(organizationId, key);
+    // the saved palettes it's in (fork)
+    const palettes = await palettesWith(organizationId, key);
     // the prints that used it, the last 30 days (fork)
     // measured or not: a print counts if a slot holding it fed the print
     const prints = await printsForFilament(
@@ -235,6 +238,8 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
         : null;
     return payload({
       inAms,
+      key,
+      palettes,
       prints: prints.map((p) => ({
         id: p.id,
         name: p.name,
@@ -1331,6 +1336,7 @@ export default function FilamentDetail() {
               tare={tare}
               inAms={data.inAms}
             />
+            <PalettesLine keyOf={data.key} palettes={data.palettes} />
             <UsageCard levels={data.levels} />
             <PrintsCard prints={data.prints} />
             <FinishedCard items={finished} numbers={numbers} />
@@ -2148,6 +2154,45 @@ function PrintsCard({ prints }: { prints: PageData["prints"] }) {
           </table>
         </div>
       )}
+    </Card>
+  );
+}
+
+/** The saved palettes this filament is in, and a palette built around it (fork). */
+function PalettesLine({
+  keyOf,
+  palettes,
+}: {
+  keyOf: string;
+  palettes: PageData["palettes"];
+}) {
+  return (
+    <Card className="my-0 flex flex-wrap items-center gap-3 px-5 py-3">
+      <span className="text-sm font-semibold text-gray-900">Palettes</span>
+      {palettes.length ? (
+        <span className="text-sm text-gray-500">Used in</span>
+      ) : (
+        <span className="text-sm text-gray-500">
+          Not in a saved palette yet
+        </span>
+      )}
+      {palettes.map((p) => (
+        <Link
+          key={p.id}
+          to="/filament/palettes"
+          className="inline-flex items-center rounded-full border border-gray-200 px-2.5 py-0.5 text-xs text-gray-900 hover:bg-gray-50"
+        >
+          {p.name}
+        </Link>
+      ))}
+      <Button
+        to={`/filament/palettes?keep=${encodeURIComponent(keyOf)}`}
+        variant="secondary"
+        size="sm"
+        className="ml-auto"
+      >
+        Build a palette around this
+      </Button>
     </Card>
   );
 }

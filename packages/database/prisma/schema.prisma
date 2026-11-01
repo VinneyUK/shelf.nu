@@ -3105,6 +3105,19 @@ model AssetMatter {
   @@index([organizationId])
 }
 
+/// A saved colour palette (fork): the filaments in it, by their keys
+/// ("pla basic|red"), in order.
+model FilamentPalette {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  keys           String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
 /// A print the printer ran (fork): recorded from its reports, with what
 /// each filament used, measured from the AMS's levels before and after.
 model PrintJob {

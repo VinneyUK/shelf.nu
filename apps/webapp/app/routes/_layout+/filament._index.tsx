@@ -1532,6 +1532,10 @@ export default function FilamentPage() {
           <Button to="/filament/prints" variant="secondary">
             Prints
           </Button>
+          {/* fork: colour palettes from your filament */}
+          <Button to="/filament/palettes" variant="secondary">
+            Palettes
+          </Button>
           {onHand.length > 0 ? (
             <Button to="/filament/stocktake" variant="secondary">
               Stocktake

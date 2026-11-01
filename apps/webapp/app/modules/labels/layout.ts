@@ -357,9 +357,43 @@ export function matterLabelPayload(
   ];
 }
 
+/** A palette card (fork): its name, and each colour's name and where it is. */
+export type PaletteLabelContent = {
+  paletteName: string;
+  /** "Red · AMS 3", "Sage · sealed" */
+  colours: string[];
+};
+
+/**
+ * A palette card: the palette's name across the top, then its colours'
+ * names (and where each is) wrapped to fit, on the label width set. The
+ * printer is black and white, so a card names the colours rather than
+ * showing them.
+ */
+export function paletteLabelPayload(
+  content: PaletteLabelContent,
+  settings: LabelLayoutSettings
+) {
+  const m = settings.leftMargin + 4;
+  const width = Math.max(40, settings.labelWidth - m - 6);
+  const titleSize = fitSize(content.paletteName, width, 20, 12);
+  const body = wrapToFit(content.colours.join(" · "), width, 14, 9, 3);
+  const lineGap = body.size + 4;
+  return [
+    text(fitText(content.paletteName, width, titleSize), m, 22, titleSize),
+    ...body.lines.map((line, i) =>
+      text(line, m, 22 + 8 + lineGap * (i + 1), body.size)
+    ),
+  ];
+}
+
 /** The whole request body for POST /api/services/niimbot/print. */
 export function printRequestBody(
-  content: LabelContent | FilamentLabelContent | MatterLabelContent,
+  content:
+    | LabelContent
+    | FilamentLabelContent
+    | MatterLabelContent
+    | PaletteLabelContent,
   settings: LabelLayoutSettings & {
     deviceId: string;
     rotate: number;
@@ -374,7 +408,9 @@ export function printRequestBody(
     height: LABEL_HEIGHT,
     preview: options.preview ?? false,
     payload:
-      "matterCode" in content
+      "paletteName" in content
+        ? paletteLabelPayload(content, settings)
+        : "matterCode" in content
         ? matterLabelPayload(content, settings)
         : "filamentId" in content
         ? filamentLabelPayload(content, settings)

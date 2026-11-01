@@ -17,6 +17,7 @@ import {
   ensureFilamentQr,
   getFilamentNumbers,
 } from "~/modules/filament/numbers.server";
+import { paletteFilaments } from "~/modules/filament/palette.server";
 import { formatManualCode } from "~/modules/matter/payload";
 import { revealDevice } from "~/modules/matter/service.server";
 import { getQrBaseUrl } from "~/modules/qr/utils.server";
@@ -637,7 +638,12 @@ async function printJob(job: ClaimedJob): Promise<boolean> {
     // Same link Shelf's own QR codes use (honours URL_SHORTENER)
     const qrUrl = qrUrlFor(job.qrId);
     const body = printRequestBody(
-      job.layout === "matter"
+      job.layout === "palette"
+        ? {
+            paletteName: job.title,
+            colours: (job.subtitle ?? "").split("\n").filter(Boolean),
+          }
+        : job.layout === "matter"
         ? await matterLabelContent(job.organizationId, job.subtitle, job.title)
         : job.layout === "filament"
         ? {
@@ -828,6 +834,57 @@ export async function queueMatterLabels({
   });
   nudgeLabelPrinter();
   return devices.length;
+}
+
+/**
+ * A palette card (fork): the palette's name and its colours, each with
+ * where it is ("Red · AMS 3"), queued on the label printer.
+ */
+export async function queuePaletteCard({
+  organizationId,
+  userId,
+  name,
+  keys,
+}: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  keys: string[];
+}) {
+  const filaments = await paletteFilaments(organizationId);
+  const colours = keys
+    .map((k) => filaments.find((f) => f.key === k))
+    .filter((f): f is NonNullable<typeof f> => !!f)
+    .map(
+      (f) =>
+        `${f.name} · ${
+          f.state === "ams"
+            ? `AMS ${f.slot}`
+            : f.state === "open"
+            ? "open"
+            : "sealed"
+        }`
+    );
+  if (colours.length < 2)
+    throw new ShelfError({
+      cause: null,
+      message: "A palette card needs two or more colours you have.",
+      label,
+      shouldBeCaptured: false,
+    });
+  await db.labelPrintJob.create({
+    data: {
+      organizationId,
+      layout: "palette",
+      sequentialId: "",
+      title: (name.trim() || "Palette").slice(0, 60),
+      subtitle: colours.join("\n"),
+      qrId: "palette",
+      source: "manual",
+      requestedById: userId,
+    },
+  });
+  nudgeLabelPrinter();
 }
 
 /** What a Matter label shows, decrypted only now, as it's printed. */

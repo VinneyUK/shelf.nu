@@ -133,6 +133,8 @@ const data = {
       colourHex: "#D62B2B",
     },
   ],
+  key: "pla basic|jade white",
+  palettes: [{ id: "p1", name: "Nordic", keys: ["pla basic|jade white"] }],
   prints: [
     {
       id: "j1",
@@ -306,5 +308,16 @@ describe("a filament's page", () => {
     ).toBe("https://uk.store.bambulab.com/products/pla-basic");
     expect(screen.getByText("220 °C")).toBeTruthy();
     expect(screen.getByText("60 °C")).toBeTruthy();
+  });
+
+  it("shows the palettes it's in, and a palette built around it", async () => {
+    show();
+    expect(await screen.findByRole("link", { name: "Nordic" })).toBeTruthy();
+    const build = screen.getByRole("link", {
+      name: "Build a palette around this",
+    });
+    expect(build.getAttribute("href")).toBe(
+      "/filament/palettes?keep=pla%20basic%7Cjade%20white"
+    );
   });
 });

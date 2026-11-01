@@ -115,3 +115,28 @@ describe("matterLabelPayload", () => {
     expect(body.payload.some((e) => e.type === "rectangle")).toBe(true);
   });
 });
+
+describe("paletteLabelPayload (fork)", () => {
+  it("is the palette's name, then its colours and where they are, inside the label", async () => {
+    const { paletteLabelPayload } = await import("./layout");
+    const p = paletteLabelPayload(
+      {
+        paletteName: "Cute Halloween",
+        colours: [
+          "Orange · AMS 3",
+          "Black · open",
+          "Purple · sealed",
+          "Green · sealed",
+        ],
+      },
+      { labelWidth: 240, leftMargin: 0 }
+    ) as { value: string; x: number }[];
+    expect(p[0].value).toBe("Cute Halloween");
+    expect(
+      p
+        .slice(1)
+        .map((x) => x.value)
+        .join(" ")
+    ).toContain("Orange · AMS 3");
+  });
+});

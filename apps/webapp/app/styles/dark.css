@@ -56,6 +56,7 @@ html.dark .bg-warning-100 { background-color: #342614; }
 html.dark .bg-warning-25 { background-color: #1d1a15; }
 html.dark .bg-warning-50 { background-color: #261f15; }
 html.dark .bg-white { background-color: #0f1216; }
+html.dark .bg-white\/20 { background-color: rgb(15 18 22 / 0.2); }
 html.dark .bg-white\/90 { background-color: rgb(15 18 22 / 0.9); }
 html.dark .bg-yellow-100 { background-color: #322c14; }
 html.dark .bg-yellow-50 { background-color: #252215; }
