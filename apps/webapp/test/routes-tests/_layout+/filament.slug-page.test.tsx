@@ -188,6 +188,8 @@ describe("a filament's page", () => {
 
   it("puts the spool in the AMS in the In use card, with its run-out estimate", async () => {
     show();
+    // the In the AMS tab shows each spool's full card
+    fireEvent.click(await screen.findByRole("tab", { name: /In the AMS/ }));
     const heading = await screen.findByRole("heading", { name: "In use" });
     const card = heading.closest("div.my-0") as HTMLElement;
     expect(within(card).getByText("#3 · Spool")).toBeTruthy();
@@ -206,9 +208,16 @@ describe("a filament's page", () => {
     ).toContain("Delete");
   });
 
-  it("shows another open spool as a row, and the sealed ones in the table", async () => {
+  it("lists every unit on the All tab with its state, and the sealed ones in the Sealed tab's table", async () => {
     show();
-    expect(await screen.findByText(/Also open · On the shelf/)).toBeTruthy();
+    // All: one row each, its state as a chip (one in the AMS, one open, two sealed)
+    expect(await screen.findByRole("tab", { name: /All\s*4/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /In the AMS\s*1/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Open\s*1/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Sealed\s*2/ })).toBeTruthy();
+    expect(screen.getAllByText("In AMS").length).toBeGreaterThan(0);
+    expect(screen.getByText("On the shelf")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: /Sealed/ }));
     const table = screen
       .getByRole("heading", { name: "Sealed stock" })
       .closest("div.my-0") as HTMLElement;
@@ -249,10 +258,13 @@ describe("a filament's page", () => {
     expect(
       await screen.findAllByRole("button", { name: "Open it" })
     ).toHaveLength(2);
+    fireEvent.click(screen.getByRole("tab", { name: /Sealed/ }));
     expect(screen.getAllByRole("button", { name: /^Move #/ })).toHaveLength(2);
+    fireEvent.click(screen.getByRole("tab", { name: /All/ }));
+    // both open units (the one in the AMS and the one on the shelf) can go back
     expect(
-      screen.getByRole("button", { name: "Back to New (sealed)" })
-    ).toBeTruthy();
+      screen.getAllByRole("button", { name: "Back to New (sealed)" })
+    ).toHaveLength(2);
   });
 
   it("lists the prints that used it, with what each used and cost", async () => {

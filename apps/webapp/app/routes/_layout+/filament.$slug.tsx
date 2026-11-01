@@ -1197,7 +1197,6 @@ export default function FilamentDetail() {
     );
   const open = onHand.filter((s) => spoolState(s) !== "new");
   const inUse = primaryOpen(open);
-  const alsoOpen = open.filter((s) => s !== inUse);
   // each item keeps its number, by the order it was added
   const numbers = new Map(
     [...spools]
@@ -1283,26 +1282,15 @@ export default function FilamentDetail() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="flex min-w-0 flex-col gap-5">
-            {inUse ? (
-              <div className="flex flex-col gap-3">
-                <InUseCard
-                  spool={inUse}
-                  number={numbers.get(inUse.id) ?? 0}
-                  tare={tare}
-                  inAms={data.inAms}
-                />
-                {alsoOpen.map((s) => (
-                  <AlsoOpenRow
-                    key={s.id}
-                    spool={s}
-                    number={numbers.get(s.id) ?? 0}
-                    tare={tare}
-                    inAms={data.inAms}
-                  />
-                ))}
-              </div>
-            ) : null}
-            <SealedCard items={sealed} numbers={numbers} tare={tare} />
+            {/* the units: tabs for In the AMS, Open and Sealed (Ant's choice 7) */}
+            <SpoolsCard
+              ams={open.filter((x) => x.amsSlot !== null)}
+              shelf={open.filter((x) => x.amsSlot === null)}
+              sealed={sealed}
+              numbers={numbers}
+              tare={tare}
+              inAms={data.inAms}
+            />
             <UsageCard levels={data.levels} />
             <PrintsCard prints={data.prints} />
             <FinishedCard items={finished} numbers={numbers} />
@@ -1618,29 +1606,184 @@ function InUseCard({
   );
 }
 
-/** Another open spool: a slim row under the In use card. */
-function AlsoOpenRow({
+/** A unit's state: in the AMS, open on the shelf, or sealed. One colour and icon each. */
+const UNIT_STATES = {
+  ams: {
+    label: "In the AMS",
+    short: "In AMS",
+    Icon: CpuIcon,
+    chip: "bg-success-50 text-success-700",
+  },
+  shelf: {
+    label: "Open",
+    short: "Open",
+    Icon: PackageOpenIcon,
+    chip: "bg-warning-50 text-warning-700",
+  },
+  sealed: {
+    label: "Sealed",
+    short: "Sealed",
+    Icon: PackageIcon,
+    chip: "bg-gray-100 text-gray-600",
+  },
+} as const;
+type UnitState = keyof typeof UNIT_STATES;
+
+function StateChip({ state }: { state: UnitState }) {
+  const x = UNIT_STATES[state];
+  return (
+    <span
+      className={tw(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold",
+        x.chip
+      )}
+    >
+      <x.Icon className="size-3" aria-hidden="true" />
+      {x.short}
+    </span>
+  );
+}
+
+/**
+ * The filament's units (fork, Ant's choice 7): tabs for All, In the AMS,
+ * Open and Sealed, each with its count. All lists every unit as one row with
+ * its state; In the AMS and Open show each spool's full card (level, used,
+ * runs out…); Sealed is the sealed stock you can reorder and change in place.
+ */
+function SpoolsCard({
+  ams,
+  shelf,
+  sealed,
+  numbers,
+  tare,
+  inAms,
+}: {
+  ams: Spool[];
+  shelf: Spool[];
+  sealed: Spool[];
+  numbers: Map<string, number>;
+  tare: number | null;
+  inAms: PageData["inAms"];
+}) {
+  const [tab, setTab] = useState<"all" | UnitState>("all");
+  const tabs: ["all" | UnitState, string, number][] = [
+    ["all", "All", ams.length + shelf.length + sealed.length],
+    ["ams", UNIT_STATES.ams.label, ams.length],
+    ["shelf", UNIT_STATES.shelf.label, shelf.length],
+    ["sealed", UNIT_STATES.sealed.label, sealed.length],
+  ];
+  const rows: [Spool, UnitState][] = [
+    ...ams.map((x) => [x, "ams"] as [Spool, UnitState]),
+    ...shelf.map((x) => [x, "shelf"] as [Spool, UnitState]),
+    ...sealed.map((x) => [x, "sealed"] as [Spool, UnitState]),
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      <Card className="my-0 p-0">
+        <div
+          className="flex flex-wrap gap-1 px-3"
+          role="tablist"
+          aria-label="Units"
+        >
+          {tabs.map(([k, l, n]) => {
+            const Icon = k === "all" ? null : UNIT_STATES[k].Icon;
+            return (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={tab === k}
+                onClick={() => setTab(k)}
+                className={tw(
+                  "flex items-center gap-1.5 border-b-2 p-3 text-sm font-semibold",
+                  tab === k
+                    ? "border-primary-500 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                )}
+              >
+                {Icon ? <Icon className="size-4" aria-hidden="true" /> : null}
+                {l}
+                <span className="rounded-full bg-gray-100 px-1.5 text-xs text-gray-600">
+                  {n}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {tab === "all" ? (
+          rows.length ? (
+            <div className="divide-y divide-gray-100 border-t border-gray-200">
+              {rows.map(([x, state]) => (
+                <UnitRow
+                  key={x.id}
+                  spool={x}
+                  state={state}
+                  number={numbers.get(x.id) ?? 0}
+                  tare={tare}
+                  inAms={inAms}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="border-t border-gray-200 px-5 py-4 text-sm text-gray-500">
+              None on hand.
+            </p>
+          )
+        ) : null}
+      </Card>
+      {tab === "ams" || tab === "shelf"
+        ? (tab === "ams" ? ams : shelf).map((x) => (
+            <InUseCard
+              key={x.id}
+              spool={x}
+              number={numbers.get(x.id) ?? 0}
+              tare={tare}
+              inAms={inAms}
+            />
+          ))
+        : null}
+      {(tab === "ams" && !ams.length) || (tab === "shelf" && !shelf.length) ? (
+        <p className="px-1 text-sm text-gray-500">
+          {tab === "ams" ? "None in the AMS." : "None open on the shelf."}
+        </p>
+      ) : null}
+      {tab === "sealed" ? (
+        <SealedCard items={sealed} numbers={numbers} tare={tare} />
+      ) : null}
+    </div>
+  );
+}
+
+/** One unit in the All tab: its state, number, where, level and its actions. */
+function UnitRow({
   spool,
+  state,
   number,
   tare,
   inAms,
 }: {
   spool: Spool;
+  state: UnitState;
   number: number;
   tare: number | null;
   inAms: PageData["inAms"];
 }) {
-  const state = spoolState(spool);
   const label = `#${number} of ${spool.colourName}`;
+  const where =
+    state === "ams"
+      ? `AMS ${spool.amsSlot}`
+      : state === "shelf"
+      ? "On the shelf"
+      : "Sealed";
   return (
-    <Card className="my-0 flex flex-wrap items-center gap-4 px-5 py-3">
-      <span className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-700">
+    <div className="flex flex-wrap items-center gap-4 px-5 py-3">
+      <span className="w-20">
+        <StateChip state={state} />
+      </span>
+      <span className="text-sm font-semibold text-gray-900">
         #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
       </span>
-      <span className="text-sm text-gray-500">
-        {state === "run-out" ? "Run out?" : "Also open"} ·{" "}
-        {spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "On the shelf"}
-      </span>
+      <span className="w-28 text-sm text-gray-500">{where}</span>
       <span className="flex min-w-40 flex-1 items-center gap-3">
         <span
           className="h-1.5 flex-1 rounded-full"
@@ -1661,24 +1804,33 @@ function AlsoOpenRow({
           number={number}
           tare={spool.spoolWeightGrams ?? tare}
         />
-        <AmsPicker spool={spool} label={label} inAms={inAms} compact />
-        <ActIcon
-          icon={PackageIcon}
-          label="Back to New (sealed)"
-          form={{ intent: "state", id: spool.id, target: "new", label }}
-        />
-        <ActIcon
-          icon={CheckCircle2Icon}
-          label="Mark finished"
-          form={{ intent: "retire", id: spool.id }}
-        />
+        {state === "sealed" ? (
+          <ActIcon
+            icon={PackageOpenIcon}
+            label="Open it"
+            form={{ intent: "open", id: spool.id, label }}
+          />
+        ) : (
+          <>
+            <AmsPicker spool={spool} label={label} inAms={inAms} compact />
+            <ActIcon
+              icon={PackageIcon}
+              label="Back to New (sealed)"
+              form={{ intent: "state", id: spool.id, target: "new", label }}
+            />
+            <ActIcon
+              icon={CheckCircle2Icon}
+              label="Mark finished"
+              form={{ intent: "retire", id: spool.id }}
+            />
+          </>
+        )}
         <DeleteIcon spool={spool} label={label} />
       </span>
-    </Card>
+    </div>
   );
 }
 
-/** "Put in AMS": load it into a slot (what's there comes out), or take it out. */
 function AmsPicker({
   spool,
   label,
