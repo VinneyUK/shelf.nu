@@ -188,25 +188,11 @@ describe("a filament's page", () => {
     ).toBeTruthy();
   });
 
-  it("puts the spool in the AMS in the In use card, with its run-out estimate", async () => {
+  it("shows open spools as rows only, with no detail panel", async () => {
     show();
-    // the spool in the AMS starts with its detail open
-    const heading = await screen.findByRole("heading", { name: "In use" });
-    const card = heading.closest("div.my-0") as HTMLElement;
-    expect(within(card).getByText("#3 · Spool")).toBeTruthy();
-    expect(within(card).getAllByText("AMS 2").length).toBeGreaterThan(0);
-    expect(within(card).getByText("270 g")).toBeTruthy();
-    expect(within(card).getByText("Runs out")).toBeTruthy();
-    expect(within(card).getByText(/≈ \d+ g a day/)).toBeTruthy();
-    // Weigh, Put in AMS, Back to New, Finished and Delete, nothing hidden
-    expect(within(card).getByRole("button", { name: "Finished" })).toBeTruthy();
-    expect(
-      within(card).getByRole("button", { name: "Back to New" })
-    ).toBeTruthy();
-    // Delete in words, the same size as the buttons beside it
-    expect(
-      within(card).getByRole("button", { name: /^Delete #/ }).textContent
-    ).toContain("Delete");
+    expect(await screen.findByRole("heading", { name: "Units" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "In use" })).toBeNull();
+    expect(screen.getAllByText(/^AMS \d/).length).toBeGreaterThan(0);
   });
 
   it("lists every unit in one view with its state, and opens a sealed one to its details", async () => {

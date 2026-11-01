@@ -1499,116 +1499,6 @@ function SummaryCard({
   );
 }
 
-/** The spool in use: its ring, what's known about it, Weigh and Mark finished. */
-function InUseCard({
-  spool,
-  number,
-  tare,
-  inAms,
-}: {
-  spool: Spool;
-  number: number;
-  tare: number | null;
-  inAms: PageData["inAms"];
-}) {
-  const label = `#${number} of ${spool.colourName}`;
-  const money = useMoney();
-  const act = useFetcher<Result>();
-  const rate = usageRate(spool);
-  const where =
-    spool.amsSlot !== null ? `AMS ${spool.amsSlot}` : "On the shelf";
-  const facts: [string, ReactNode, ReactNode?][] = [
-    ["Opened", <DateText key="o" date={spool.openedOn} empty="—" />],
-    [
-      "Used so far",
-      weightText(rate.used),
-      rate.perDay !== null ? `≈ ${Math.round(rate.perDay)} g a day` : undefined,
-    ],
-    rate.runsOut
-      ? [
-          "Runs out",
-          `≈ ${runOutDate(rate.runsOut)}`,
-          "this spool, at this rate",
-        ]
-      : ["Where", where],
-    ["Paid", spool.pricePaid !== null ? money(spool.pricePaid) : "—"],
-    ["Bought", <DateText key="b" date={spool.purchasedOn} />],
-    [
-      "Tare (empty)",
-      (spool.spoolWeightGrams ?? tare) !== null
-        ? `${spool.spoolWeightGrams ?? tare} g`
-        : "—",
-    ],
-  ];
-  return (
-    <Card className="my-0 p-0">
-      <div className={sectionHead}>
-        <h3 className="text-text-md font-semibold text-gray-900">
-          {spool.amsSlot !== null ? "In use" : "Open"}
-        </h3>
-        <span className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-700">
-          #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
-        </span>
-        <span className="text-sm text-gray-500">{where}</span>
-        <span className="ml-auto flex flex-wrap items-center gap-2">
-          <WeighButton
-            spool={spool}
-            number={number}
-            tare={spool.spoolWeightGrams ?? tare}
-            withText
-          />
-          <AmsPicker spool={spool} label={label} inAms={inAms} />
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isFormProcessing(act.state)}
-            onClick={() =>
-              void act.submit(
-                { intent: "state", id: spool.id, target: "new", label },
-                { method: "post" }
-              )
-            }
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <PackageIcon className="size-4" aria-hidden="true" />
-              Back to New
-            </span>
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isFormProcessing(act.state)}
-            onClick={() =>
-              void act.submit(
-                { intent: "retire", id: spool.id },
-                { method: "post" }
-              )
-            }
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2Icon className="size-4" aria-hidden="true" />
-              Finished
-            </span>
-          </Button>
-          <DeleteIcon spool={spool} label={label} words />
-        </span>
-      </div>
-      <div className="flex flex-col items-center gap-8 p-6 sm:flex-row">
-        <LevelRing spool={spool} />
-        <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3">
-          {facts.map(([k, v, sub]) => (
-            <div key={k}>
-              <dt className={factLabel}>{k}</dt>
-              <dd className={factValue}>{v}</dd>
-              {sub ? <dd className="text-xs text-gray-500">{sub}</dd> : null}
-            </div>
-          ))}
-        </dl>
-      </div>
-    </Card>
-  );
-}
-
 /** A unit's state: in the AMS, open on the shelf, or sealed. One colour and icon each. */
 const UNIT_STATES = {
   ams: {
@@ -1653,9 +1543,8 @@ function StateChip({ state }: { state: UnitState }) {
 /**
  * The filament's units (fork): one view, no tabs. A line of counts (in the
  * AMS, open, sealed), then every unit as a row in fixed columns (State,
- * Unit, Where, Level, Left, buttons). A row opens to its detail: an open
- * spool's card (level, used, runs out, paid, bought, tare), or a sealed
- * unit's details to change in place. The spool in the AMS starts open.
+ * Unit, Where, Level, Left, buttons). A sealed unit's name opens its
+ * details to change in place; open spools have no detail panel.
  */
 function SpoolsCard({
   ams,
@@ -1672,7 +1561,7 @@ function SpoolsCard({
   tare: number | null;
   inAms: PageData["inAms"];
 }) {
-  const [opened, setOpened] = useState<string | null>(ams[0]?.id ?? null);
+  const [opened, setOpened] = useState<string | null>(null);
   const rows: [Spool, UnitState][] = [
     ...ams.map((x) => [x, "ams"] as [Spool, UnitState]),
     ...shelf.map((x) => [x, "shelf"] as [Spool, UnitState]),
@@ -1726,16 +1615,11 @@ function SpoolsCard({
                 open={opened === x.id}
                 onToggle={() => setOpened(opened === x.id ? null : x.id)}
               >
+                {/* a sealed unit opens to its details, to change in place; an
+                    open spool has no detail panel (Ant: too messy) */}
                 {state === "sealed" ? (
                   <SealedCard items={[x]} numbers={numbers} tare={tare} />
-                ) : (
-                  <InUseCard
-                    spool={x}
-                    number={numbers.get(x.id) ?? 0}
-                    tare={tare}
-                    inAms={inAms}
-                  />
-                )}
+                ) : null}
               </UnitRow>
             ))}
           </div>
@@ -1767,7 +1651,7 @@ function UnitRow({
   inAms: PageData["inAms"];
   open: boolean;
   onToggle: () => void;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const label = `#${number} of ${spool.colourName}`;
   const where =
@@ -1785,22 +1669,28 @@ function UnitRow({
         <span>
           <StateChip state={state} />
         </span>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          title={open ? "Hide its detail" : "Show its detail"}
-          className="inline-flex items-center gap-1 whitespace-nowrap text-left text-sm font-semibold text-gray-900 hover:text-primary-700"
-        >
-          <ChevronRightIcon
-            className={tw(
-              "size-4 text-gray-400 transition-transform",
-              open && "rotate-90"
-            )}
-            aria-hidden="true"
-          />
-          #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
-        </button>
+        {children ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            title={open ? "Hide its detail" : "Show its detail"}
+            className="inline-flex items-center gap-1 whitespace-nowrap text-left text-sm font-semibold text-gray-900 hover:text-primary-700"
+          >
+            <ChevronRightIcon
+              className={tw(
+                "size-4 text-gray-400 transition-transform",
+                open && "rotate-90"
+              )}
+              aria-hidden="true"
+            />
+            #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
+          </button>
+        ) : (
+          <span className="whitespace-nowrap text-sm font-semibold text-gray-900">
+            #{number} · {spool.packaging === "refill" ? "Refill" : "Spool"}
+          </span>
+        )}
         <span className="whitespace-nowrap text-sm text-gray-500">{where}</span>
         <span
           className="h-1.5 rounded-full"
@@ -1846,7 +1736,9 @@ function UnitRow({
           <DeleteIcon spool={spool} label={label} />
         </span>
       </div>
-      {open ? <div className="bg-gray-25 px-5 py-4">{children}</div> : null}
+      {open && children ? (
+        <div className="bg-gray-25 px-5 py-4">{children}</div>
+      ) : null}
     </div>
   );
 }
